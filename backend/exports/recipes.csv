@@ -1,0 +1,6 @@
+id,title,goals,dietary_tags,meal_times,cuisine,prep_time,calories,protein_g
+1,High Protein Chicken Bowl,"muscle_gain, weight_training, body_recomp","non_vegetarian, gluten_free, dairy_free","lunch, dinner",continental,15,613.65,58.58
+2,Overnight Oats with Berries,"fat_loss, general_health, endurance",vegetarian,"breakfast, snack",continental,5,446.85,21.98
+3,Dal Tadka,"muscle_gain, general_health, fat_loss","vegetarian, vegan, gluten_free","lunch, dinner",indian,10,551.74,27.06
+4,Paneer Tikka Wrap,"muscle_gain, weight_training",vegetarian,"lunch, dinner",fusion,20,602.6,30.05
+5,Egg White Scramble,"fat_loss, body_recomp","non_vegetarian, gluten_free, dairy_free",breakfast,continental,5,262.7,17.83

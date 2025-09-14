@@ -1,0 +1,1018 @@
+{
+  "recipes": [
+    {
+      "title": "High Protein Chicken Bowl",
+      "description": "Grilled chicken breast with quinoa and steamed vegetables",
+      "goals": ["muscle_gain", "weight_training", "body_recomp"],
+      "tags": ["high_protein", "low_fat", "meal_prep_friendly"],
+      "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "continental",
+      "prep_time_min": 15,
+      "cook_time_min": 25,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "chicken_breast", "quantity_grams": 150},
+        {"item_name": "quinoa", "quantity_grams": 60},
+        {"item_name": "broccoli", "quantity_grams": 100},
+        {"item_name": "bell_pepper", "quantity_grams": 50},
+        {"item_name": "olive_oil", "quantity_grams": 10},
+        {"item_name": "garlic", "quantity_grams": 5}
+      ],
+      "instructions": [
+        "Season chicken breast with salt and pepper",
+        "Grill chicken for 6-7 minutes each side until cooked through",
+        "Cook quinoa according to package instructions",
+        "Steam broccoli for 5 minutes",
+        "Sauté bell peppers with garlic",
+        "Assemble bowl with quinoa base, chicken, and vegetables"
+      ],
+      "meal_prep_notes": "Can be stored for up to 4 days in refrigerator",
+      "chef_tips": "Marinate chicken in lemon and herbs for extra flavor"
+    },
+    {
+      "title": "Overnight Oats with Berries",
+      "description": "No-cook breakfast packed with protein and fiber",
+      "goals": ["fat_loss", "general_health", "endurance"],
+      "tags": ["quick", "no_cook", "high_fiber", "breakfast"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["breakfast", "snack"],
+      "cuisine": "continental",
+      "prep_time_min": 5,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "oats", "quantity_grams": 50},
+        {"item_name": "milk", "quantity_grams": 150},
+        {"item_name": "greek_yogurt", "quantity_grams": 50},
+        {"item_name": "banana", "quantity_grams": 50},
+        {"item_name": "almonds", "quantity_grams": 15}
+      ],
+      "instructions": [
+        "Mix oats with milk in a jar",
+        "Add Greek yogurt and mix well",
+        "Add sliced banana and chopped almonds",
+        "Refrigerate overnight",
+        "Enjoy cold in the morning"
+      ],
+      "meal_prep_notes": "Prepare 3-4 jars at once for the week",
+      "chef_tips": "Add honey for sweetness if needed"
+    },
+    {
+      "title": "Dal Tadka",
+      "description": "Classic Indian lentil curry high in protein",
+      "goals": ["muscle_gain", "general_health", "fat_loss"],
+      "tags": ["high_protein", "vegetarian", "indian", "comfort_food"],
+      "dietary_tags": ["vegetarian", "vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "indian",
+      "prep_time_min": 10,
+      "cook_time_min": 30,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "red_lentils", "quantity_grams": 100},
+        {"item_name": "onion", "quantity_grams": 50},
+        {"item_name": "tomato", "quantity_grams": 100},
+        {"item_name": "ginger", "quantity_grams": 10},
+        {"item_name": "garlic", "quantity_grams": 10},
+        {"item_name": "turmeric_powder", "quantity_grams": 2},
+        {"item_name": "olive_oil", "quantity_grams": 15}
+      ],
+      "instructions": [
+        "Wash and boil lentils until soft",
+        "Heat oil in a pan for tadka",
+        "Add chopped onions and sauté until golden",
+        "Add ginger-garlic paste and cook for 2 minutes",
+        "Add tomatoes and cook until mushy",
+        "Add turmeric and other spices",
+        "Pour tadka over boiled dal and simmer"
+      ],
+      "meal_prep_notes": "Stays fresh for 3-4 days, freeze for longer storage",
+      "chef_tips": "Add a squeeze of lemon before serving"
+    },
+    {
+      "title": "Paneer Tikka Wrap",
+      "description": "Protein-rich Indian fusion wrap",
+      "goals": ["muscle_gain", "weight_training"],
+      "tags": ["high_protein", "lunch", "fusion"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "fusion",
+      "prep_time_min": 20,
+      "cook_time_min": 15,
+      "difficulty_level": "medium",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "paneer", "quantity_grams": 100},
+        {"item_name": "whole_wheat_flour", "quantity_grams": 60},
+        {"item_name": "greek_yogurt", "quantity_grams": 30},
+        {"item_name": "bell_pepper", "quantity_grams": 50},
+        {"item_name": "onion", "quantity_grams": 30},
+        {"item_name": "olive_oil", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Make roti from whole wheat flour",
+        "Marinate paneer in yogurt and spices",
+        "Grill paneer and vegetables",
+        "Warm the roti",
+        "Place grilled items on roti",
+        "Add chutneys and wrap tightly"
+      ],
+      "meal_prep_notes": "Prep components separately, assemble when eating",
+      "chef_tips": "Use mint chutney for extra flavor"
+    },
+    {
+      "title": "Egg White Scramble",
+      "description": "Low-calorie, high-protein breakfast",
+      "goals": ["fat_loss", "body_recomp"],
+      "tags": ["high_protein", "low_calorie", "quick", "breakfast"],
+      "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+      "suitable_meal_times": ["breakfast"],
+      "cuisine": "continental",
+      "prep_time_min": 5,
+      "cook_time_min": 5,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "eggs", "quantity_grams": 120},
+        {"item_name": "spinach", "quantity_grams": 50},
+        {"item_name": "tomato", "quantity_grams": 50},
+        {"item_name": "onion", "quantity_grams": 30},
+        {"item_name": "olive_oil", "quantity_grams": 5}
+      ],
+      "instructions": [
+        "Separate egg whites (use 4 eggs)",
+        "Heat oil in non-stick pan",
+        "Sauté onions until translucent",
+        "Add tomatoes and spinach",
+        "Pour in egg whites and scramble",
+        "Season with salt and pepper"
+      ],
+      "meal_prep_notes": "Best made fresh",
+      "chef_tips": "Add herbs like oregano for flavor"
+    },
+    {
+      "title": "Greek Chicken Pita",
+      "description": "Grilled chicken with tzatziki sauce in whole wheat pita",
+      "goals": ["muscle_gain", "weight_training", "general_health"],
+      "tags": ["high_protein", "mediterranean"],
+      "dietary_tags": ["non_vegetarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "mediterranean",
+      "prep_time_min": 15,
+      "cook_time_min": 20,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "chicken_breast", "quantity_grams": 120},
+        {"item_name": "whole_wheat_pita", "quantity_grams": 60},
+        {"item_name": "tzatziki", "quantity_grams": 30},
+        {"item_name": "lettuce", "quantity_grams": 30},
+        {"item_name": "tomato", "quantity_grams": 40}
+      ],
+      "instructions": [
+        "Season and grill chicken until cooked",
+        "Warm pita bread",
+        "Spread tzatziki inside pita",
+        "Fill with sliced chicken, lettuce, and tomato"
+      ],
+      "meal_prep_notes": "Grill extra chicken for quick lunches",
+      "chef_tips": "Use Greek yogurt to make homemade tzatziki"
+    },
+    {
+      "title": "Veggie Stir Fry with Tofu",
+      "description": "Colorful vegetables and tofu stir-fried with soy sauce",
+      "goals": ["general_health", "fat_loss", "body_recomp"],
+      "tags": ["vegetarian", "low_calorie", "asian"],
+      "dietary_tags": ["vegetarian", "vegan"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "asian",
+      "prep_time_min": 10,
+      "cook_time_min": 15,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "tofu", "quantity_grams": 150},
+        {"item_name": "broccoli", "quantity_grams": 100},
+        {"item_name": "carrot", "quantity_grams": 80},
+        {"item_name": "bell_pepper", "quantity_grams": 80},
+        {"item_name": "soy_sauce", "quantity_grams": 20},
+        {"item_name": "garlic", "quantity_grams": 5}
+      ],
+      "instructions": [
+        "Cut tofu into cubes and pat dry",
+        "Heat oil, sauté garlic and tofu until golden",
+        "Add vegetables and stir fry",
+        "Add soy sauce and toss well"
+      ],
+      "meal_prep_notes": "Use frozen vegetables for convenience",
+      "chef_tips": "Add chili flakes for heat"
+    },
+    {
+      "title": "Salmon Teriyaki Bowl",
+      "description": "Baked salmon with teriyaki glaze over brown rice",
+      "goals": ["muscle_gain", "general_health"],
+      "tags": ["seafood", "high_protein"],
+      "dietary_tags": ["pescatarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "japanese",
+      "prep_time_min": 10,
+      "cook_time_min": 20,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "salmon_fillet", "quantity_grams": 150},
+        {"item_name": "brown_rice", "quantity_grams": 80},
+        {"item_name": "teriyaki_sauce", "quantity_grams": 30},
+        {"item_name": "broccoli", "quantity_grams": 80}
+      ],
+      "instructions": [
+        "Bake salmon with teriyaki glaze until cooked",
+        "Cook brown rice",
+        "Steam broccoli",
+        "Assemble bowl with rice, salmon, and broccoli"
+      ],
+      "meal_prep_notes": "Bake multiple salmon fillets at once",
+      "chef_tips": "Top with sesame seeds for crunch"
+    },
+    {
+      "title": "Chickpea Salad",
+      "description": "Refreshing high-protein salad with chickpeas and veggies",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "quick"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "snack"],
+      "cuisine": "mediterranean",
+      "prep_time_min": 10,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "chickpeas", "quantity_grams": 150},
+        {"item_name": "cucumber", "quantity_grams": 80},
+        {"item_name": "tomato", "quantity_grams": 80},
+        {"item_name": "olive_oil", "quantity_grams": 10},
+        {"item_name": "lemon_juice", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Rinse chickpeas",
+        "Chop cucumber and tomato",
+        "Toss everything with olive oil and lemon juice",
+        "Season with salt and pepper"
+      ],
+      "meal_prep_notes": "Keeps for 2 days refrigerated",
+      "chef_tips": "Add feta cheese for extra flavor"
+    },
+    {
+      "title": "Beef and Broccoli",
+      "description": "Lean beef stir fry with broccoli in savory sauce",
+      "goals": ["muscle_gain", "weight_training"],
+      "tags": ["high_protein", "asian"],
+      "dietary_tags": ["non_vegetarian"],
+      "suitable_meal_times": ["dinner"],
+      "cuisine": "asian",
+      "prep_time_min": 10,
+      "cook_time_min": 15,
+      "difficulty_level": "medium",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "beef_strips", "quantity_grams": 200},
+        {"item_name": "broccoli", "quantity_grams": 150},
+        {"item_name": "soy_sauce", "quantity_grams": 20},
+        {"item_name": "garlic", "quantity_grams": 5},
+        {"item_name": "ginger", "quantity_grams": 5}
+      ],
+      "instructions": [
+        "Sear beef strips",
+        "Add garlic and ginger, stir fry",
+        "Add broccoli and soy sauce",
+        "Cook until broccoli is tender"
+      ],
+      "meal_prep_notes": "Pairs well with rice or noodles",
+      "chef_tips": "Slice beef thinly for tenderness"
+    },
+    {
+      "title": "Caprese Sandwich",
+      "description": "Tomato, mozzarella, and basil sandwich drizzled with balsamic",
+      "goals": ["general_health"],
+      "tags": ["vegetarian", "quick"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["lunch"],
+      "cuisine": "italian",
+      "prep_time_min": 5,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "whole_wheat_bread", "quantity_grams": 60},
+        {"item_name": "tomato", "quantity_grams": 50},
+        {"item_name": "mozzarella", "quantity_grams": 40},
+        {"item_name": "basil", "quantity_grams": 5},
+        {"item_name": "balsamic_glaze", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Layer tomato and mozzarella on bread",
+        "Add basil leaves",
+        "Drizzle balsamic glaze",
+        "Serve immediately"
+      ],
+      "meal_prep_notes": "Best consumed fresh",
+      "chef_tips": "Toast bread for extra crunch"
+    },
+    {
+      "title": "Lentil Curry",
+      "description": "Protein-rich Indian-style lentil curry",
+      "goals": ["general_health", "body_recomp"],
+      "tags": ["vegetarian", "high_fiber"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "indian",
+      "prep_time_min": 10,
+      "cook_time_min": 25,
+      "difficulty_level": "medium",
+      "servings": 3,
+      "ingredients": [
+        {"item_name": "red_lentils", "quantity_grams": 200},
+        {"item_name": "onion", "quantity_grams": 80},
+        {"item_name": "tomato", "quantity_grams": 100},
+        {"item_name": "garlic", "quantity_grams": 5},
+        {"item_name": "curry_powder", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Rinse lentils",
+        "Sauté onion, garlic, and tomato",
+        "Add lentils, curry powder, and water",
+        "Simmer until lentils are soft"
+      ],
+      "meal_prep_notes": "Keeps well refrigerated for 3 days",
+      "chef_tips": "Add coconut milk for creaminess"
+    },
+    {
+      "title": "Quinoa Buddha Bowl",
+      "description": "Balanced bowl with quinoa, veggies, and tahini dressing",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "gluten_free"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "fusion",
+      "prep_time_min": 15,
+      "cook_time_min": 20,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "quinoa", "quantity_grams": 150},
+        {"item_name": "spinach", "quantity_grams": 50},
+        {"item_name": "cherry_tomatoes", "quantity_grams": 80},
+        {"item_name": "avocado", "quantity_grams": 50},
+        {"item_name": "tahini", "quantity_grams": 20}
+      ],
+      "instructions": [
+        "Cook quinoa",
+        "Arrange spinach, tomatoes, and avocado in bowl",
+        "Top with quinoa and drizzle tahini"
+      ],
+      "meal_prep_notes": "Store dressing separately until serving",
+      "chef_tips": "Add roasted chickpeas for crunch"
+    },
+    {
+      "title": "Shrimp Tacos",
+      "description": "Spicy shrimp with slaw in corn tortillas",
+      "goals": ["muscle_gain", "general_health"],
+      "tags": ["seafood", "quick"],
+      "dietary_tags": ["pescatarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "mexican",
+      "prep_time_min": 10,
+      "cook_time_min": 10,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "shrimp", "quantity_grams": 200},
+        {"item_name": "corn_tortillas", "quantity_grams": 100},
+        {"item_name": "cabbage_slaw", "quantity_grams": 80},
+        {"item_name": "lime", "quantity_grams": 20},
+        {"item_name": "spice_mix", "quantity_grams": 5}
+      ],
+      "instructions": [
+        "Season and sauté shrimp",
+        "Warm tortillas",
+        "Fill tortillas with shrimp and slaw",
+        "Squeeze lime on top"
+      ],
+      "meal_prep_notes": "Prepare slaw ahead for quick assembly",
+      "chef_tips": "Add avocado slices for creaminess"
+    },
+    {
+      "title": "Stuffed Bell Peppers",
+      "description": "Bell peppers filled with quinoa and vegetables",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "gluten_free"],
+      "dietary_tags": ["vegetarian", "gluten_free"],
+      "suitable_meal_times": ["dinner"],
+      "cuisine": "mediterranean",
+      "prep_time_min": 15,
+      "cook_time_min": 30,
+      "difficulty_level": "medium",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "bell_peppers", "quantity_grams": 200},
+        {"item_name": "quinoa", "quantity_grams": 100},
+        {"item_name": "spinach", "quantity_grams": 50},
+        {"item_name": "onion", "quantity_grams": 50},
+        {"item_name": "tomato_sauce", "quantity_grams": 80}
+      ],
+      "instructions": [
+        "Cook quinoa and mix with veggies and sauce",
+        "Stuff peppers with mixture",
+        "Bake until peppers are tender"
+      ],
+      "meal_prep_notes": "Can be frozen after baking",
+      "chef_tips": "Top with cheese if desired"
+    },
+    {
+      "title": "Turkey Chili",
+      "description": "Lean turkey chili with beans and tomatoes",
+      "goals": ["muscle_gain", "weight_training"],
+      "tags": ["high_protein", "comfort_food"],
+      "dietary_tags": ["non_vegetarian", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "american",
+      "prep_time_min": 15,
+      "cook_time_min": 35,
+      "difficulty_level": "medium",
+      "servings": 4,
+      "ingredients": [
+        {"item_name": "ground_turkey", "quantity_grams": 300},
+        {"item_name": "kidney_beans", "quantity_grams": 150},
+        {"item_name": "tomato", "quantity_grams": 200},
+        {"item_name": "onion", "quantity_grams": 80},
+        {"item_name": "chili_powder", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Brown turkey with onion",
+        "Add beans, tomato, and chili powder",
+        "Simmer until thickened"
+      ],
+      "meal_prep_notes": "Freezes well for meal prep",
+      "chef_tips": "Top with Greek yogurt instead of sour cream"
+    },
+    {
+      "title": "Avocado Toast with Egg",
+      "description": "Whole-grain toast with mashed avocado and poached egg",
+      "goals": ["general_health", "endurance"],
+      "tags": ["quick", "breakfast"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["breakfast", "snack"],
+      "cuisine": "continental",
+      "prep_time_min": 5,
+      "cook_time_min": 5,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "whole_grain_bread", "quantity_grams": 60},
+        {"item_name": "avocado", "quantity_grams": 50},
+        {"item_name": "egg", "quantity_grams": 50}
+      ],
+      "instructions": [
+        "Toast bread",
+        "Mash avocado onto toast",
+        "Top with poached egg"
+      ],
+      "meal_prep_notes": "Mash avocado just before serving",
+      "chef_tips": "Sprinkle chili flakes for a kick"
+    },
+    {
+      "title": "Zucchini Noodles with Pesto",
+      "description": "Low-carb zucchini noodles tossed in basil pesto",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "low_carb"],
+      "dietary_tags": ["vegetarian", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "italian",
+      "prep_time_min": 10,
+      "cook_time_min": 5,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "zucchini", "quantity_grams": 200},
+        {"item_name": "pesto", "quantity_grams": 40}
+      ],
+      "instructions": [
+        "Spiralize zucchini",
+        "Toss zucchini noodles with pesto",
+        "Serve immediately"
+      ],
+      "meal_prep_notes": "Best eaten fresh",
+      "chef_tips": "Add cherry tomatoes for color"
+    },
+    {
+      "title": "Black Bean Burrito Bowl",
+      "description": "Mexican-inspired bowl with black beans and brown rice",
+      "goals": ["general_health", "body_recomp"],
+      "tags": ["vegetarian", "high_fiber"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "mexican",
+      "prep_time_min": 15,
+      "cook_time_min": 20,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "black_beans", "quantity_grams": 150},
+        {"item_name": "brown_rice", "quantity_grams": 150},
+        {"item_name": "corn", "quantity_grams": 80},
+        {"item_name": "salsa", "quantity_grams": 50}
+      ],
+      "instructions": [
+        "Cook brown rice",
+        "Heat black beans",
+        "Assemble bowl with rice, beans, corn, and salsa"
+      ],
+      "meal_prep_notes": "Store components separately for freshness",
+      "chef_tips": "Add guacamole for richness"
+    },
+    {
+      "title": "Berry Protein Smoothie",
+      "description": "Refreshing smoothie with mixed berries and protein powder",
+      "goals": ["endurance", "muscle_gain"],
+      "tags": ["quick", "snack"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["breakfast", "snack"],
+      "cuisine": "american",
+      "prep_time_min": 5,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "mixed_berries", "quantity_grams": 100},
+        {"item_name": "milk", "quantity_grams": 150},
+        {"item_name": "protein_powder", "quantity_grams": 30}
+      ],
+      "instructions": [
+        "Blend all ingredients until smooth"
+      ],
+      "meal_prep_notes": "Use frozen berries for thicker texture",
+      "chef_tips": "Add spinach for extra nutrients"
+    },
+    {
+      "title": "Sweet Potato Fries",
+      "description": "Oven-baked crispy sweet potato fries",
+      "goals": ["general_health", "fat_loss"],
+      "tags": ["snack", "side"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["snack", "side"],
+      "cuisine": "american",
+      "prep_time_min": 10,
+      "cook_time_min": 25,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "sweet_potato", "quantity_grams": 200},
+        {"item_name": "olive_oil", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Cut sweet potatoes into fries",
+        "Toss with olive oil and bake until crispy"
+      ],
+      "meal_prep_notes": "Best served fresh",
+      "chef_tips": "Sprinkle paprika for added flavor"
+    },
+    {
+      "title": "Grilled Veggie Wrap",
+      "description": "Whole wheat wrap filled with grilled vegetables and hummus",
+      "goals": ["general_health", "fat_loss"],
+      "tags": ["vegetarian", "quick"],
+      "dietary_tags": ["vegan"],
+      "suitable_meal_times": ["lunch"],
+      "cuisine": "mediterranean",
+      "prep_time_min": 10,
+      "cook_time_min": 10,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "whole_wheat_wrap", "quantity_grams": 60},
+        {"item_name": "zucchini", "quantity_grams": 50},
+        {"item_name": "bell_pepper", "quantity_grams": 50},
+        {"item_name": "hummus", "quantity_grams": 30}
+      ],
+      "instructions": [
+        "Grill vegetables",
+        "Spread hummus on wrap",
+        "Fill with veggies and roll up"
+      ],
+      "meal_prep_notes": "Wrap tightly in foil for on-the-go meals",
+      "chef_tips": "Add feta for extra flavor"
+    },
+    {
+      "title": "Chickpea Salad Bowl",
+      "description": "Fresh salad with chickpeas, veggies, and lemon dressing",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "high_fiber"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "mediterranean",
+      "prep_time_min": 10,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "chickpeas", "quantity_grams": 150},
+        {"item_name": "cucumber", "quantity_grams": 80},
+        {"item_name": "tomato", "quantity_grams": 80},
+        {"item_name": "lemon_juice", "quantity_grams": 20}
+      ],
+      "instructions": [
+        "Mix chickpeas with chopped veggies",
+        "Drizzle with lemon juice and season"
+      ],
+      "meal_prep_notes": "Tastes better chilled for 30 mins",
+      "chef_tips": "Add parsley for freshness"
+    },
+    {
+      "title": "Baked Salmon with Asparagus",
+      "description": "Oven-baked salmon fillet with roasted asparagus",
+      "goals": ["muscle_gain", "general_health"],
+      "tags": ["seafood", "high_protein"],
+      "dietary_tags": ["pescatarian", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "continental",
+      "prep_time_min": 10,
+      "cook_time_min": 20,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "salmon_fillet", "quantity_grams": 200},
+        {"item_name": "asparagus", "quantity_grams": 150},
+        {"item_name": "olive_oil", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Place salmon and asparagus on tray",
+        "Drizzle with oil, season, and bake"
+      ],
+      "meal_prep_notes": "Consume within 2 days",
+      "chef_tips": "Add lemon slices on salmon for zest"
+    },
+    {
+      "title": "Greek Yogurt Parfait",
+      "description": "Layered parfait with yogurt, fruits, and granola",
+      "goals": ["general_health", "endurance"],
+      "tags": ["quick", "snack", "breakfast"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["breakfast", "snack"],
+      "cuisine": "continental",
+      "prep_time_min": 5,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "greek_yogurt", "quantity_grams": 100},
+        {"item_name": "mixed_berries", "quantity_grams": 80},
+        {"item_name": "granola", "quantity_grams": 30}
+      ],
+      "instructions": [
+        "Layer yogurt, berries, and granola in glass"
+      ],
+      "meal_prep_notes": "Assemble just before eating",
+      "chef_tips": "Drizzle honey on top for sweetness"
+    },
+    {
+      "title": "Tofu Stir Fry",
+      "description": "Asian-style tofu stir fry with vegetables",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "quick"],
+      "dietary_tags": ["vegan"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "asian",
+      "prep_time_min": 10,
+      "cook_time_min": 10,
+      "difficulty_level": "medium",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "tofu", "quantity_grams": 200},
+        {"item_name": "broccoli", "quantity_grams": 100},
+        {"item_name": "soy_sauce", "quantity_grams": 20}
+      ],
+      "instructions": [
+        "Stir fry tofu until golden",
+        "Add broccoli and soy sauce",
+        "Cook until vegetables are tender"
+      ],
+      "meal_prep_notes": "Best eaten fresh",
+      "chef_tips": "Sprinkle sesame seeds before serving"
+    },
+    {
+      "title": "Peanut Butter Banana Smoothie",
+      "description": "Creamy smoothie with banana and peanut butter",
+      "goals": ["endurance", "muscle_gain"],
+      "tags": ["quick", "snack"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["breakfast", "snack"],
+      "cuisine": "american",
+      "prep_time_min": 5,
+      "cook_time_min": 0,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "banana", "quantity_grams": 100},
+        {"item_name": "peanut_butter", "quantity_grams": 20},
+        {"item_name": "milk", "quantity_grams": 200}
+      ],
+      "instructions": [
+        "Blend banana, peanut butter, and milk until smooth"
+      ],
+      "meal_prep_notes": "Best consumed immediately",
+      "chef_tips": "Add ice cubes for a thicker texture"
+    },
+    {
+      "title": "Chicken Caesar Salad",
+      "description": "Grilled chicken on romaine with Caesar dressing",
+      "goals": ["muscle_gain", "weight_training"],
+      "tags": ["high_protein", "salad"],
+      "dietary_tags": ["non_vegetarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "american",
+      "prep_time_min": 10,
+      "cook_time_min": 15,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "chicken_breast", "quantity_grams": 200},
+        {"item_name": "romaine_lettuce", "quantity_grams": 100},
+        {"item_name": "caesar_dressing", "quantity_grams": 40}
+      ],
+      "instructions": [
+        "Grill chicken and slice",
+        "Toss lettuce with dressing and top with chicken"
+      ],
+      "meal_prep_notes": "Add croutons just before serving",
+      "chef_tips": "Use yogurt-based dressing for fewer calories"
+    },
+    {
+      "title": "Vegetable Omelette",
+      "description": "Egg omelette with assorted vegetables",
+      "goals": ["fat_loss", "body_recomp"],
+      "tags": ["high_protein", "breakfast"],
+      "dietary_tags": ["non_vegetarian", "gluten_free"],
+      "suitable_meal_times": ["breakfast"],
+      "cuisine": "continental",
+      "prep_time_min": 5,
+      "cook_time_min": 5,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "eggs", "quantity_grams": 120},
+        {"item_name": "bell_pepper", "quantity_grams": 50},
+        {"item_name": "spinach", "quantity_grams": 30}
+      ],
+      "instructions": [
+        "Beat eggs",
+        "Add chopped vegetables",
+        "Cook on skillet until set"
+      ],
+      "meal_prep_notes": "Eat fresh for best taste",
+      "chef_tips": "Add a sprinkle of cheese for flavor"
+    },
+    {
+      "title": "Mushroom Risotto",
+      "description": "Creamy risotto with sautéed mushrooms",
+      "goals": ["general_health"],
+      "tags": ["comfort_food", "vegetarian"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["dinner"],
+      "cuisine": "italian",
+      "prep_time_min": 15,
+      "cook_time_min": 35,
+      "difficulty_level": "medium",
+      "servings": 3,
+      "ingredients": [
+        {"item_name": "arborio_rice", "quantity_grams": 200},
+        {"item_name": "mushrooms", "quantity_grams": 150},
+        {"item_name": "vegetable_broth", "quantity_grams": 500}
+      ],
+      "instructions": [
+        "Sauté mushrooms",
+        "Cook rice gradually adding broth",
+        "Stir until creamy"
+      ],
+      "meal_prep_notes": "Serve immediately",
+      "chef_tips": "Finish with parmesan for richness"
+    },
+    {
+      "title": "Veggie Sushi Rolls",
+      "description": "Nori rolls filled with rice and vegetables",
+      "goals": ["fat_loss", "general_health"],
+      "tags": ["vegetarian", "snack"],
+      "dietary_tags": ["vegan"],
+      "suitable_meal_times": ["lunch", "snack"],
+      "cuisine": "japanese",
+      "prep_time_min": 20,
+      "cook_time_min": 10,
+      "difficulty_level": "hard",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "sushi_rice", "quantity_grams": 150},
+        {"item_name": "nori_sheets", "quantity_grams": 20},
+        {"item_name": "cucumber", "quantity_grams": 50},
+        {"item_name": "carrot", "quantity_grams": 50}
+      ],
+      "instructions": [
+        "Prepare sushi rice",
+        "Spread on nori and add vegetables",
+        "Roll tightly and slice"
+      ],
+      "meal_prep_notes": "Best consumed the same day",
+      "chef_tips": "Use a bamboo mat for easy rolling"
+    },
+    {
+      "title": "Spinach Lentil Soup",
+      "description": "Hearty soup with lentils and spinach",
+      "goals": ["general_health", "fat_loss"],
+      "tags": ["soup", "vegetarian"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "mediterranean",
+      "prep_time_min": 10,
+      "cook_time_min": 25,
+      "difficulty_level": "easy",
+      "servings": 3,
+      "ingredients": [
+        {"item_name": "lentils", "quantity_grams": 150},
+        {"item_name": "spinach", "quantity_grams": 100},
+        {"item_name": "vegetable_broth", "quantity_grams": 500}
+      ],
+      "instructions": [
+        "Cook lentils in broth",
+        "Add spinach and simmer briefly"
+      ],
+      "meal_prep_notes": "Stores well for 3 days",
+      "chef_tips": "Add lemon juice before serving"
+    },
+    {
+      "title": "Grilled Chicken Sandwich",
+      "description": "Whole wheat sandwich with grilled chicken",
+      "goals": ["muscle_gain", "weight_training"],
+      "tags": ["high_protein", "quick"],
+      "dietary_tags": ["non_vegetarian"],
+      "suitable_meal_times": ["lunch"],
+      "cuisine": "american",
+      "prep_time_min": 10,
+      "cook_time_min": 10,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "whole_wheat_bread", "quantity_grams": 60},
+        {"item_name": "grilled_chicken", "quantity_grams": 100},
+        {"item_name": "lettuce", "quantity_grams": 20}
+      ],
+      "instructions": [
+        "Assemble bread with chicken and lettuce"
+      ],
+      "meal_prep_notes": "Wrap in foil for portability",
+      "chef_tips": "Add mustard for extra flavor"
+    },
+    {
+      "title": "Roasted Vegetable Quinoa",
+      "description": "Quinoa tossed with roasted seasonal vegetables",
+      "goals": ["general_health", "fat_loss"],
+      "tags": ["vegetarian", "high_fiber"],
+      "dietary_tags": ["vegan", "gluten_free"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "fusion",
+      "prep_time_min": 15,
+      "cook_time_min": 25,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "quinoa", "quantity_grams": 150},
+        {"item_name": "mixed_vegetables", "quantity_grams": 200},
+        {"item_name": "olive_oil", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Roast vegetables",
+        "Cook quinoa",
+        "Toss together with olive oil"
+      ],
+      "meal_prep_notes": "Can be served warm or cold",
+      "chef_tips": "Sprinkle feta if not vegan"
+    },
+    {
+      "title": "Egg Fried Rice",
+      "description": "Quick fried rice with scrambled egg",
+      "goals": ["body_recomp", "general_health"],
+      "tags": ["quick", "asian"],
+      "dietary_tags": ["non_vegetarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "asian",
+      "prep_time_min": 10,
+      "cook_time_min": 10,
+      "difficulty_level": "easy",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "cooked_rice", "quantity_grams": 200},
+        {"item_name": "egg", "quantity_grams": 100},
+        {"item_name": "soy_sauce", "quantity_grams": 15}
+      ],
+      "instructions": [
+        "Scramble egg",
+        "Add rice and soy sauce",
+        "Stir fry until heated through"
+      ],
+      "meal_prep_notes": "Use leftover rice for best texture",
+      "chef_tips": "Add vegetables for extra nutrition"
+    },
+    {
+      "title": "Falafel Wrap",
+      "description": "Middle Eastern wrap with falafel and veggies",
+      "goals": ["general_health", "fat_loss"],
+      "tags": ["vegetarian", "street_food"],
+      "dietary_tags": ["vegan"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "middle_eastern",
+      "prep_time_min": 20,
+      "cook_time_min": 15,
+      "difficulty_level": "medium",
+      "servings": 2,
+      "ingredients": [
+        {"item_name": "falafel", "quantity_grams": 150},
+        {"item_name": "pita_bread", "quantity_grams": 100},
+        {"item_name": "lettuce", "quantity_grams": 50}
+      ],
+      "instructions": [
+        "Warm pita bread",
+        "Fill with falafel and lettuce"
+      ],
+      "meal_prep_notes": "Serve immediately for crispness",
+      "chef_tips": "Add tahini sauce for authentic taste"
+    },
+    {
+      "title": "Veggie Quesadilla",
+      "description": "Whole wheat quesadilla with cheese and vegetables",
+      "goals": ["general_health"],
+      "tags": ["vegetarian", "quick"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["lunch", "snack"],
+      "cuisine": "mexican",
+      "prep_time_min": 10,
+      "cook_time_min": 10,
+      "difficulty_level": "easy",
+      "servings": 1,
+      "ingredients": [
+        {"item_name": "whole_wheat_tortilla", "quantity_grams": 60},
+        {"item_name": "cheese", "quantity_grams": 50},
+        {"item_name": "bell_pepper", "quantity_grams": 50}
+      ],
+      "instructions": [
+        "Place cheese and veggies between tortillas",
+        "Cook on skillet until cheese melts"
+      ],
+      "meal_prep_notes": "Best eaten warm",
+      "chef_tips": "Serve with salsa or guacamole"
+    },
+    {
+      "title": "Pasta Primavera",
+      "description": "Light pasta with assorted vegetables",
+      "goals": ["general_health"],
+      "tags": ["vegetarian", "comfort_food"],
+      "dietary_tags": ["vegetarian"],
+      "suitable_meal_times": ["lunch", "dinner"],
+      "cuisine": "italian",
+      "prep_time_min": 15,
+      "cook_time_min": 20,
+      "difficulty_level": "medium",
+      "servings": 3,
+      "ingredients": [
+        {"item_name": "pasta", "quantity_grams": 200},
+        {"item_name": "mixed_vegetables", "quantity_grams": 150},
+        {"item_name": "olive_oil", "quantity_grams": 10}
+      ],
+      "instructions": [
+        "Cook pasta",
+        "Sauté vegetables",
+        "Combine with olive oil"
+      ],
+      "meal_prep_notes": "Can be eaten cold as salad",
+      "chef_tips": "Add parmesan for richness"
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ]
+}
