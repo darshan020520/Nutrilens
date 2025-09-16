@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, onboarding, recipes, inventory  # Add inventory
+from app.api import auth, onboarding, recipes, inventory, meal_plan  # Add inventory
 from app.core.config import settings
 
 app = FastAPI(
@@ -22,7 +22,8 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api")
 app.include_router(onboarding.router, prefix="/api")
 app.include_router(recipes.router, prefix="/api")
-app.include_router(inventory.router, prefix="/api")  # Add this line
+app.include_router(inventory.router, prefix="/api")
+app.include_router(meal_plan.router, prefix="/api")  # Add this line
 
 @app.on_event("startup")
 async def startup_event():

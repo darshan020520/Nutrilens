@@ -9,6 +9,9 @@ import logging
 from collections import defaultdict
 from sqlalchemy.orm import Session
 import random
+from app.models.database import UserProfile, UserGoal, UserPath, UserPreference, Recipe
+from sqlalchemy import cast, String, func
+
 
 logger = logging.getLogger(__name__)
 
@@ -275,9 +278,31 @@ class MealPlanOptimizer:
             if daily_fat and constraints.daily_fat_max < float('inf'):
                 self.problem += pulp.lpSum(daily_fat) <= constraints.daily_fat_max * 1.2, f"max_fat_d{d}"
     
+    # Replace the _add_variety_constraints_fixed method with this:
+
     def _add_variety_constraints_fixed(self, constraints: OptimizationConstraints):
-        """FIXED: Properly prevent recipe repetition"""
-        max_uses = max(1, self.days // constraints.max_recipe_repeat_in_days)
+        """
+        FINAL FIX: Properly implement variety constraints
+        
+        If max_recipe_repeat_in_days = 2, it means:
+        - A recipe can appear again only after 2 days gap
+        - In a 7-day plan, a recipe can be used at most on days like: 1, 4, 7 (3 times)
+        - But we want stricter: max 2 times in 7 days for better variety
+        """
+        
+        # For a 7-day plan with max_repeat=2, we want each recipe used at most 2 times
+        # Not 3 times as currently happening
+        
+        if self.days <= 3:
+            # For short plans, each recipe used at most once
+            max_uses_per_recipe = 1
+        elif self.days <= 5:
+            # For 4-5 day plans, allow 2 uses
+            max_uses_per_recipe = 2
+        else:
+            # For 6-7 day plans, strictly limit to 2 uses
+            # This ensures more variety
+            max_uses_per_recipe = 2
         
         # Global constraint: limit total uses of each recipe
         for r_idx in self.x:
@@ -287,23 +312,66 @@ class MealPlanOptimizer:
                     all_uses.append(self.x[r_idx][d][m])
             
             if all_uses:
-                # Each recipe used at most 'max_uses' times total
-                self.problem += pulp.lpSum(all_uses) <= max_uses, f"global_variety_r{r_idx}"
+                # Each recipe used at most 'max_uses_per_recipe' times
+                self.problem += pulp.lpSum(all_uses) <= max_uses_per_recipe, f"max_uses_r{r_idx}"
         
-        # Local constraint: no recipe in consecutive days
-        if constraints.max_recipe_repeat_in_days >= 2:
+        # Spacing constraint: ensure minimum gap between uses
+        if constraints.max_recipe_repeat_in_days > 1:
             for r_idx in self.x:
-                for d in range(self.days - 1):
-                    consecutive_uses = []
-                    # Check day d and d+1
-                    for day in [d, d + 1]:
+                for d in range(self.days):
+                    # Check if recipe is used on day d
+                    # If yes, it cannot be used in the next (max_repeat-1) days
+                    
+                    window_end = min(d + constraints.max_recipe_repeat_in_days, self.days)
+                    window_uses = []
+                    
+                    for day in range(d, window_end):
                         if day in self.x[r_idx]:
                             for m in self.x[r_idx][day]:
-                                consecutive_uses.append(self.x[r_idx][day][m])
+                                window_uses.append(self.x[r_idx][day][m])
                     
-                    if consecutive_uses:
-                        # No recipe on consecutive days
-                        self.problem += pulp.lpSum(consecutive_uses) <= 1, f"no_consecutive_r{r_idx}_d{d}"
+                    if len(window_uses) >= 2:
+                        # In any window of 'max_repeat' days, use recipe at most once
+                        self.problem += pulp.lpSum(window_uses) <= 1, f"spacing_r{r_idx}_d{d}_window"
+
+
+    # Alternative simpler approach if the above is too restrictive:
+    def _add_variety_constraints_simple(self, constraints: OptimizationConstraints):
+        """
+        Simpler version: Just limit total uses based on plan length
+        """
+        
+        # Calculate reasonable max uses
+        if self.days <= 3:
+            max_uses = 1
+        elif self.days <= 5:
+            max_uses = 2  
+        elif self.days == 7:
+            max_uses = 2  # Force only 2 uses in a week for variety
+        else:
+            max_uses = 3  # For longer plans
+        
+        # Apply global limit
+        for r_idx in self.x:
+            all_uses = []
+            for d in self.x[r_idx]:
+                for m in self.x[r_idx][d]:
+                    all_uses.append(self.x[r_idx][d][m])
+            
+            if all_uses:
+                self.problem += pulp.lpSum(all_uses) <= max_uses, f"variety_limit_r{r_idx}"
+        
+        # No consecutive days constraint
+        for r_idx in self.x:
+            for d in range(self.days - 1):
+                consecutive = []
+                for day in [d, d + 1]:
+                    if day in self.x[r_idx]:
+                        for m in self.x[r_idx][day]:
+                            consecutive.append(self.x[r_idx][day][m])
+                
+                if consecutive:
+                    self.problem += pulp.lpSum(consecutive) <= 1, f"no_consecutive_r{r_idx}_d{d}"
     
     def _validate_solution(self, solution: Dict, constraints: OptimizationConstraints) -> bool:
         """Validate that solution meets minimum requirements"""
@@ -461,143 +529,77 @@ class MealPlanOptimizer:
         return meal_plan
     
     def _get_filtered_recipes_fixed(self, user_id: int, constraints: OptimizationConstraints) -> List[Dict]:
-        """Generate recipes with appropriate calorie ranges for different goals"""
+        """Get actual recipes from database"""
+        
+        # Get user's goal to filter recipes
+        goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+
+        goal_str = goal.goal_type.value.lower()
+        
+        # Start with all recipes
+        query = self.db.query(Recipe)
+        
+        # Filter by goal if user has one
+        if goal:
+            # Recipe.goals is JSON array like ["muscle_gain", "fat_loss"]
+            # We need recipes that contain the user's goal
+            query = query.filter(func.lower(cast(Recipe.goals, String)).contains(goal_str))
+        
+        # Filter by dietary restrictions
+        if constraints.dietary_restrictions:
+            for restriction in constraints.dietary_restrictions:
+                if restriction == 'vegetarian':
+                    query = query.filter(Recipe.dietary_tags.contains(['vegetarian']))
+                elif restriction == 'vegan':
+                    query = query.filter(Recipe.dietary_tags.contains(['vegan']))
+                # non_vegetarian recipes don't need filtering - they can eat everything
+        
+        # Filter by prep time
+        if constraints.max_prep_time_minutes:
+            query = query.filter(
+                (Recipe.prep_time_min + Recipe.cook_time_min) <= constraints.max_prep_time_minutes
+            )
+        
+        # Execute query
+        recipes_from_db = query.all()
+        
+        # Convert to dict format expected by optimizer
         recipes = []
-        
-        # Determine calorie needs
-        cal_per_meal_min = constraints.daily_calories_min / constraints.meals_per_day
-        cal_per_meal_max = constraints.daily_calories_max / constraints.meals_per_day
-        
-        # High-calorie options for muscle gain
-        if constraints.daily_calories_min >= 2000:
-            # Power breakfasts (500-800 calories)
-            for i in range(10):
-                recipes.append({
-                    'id': i + 1,
-                    'title': f'Power Breakfast {i+1}',
-                    'suitable_meal_times': ['breakfast'],
-                    'goals': ['muscle_gain'],
-                    'macros_per_serving': {
-                        'calories': 500 + (i * 30),
-                        'protein_g': 35 + (i * 2),
-                        'carbs_g': 55 + (i * 3),
-                        'fat_g': 18 + (i % 3),
-                        'fiber_g': 7
-                    },
-                    'prep_time_min': 10,
-                    'cook_time_min': 15
-                })
+        for recipe in recipes_from_db:
+            # Calculate if recipe fits calorie constraints
+            calories = recipe.macros_per_serving.get('calories', 0)
+            min_cal_per_meal = constraints.daily_calories_min / constraints.meals_per_day * 0.5
+            max_cal_per_meal = constraints.daily_calories_max / constraints.meals_per_day * 1.5
             
-            # Power lunches (700-1000 calories)
-            for i in range(10):
+            # Only include recipes that could fit in the meal plan
+            if min_cal_per_meal <= calories <= max_cal_per_meal:
                 recipes.append({
-                    'id': i + 101,
-                    'title': f'Power Lunch {i+1}',
-                    'suitable_meal_times': ['lunch'],
-                    'goals': ['muscle_gain'],
-                    'macros_per_serving': {
-                        'calories': 700 + (i * 30),
-                        'protein_g': 50 + (i * 2),
-                        'carbs_g': 70 + (i * 3),
-                        'fat_g': 25 + (i % 4),
-                        'fiber_g': 10
-                    },
-                    'prep_time_min': 15,
-                    'cook_time_min': 25
-                })
-            
-            # Power dinners (800-1100 calories)
-            for i in range(10):
-                recipes.append({
-                    'id': i + 201,
-                    'title': f'Power Dinner {i+1}',
-                    'suitable_meal_times': ['dinner'],
-                    'goals': ['muscle_gain'],
-                    'macros_per_serving': {
-                        'calories': 800 + (i * 30),
-                        'protein_g': 60 + (i * 2),
-                        'carbs_g': 75 + (i * 3),
-                        'fat_g': 30 + (i % 5),
-                        'fiber_g': 12
-                    },
-                    'prep_time_min': 20,
-                    'cook_time_min': 35
+                    'id': recipe.id,
+                    'title': recipe.title,
+                    'suitable_meal_times': recipe.suitable_meal_times or [],
+                    'goals': recipe.goals or [],
+                    'dietary_tags': recipe.dietary_tags or [],
+                    'macros_per_serving': recipe.macros_per_serving,
+                    'prep_time_min': recipe.prep_time_min or 0,
+                    'cook_time_min': recipe.cook_time_min or 0,
+                    'ingredients': []  # Would need to join with RecipeIngredient if needed
                 })
         
-        # Standard calorie options
-        else:
-            # Regular breakfasts (300-500 calories)
-            for i in range(10):
+        # If we don't have enough recipes, relax the calorie constraints
+        if len(recipes) < constraints.meals_per_day * 3:
+            recipes = []
+            for recipe in recipes_from_db:
                 recipes.append({
-                    'id': i + 1,
-                    'title': f'Breakfast Option {i+1}',
-                    'suitable_meal_times': ['breakfast'],
-                    'goals': ['fat_loss', 'maintenance'],
-                    'macros_per_serving': {
-                        'calories': 300 + (i * 20),
-                        'protein_g': 25 + (i * 2),
-                        'carbs_g': 35 + (i * 2),
-                        'fat_g': 10 + (i % 3),
-                        'fiber_g': 5
-                    },
-                    'prep_time_min': 10,
-                    'cook_time_min': 15
+                    'id': recipe.id,
+                    'title': recipe.title,
+                    'suitable_meal_times': recipe.suitable_meal_times or [],
+                    'goals': recipe.goals or [],
+                    'dietary_tags': recipe.dietary_tags or [],
+                    'macros_per_serving': recipe.macros_per_serving,
+                    'prep_time_min': recipe.prep_time_min or 0,
+                    'cook_time_min': recipe.cook_time_min or 0,
+                    'ingredients': []
                 })
-            
-            # Regular lunches (400-600 calories)
-            for i in range(10):
-                recipes.append({
-                    'id': i + 101,
-                    'title': f'Lunch Option {i+1}',
-                    'suitable_meal_times': ['lunch'],
-                    'goals': ['fat_loss', 'maintenance'],
-                    'macros_per_serving': {
-                        'calories': 400 + (i * 20),
-                        'protein_g': 35 + (i * 2),
-                        'carbs_g': 40 + (i * 2),
-                        'fat_g': 15 + (i % 4),
-                        'fiber_g': 8
-                    },
-                    'prep_time_min': 15,
-                    'cook_time_min': 20
-                })
-            
-            # Regular dinners (450-650 calories)
-            for i in range(10):
-                recipes.append({
-                    'id': i + 201,
-                    'title': f'Dinner Option {i+1}',
-                    'suitable_meal_times': ['dinner'],
-                    'goals': ['fat_loss', 'maintenance'],
-                    'macros_per_serving': {
-                        'calories': 450 + (i * 20),
-                        'protein_g': 40 + (i * 2),
-                        'carbs_g': 45 + (i * 2),
-                        'fat_g': 18 + (i % 5),
-                        'fiber_g': 10
-                    },
-                    'prep_time_min': 20,
-                    'cook_time_min': 30
-                })
-        
-        # Flexible/snack options (various calories)
-        for i in range(15):
-            base_cal = 300 + (i * 40)  # 300-860 range
-            recipes.append({
-                'id': i + 601,
-                'title': f'Flexible Option {i+1}',
-                'suitable_meal_times': ['breakfast', 'lunch', 'dinner', 'snack'],
-                'goals': ['muscle_gain', 'fat_loss', 'maintenance'],
-                'macros_per_serving': {
-                    'calories': base_cal,
-                    'protein_g': 20 + (i * 3),
-                    'carbs_g': 30 + (i * 3),
-                    'fat_g': 10 + (i * 2),
-                    'fiber_g': 5
-                },
-                'prep_time_min': 10,
-                'cook_time_min': 15
-            })
         
         return recipes
     
@@ -687,15 +689,102 @@ class MealPlanOptimizer:
     
     # Include all other helper methods from original...
     def _score_recipes(self, recipes, constraints, inventory, user_id):
-        """Score recipes (unchanged)"""
+        """Score recipes based on actual user data and inventory"""
+        from app.models.database import UserGoal, UserInventory, RecipeIngredient
+        
+        # Get user's goal
+        goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+        user_goal_type = goal.goal_type.value if goal else 'general_health'
+        
+        # Get user's current inventory as a dict {item_id: quantity}
+        user_inventory = {}
+        if inventory:
+            user_inventory = inventory
+        else:
+            inventory_items = self.db.query(UserInventory).filter_by(user_id=user_id).all()
+            for item in inventory_items:
+                user_inventory[item.item_id] = item.quantity_grams
+        
         scored = {}
+        
+        # Target macros per meal
+        target_cal_per_meal = ((constraints.daily_calories_min + constraints.daily_calories_max) / 2) / constraints.meals_per_day
+        target_protein_per_meal = constraints.daily_protein_min / constraints.meals_per_day
+        target_carbs_per_meal = (constraints.daily_carbs_min + constraints.daily_carbs_max) / 2 / constraints.meals_per_day
+        target_fat_per_meal = (constraints.daily_fat_min + constraints.daily_fat_max) / 2 / constraints.meals_per_day
+        
         for recipe in recipes:
             score = RecipeScore(recipe_id=recipe['id'])
-            score.goal_alignment = 70
-            score.macro_fit = 75
-            score.timing_appropriateness = 80
-            score.complexity_score = 30
-            score.inventory_coverage = 50
+            
+            # 1. Goal alignment (0-100)
+            recipe_goals = recipe.get('goals', [])
+            if user_goal_type in recipe_goals:
+                score.goal_alignment = 100
+            elif any(g in recipe_goals for g in ['maintenance', 'general_health']):
+                score.goal_alignment = 60
+            else:
+                score.goal_alignment = 30
+            
+            # 2. Macro fit (0-100) - how close to target macros
+            macros = recipe.get('macros_per_serving', {})
+            cal_diff = abs(macros.get('calories', 0) - target_cal_per_meal) / target_cal_per_meal if target_cal_per_meal > 0 else 1
+            protein_diff = abs(macros.get('protein_g', 0) - target_protein_per_meal) / target_protein_per_meal if target_protein_per_meal > 0 else 1
+            carbs_diff = abs(macros.get('carbs_g', 0) - target_carbs_per_meal) / target_carbs_per_meal if target_carbs_per_meal > 0 else 1
+            fat_diff = abs(macros.get('fat_g', 0) - target_fat_per_meal) / target_fat_per_meal if target_fat_per_meal > 0 else 1
+            
+            # Average difference (lower is better)
+            avg_diff = (cal_diff * 0.4 + protein_diff * 0.3 + carbs_diff * 0.2 + fat_diff * 0.1)
+            score.macro_fit = max(0, 100 - (avg_diff * 50))  # Convert to 0-100 scale
+            
+            # 3. Timing appropriateness (0-100)
+            # This stays relatively simple as meal timing is handled elsewhere
+            suitable_times = recipe.get('suitable_meal_times', [])
+            if len(suitable_times) >= 3:  # Very flexible
+                score.timing_appropriateness = 100
+            elif len(suitable_times) == 2:
+                score.timing_appropriateness = 75
+            elif len(suitable_times) == 1:
+                score.timing_appropriateness = 50
+            else:
+                score.timing_appropriateness = 100  # If no restriction, it's flexible
+            
+            # 4. Complexity score (0-100, lower is better)
+            prep_time = recipe.get('prep_time_min', 0)
+            cook_time = recipe.get('cook_time_min', 0)
+            total_time = prep_time + cook_time
+            
+            if total_time <= 15:
+                score.complexity_score = 0  # Very quick
+            elif total_time <= 30:
+                score.complexity_score = 30
+            elif total_time <= 45:
+                score.complexity_score = 60
+            else:
+                score.complexity_score = 90  # Complex
+            
+            # 5. Inventory coverage (0-100) - what % of ingredients are available
+            if user_inventory:
+                # Get recipe ingredients
+                recipe_ingredients = self.db.query(RecipeIngredient).filter_by(recipe_id=recipe['id']).all()
+                
+                if recipe_ingredients:
+                    total_ingredients = len(recipe_ingredients)
+                    available_ingredients = 0
+                    
+                    for ingredient in recipe_ingredients:
+                        if ingredient.item_id in user_inventory:
+                            if user_inventory[ingredient.item_id] >= ingredient.quantity_grams:
+                                available_ingredients += 1
+                            elif user_inventory[ingredient.item_id] > 0:
+                                available_ingredients += 0.5  # Partial credit
+                    
+                    score.inventory_coverage = (available_ingredients / total_ingredients) * 100 if total_ingredients > 0 else 0
+                else:
+                    score.inventory_coverage = 50  # No ingredient data, neutral score
+            else:
+                score.inventory_coverage = 50  # No inventory data, neutral score
+            
+            # Calculate composite score
             score.calculate_composite({
                 'goal': 0.3,
                 'macro': 0.25,
@@ -703,7 +792,9 @@ class MealPlanOptimizer:
                 'complexity': 0.1,
                 'inventory': 0.2
             })
+            
             scored[recipe['id']] = score
+        
         return scored
     
     def _get_user_constraints(self, user_id):
@@ -718,4 +809,61 @@ class MealPlanOptimizer:
             daily_fat_max=80,
             meals_per_day=3,
             max_recipe_repeat_in_days=2
+        )
+    
+    def _get_user_constraints(self, user_id):
+        """Get user constraints from database"""
+        
+        
+        # Fetch all user data
+        profile = self.db.query(UserProfile).filter_by(user_id=user_id).first()
+        goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+        path = self.db.query(UserPath).filter_by(user_id=user_id).first()
+        preferences = self.db.query(UserPreference).filter_by(user_id=user_id).first()
+        
+        # If no profile, return defaults
+        if not profile or not profile.goal_calories:
+            return OptimizationConstraints(
+                daily_calories_min=1800,
+                daily_calories_max=2200,
+                daily_protein_min=120,
+                meals_per_day=3,
+                max_recipe_repeat_in_days=2
+            )
+        
+        # Get macro ratios from UserGoal.macro_targets JSON
+        # Format: {"protein": 0.35, "carbs": 0.45, "fat": 0.20}
+        protein_ratio = 0.30  # defaults
+        carb_ratio = 0.40
+        fat_ratio = 0.30
+        
+        if goal and goal.macro_targets:
+            protein_ratio = goal.macro_targets.get('protein', 0.30)
+            carb_ratio = goal.macro_targets.get('carbs', 0.40)
+            fat_ratio = goal.macro_targets.get('fat', 0.30)
+        
+        # Convert ratios to grams using goal_calories
+        daily_protein_g = (profile.goal_calories * protein_ratio) / 4  # 4 cal per g protein
+        daily_carbs_g = (profile.goal_calories * carb_ratio) / 4      # 4 cal per g carbs
+        daily_fat_g = (profile.goal_calories * fat_ratio) / 9         # 9 cal per g fat
+        
+        # Get dietary restrictions - convert enum to string if needed
+        dietary_restrictions = []
+        if preferences and preferences.dietary_type:
+            dietary_restrictions = [preferences.dietary_type.value if hasattr(preferences.dietary_type, 'value') else preferences.dietary_type]
+        
+        return OptimizationConstraints(
+            daily_calories_min=profile.goal_calories * 0.95,
+            daily_calories_max=profile.goal_calories * 1.05,
+            daily_protein_min=daily_protein_g * 0.9,  # Allow 10% flexibility
+            daily_carbs_min=daily_carbs_g * 0.8,
+            daily_carbs_max=daily_carbs_g * 1.2,
+            daily_fat_min=daily_fat_g * 0.8,
+            daily_fat_max=daily_fat_g * 1.2,
+            daily_fiber_min=20,  # Standard recommendation
+            meals_per_day=path.meals_per_day if path else 3,
+            max_recipe_repeat_in_days=2,
+            max_prep_time_minutes=preferences.max_prep_time_weekday if preferences else 60,
+            dietary_restrictions=dietary_restrictions,
+            allergens=preferences.allergies if preferences and preferences.allergies else []
         )

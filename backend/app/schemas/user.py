@@ -90,7 +90,7 @@ class ProfileResponse(BaseModel):
     goal_calories: Optional[float]
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Goal Schemas
 class GoalCreate(BaseModel):
