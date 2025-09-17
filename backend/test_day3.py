@@ -58,7 +58,7 @@ def test_day3_implementation():
         # Show successful items
         if result['results']['successful']:
             print("\n   Successfully added:")
-            for item in result['results']['successful'][:3]:
+            for item in result['results']['successful']:
                 print(f"   - {item['original']} → {item['matched']} ({item['quantity']}) [Confidence: {item['confidence']:.2f}]")
         
         # Show items needing confirmation

@@ -51,6 +51,7 @@ class IntelligentInventoryService:
             
             # Normalize the item
             result = self.normalizer.normalize(line)
+            print("item at inventory service", result.item.canonical_name)
             
             if result.confidence >= 0.85:
                 # High confidence - auto add

@@ -20,6 +20,16 @@ class NormalizationResult:
     cleaned_input: str
     extracted_quantity: float
     extracted_unit: str
+    
+    def to_dict(self):
+        return {
+            "item": getattr(self.item, "name", str(self.item)),
+            "quantity": self.extracted_quantity,
+            "unit": self.extracted_unit,
+            "confidence": self.confidence,
+            "matched_on": self.matched_on,
+            "original_input": self.original_input,
+        }
 
 class IntelligentItemNormalizer:
     """

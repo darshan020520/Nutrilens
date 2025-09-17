@@ -270,7 +270,7 @@ class TestDay2_RecipesAndNutrition:
 class TestDay3_ItemNormalization:
     """Day 3: Item Normalization & Inventory System"""
     
-    def test_normalizer_class(self):
+    def test_normalizer_class(self, db):
         """Test ItemNormalizer class directly"""
         print("\n🔤 Testing Item Normalizer Class...")
         
@@ -278,7 +278,7 @@ class TestDay3_ItemNormalization:
             from app.services.item_normalizer import IntelligentItemNormalizer
             print("  ✅ ItemNormalizer imported")
             
-            normalizer = IntelligentItemNormalizer(db=self.db)
+            normalizer = IntelligentItemNormalizer(db=db)
             print("  ✅ Normalizer instance created")
             
             # Test cases
@@ -295,11 +295,15 @@ class TestDay3_ItemNormalization:
             for test_input in test_cases:
                 result = normalizer.normalize(test_input)
                 if result:
-                    print(f"  ✅ '{test_input}' → {result.get('item', 'Unknown')} ({result.get('quantity', 0)}{result.get('unit', '')})")
+                    res_dict = result.to_dict()
+                    item_name = result.item.canonical_name
+                    print(f"  ✅ '{test_input}' → {item_name} ({result.extracted_quantity}{result.extracted_unit})")
+
+                    # int(f"  ✅ '{test_input}' → {res_dict['item']} ({res_dict['quantity']}{res_dict['unit']})")
                     success_count += 1
                 else:
                     print(f"  ⚠️  '{test_input}' → No match")
-            
+
             print(f"  📊 Normalized {success_count}/{len(test_cases)} items")
             return success_count > len(test_cases) // 2
             
