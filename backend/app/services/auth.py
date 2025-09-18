@@ -1,3 +1,5 @@
+#/backend/services/auth.py
+
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -86,6 +88,23 @@ def get_current_user(db: Session, token: str) -> Optional[User]:
 
 # ADD this new function for FastAPI dependencies
 def get_current_user_dependency(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    FastAPI dependency version of get_current_user
+    Use this in API endpoints with Depends()
+    """
+    user = get_current_user(db, token)  # Call the existing function
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+def get_current_user_websocket(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:

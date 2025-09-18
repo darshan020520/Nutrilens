@@ -20,8 +20,8 @@ from app.models.database import (
     User, UserInventory, MealLog, Recipe, RecipeIngredient,
     Item, ReceiptUpload, AgentInteraction
 )
-from app.services.inventory_service import InventoryService
-from app.services.item_normalizer import ItemNormalizer
+from app.services.inventory_service import IntelligentInventoryService
+from app.services.item_normalizer import IntelligentItemNormalizer
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,10 @@ class TrackingState:
     consumption_patterns: Dict[str, Any]
     
     def to_dict(self) -> Dict:
-        return asdict(self)
+        data = asdict(self)
+        # Convert datetime to string
+        data['last_sync'] = self.last_sync.isoformat()
+        return data
     
     @classmethod
     def from_dict(cls, data: Dict) -> 'TrackingState':
@@ -61,8 +64,8 @@ class TrackingAgent:
     def __init__(self, db: Session, user_id: int):
         self.db = db
         self.user_id = user_id
-        self.inventory_service = InventoryService(db)
-        self.normalizer = ItemNormalizer(db)
+        self.inventory_service = IntelligentInventoryService(db)
+        self.normalizer = IntelligentItemNormalizer(db)
         self.memory = ConversationBufferMemory()
         self.state = self._initialize_state()
         self.tools = self._create_tools()
@@ -98,34 +101,36 @@ class TrackingAgent:
         
         # Get current inventory
         inventory_items = self.inventory_service.get_user_inventory(self.user_id)
+
+        print("inventory_items", inventory_items['items'])
         
         # Check for alerts
         alerts = []
-        for item in inventory_items:
+        for item in inventory_items['items']:
             # Check expiry
             if item.get("expiry_date"):
                 expiry = datetime.fromisoformat(item["expiry_date"])
                 if expiry <= datetime.utcnow() + timedelta(days=2):
                     alerts.append({
                         "type": TrackingEventType.EXPIRY_ALERT,
-                        "item": item["name"],
+                        "item": item["item_name"],
                         "expiry_date": item["expiry_date"],
-                        "message": f"{item['name']} expires on {expiry.date()}"
+                        "message": f"{item['item_name']} expires on {expiry.date()}"
                     })
             
             # Check low stock
             if item.get("quantity_grams", 0) < 100:  # Less than 100g
                 alerts.append({
                     "type": TrackingEventType.LOW_STOCK_ALERT,
-                    "item": item["name"],
+                    "item": item["item_name"],
                     "quantity": item.get("quantity_grams", 0),
-                    "message": f"Low stock: {item['name']} ({item.get('quantity_grams', 0)}g remaining)"
+                    "message": f"Low stock: {item['item_name']} ({item.get('quantity_grams', 0)}g remaining)"
                     })
         
         return TrackingState(
             user_id=self.user_id,
             daily_consumption=daily_consumption,
-            current_inventory=inventory_items,
+            current_inventory=inventory_items['items'],
             pending_updates=[],
             sync_status={"last_sync": datetime.utcnow(), "status": "synced"},
             last_sync=datetime.utcnow(),
@@ -277,6 +282,8 @@ class TrackingAgent:
             
             # Parse items from OCR text
             parsed_items = self._parse_ocr_text(receipt.ocr_raw_text)
+
+            print("parsed_items", parsed_items)
             
             # Update receipt with parsed items
             receipt.parsed_items = parsed_items
@@ -294,28 +301,39 @@ class TrackingAgent:
             logger.error(f"Error processing OCR: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    def normalize_ocr_items(self, ocr_items: List[Dict]) -> Dict[str, Any]:
-        """Normalize OCR items to database items"""
+    def normalize_ocr_items(self, ocr_items: str) -> Dict[str, Any]:
+        """Fixed: Normalize OCR items to database items"""
         try:
             normalized_items = []
             unmatched_items = []
             
-            for ocr_item in ocr_items:
-                result = self.normalizer.normalize_item(
-                    ocr_item.get("name", ""),
-                    quantity=ocr_item.get("quantity"),
-                    unit=ocr_item.get("unit")
-                )
+            # Split the input text into lines
+            lines = ocr_items.strip().split('\n')
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
                 
-                if result["match_found"]:
+                # Use the normalizer
+                result = self.normalizer.normalize(line)
+                
+                if result.item and result.confidence >= 0.6:
                     normalized_items.append({
-                        "original": ocr_item["name"],
-                        "matched_item": result["matched_item"],
-                        "confidence": result["confidence"],
-                        "quantity_grams": result["quantity_grams"]
+                        "original": line,
+                        "matched_item": {
+                            "id": result.item.id,
+                            "name": result.item.canonical_name
+                        },
+                        "confidence": result.confidence,
+                        "quantity_grams": self.normalizer.convert_to_grams(
+                            result.extracted_quantity,
+                            result.extracted_unit,
+                            result.item
+                        )
                     })
                 else:
-                    unmatched_items.append(ocr_item["name"])
+                    unmatched_items.append(line)
             
             return {
                 "success": True,
@@ -356,7 +374,7 @@ class TrackingAgent:
                 results.append(result)
             
             # Update state
-            self.state.current_inventory = self.inventory_service.get_user_inventory(self.user_id)
+            self.state.current_inventory = self.inventory_service.get_user_inventory(self.user_id)['items']
             self.state.last_sync = datetime.utcnow()
             
             return {
@@ -371,7 +389,7 @@ class TrackingAgent:
             return {"success": False, "error": str(e)}
     
     def log_meal_consumption(self, meal_log_id: int, portion_multiplier: float = 1.0) -> Dict[str, Any]:
-        """Log meal consumption and auto-deduct ingredients"""
+        """Fixed: Log meal consumption and auto-deduct ingredients"""
         try:
             # Get meal log
             meal_log = self.db.query(MealLog).filter(
@@ -395,25 +413,14 @@ class TrackingAgent:
             # Deduct ingredients from inventory if recipe exists
             deducted_items = []
             if meal_log.recipe:
-                ingredients = self.db.query(RecipeIngredient).filter(
-                    RecipeIngredient.recipe_id == meal_log.recipe_id
-                ).all()
+                # Use inventory service's deduct_for_meal method
+                result = self.inventory_service.deduct_for_meal(
+                    user_id=self.user_id,
+                    recipe_id=meal_log.recipe_id,
+                    portion_multiplier=portion_multiplier
+                )
                 
-                for ingredient in ingredients:
-                    quantity_to_deduct = ingredient.quantity_grams * portion_multiplier
-                    result = self.inventory_service.deduct_item(
-                        user_id=self.user_id,
-                        item_id=ingredient.item_id,
-                        quantity_grams=quantity_to_deduct
-                    )
-                    
-                    if result["success"]:
-                        item = self.db.query(Item).filter(Item.id == ingredient.item_id).first()
-                        deducted_items.append({
-                            "item": item.canonical_name if item else "Unknown",
-                            "quantity": quantity_to_deduct,
-                            "remaining": result.get("remaining_quantity", 0)
-                        })
+                deducted_items = result.get("deductions", [])
             
             self.db.commit()
             
@@ -744,47 +751,43 @@ class TrackingAgent:
             return {"success": False, "error": str(e)}
     
     # Helper methods
-    def _parse_ocr_text(self, ocr_text: str) -> List[Dict]:
-        """Parse OCR text to extract items"""
+    def _parse_ocr_text(self, ocr_text: str) -> list:
+        """Parse OCR text to extract grocery items robustly."""
         import re
-        
+
         parsed_items = []
         lines = ocr_text.split('\n')
-        
-        # Common patterns for grocery items
-        patterns = [
-            r'(\d+\.?\d*)\s*(kg|g|l|ml|pcs?|pack|bunch)\s+(.+)',
-            r'(.+?)\s+(\d+\.?\d*)\s*(kg|g|l|ml|pcs?|pack|bunch)',
-            r'(.+?)\s+-\s+(\d+\.?\d*)\s*(kg|g|l|ml)',
-        ]
-        
+
+        # Predefined units we expect
+        units = ['kg', 'g', 'l', 'ml', 'pcs', 'pc', 'pack', 'bunch', 'dozen']
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-            
-            for pattern in patterns:
-                match = re.search(pattern, line, re.IGNORECASE)
-                if match:
-                    groups = match.groups()
-                    if len(groups) == 3:
-                        if groups[0].replace('.', '').isdigit():
-                            # Pattern: quantity unit item
-                            parsed_items.append({
-                                "name": groups[2].strip(),
-                                "quantity": float(groups[0]),
-                                "unit": groups[1].lower()
-                            })
-                        else:
-                            # Pattern: item quantity unit
-                            parsed_items.append({
-                                "name": groups[0].strip(),
-                                "quantity": float(groups[1]),
-                                "unit": groups[2].lower()
-                            })
-                    break
-        
+
+            # Remove leading numbering like '1. ' or '01. '
+            line = re.sub(r'^\d+\.\s*', '', line)
+
+            # Remove trailing price (assumes format like '520.00')
+            line = re.sub(r'\s+\d+\.?\d{0,2}$', '', line)
+
+            # Pattern 1: quantity + unit + item name
+            match1 = re.match(r'(\d+\.?\d*)\s*(' + '|'.join(units) + r')\s+([A-Za-z].+)', line, re.IGNORECASE)
+            if match1:
+                quantity, unit, name = match1.groups()
+                parsed_items.append(f"{quantity}{unit} {name.strip().lower()}")
+                continue
+
+            # Pattern 2: item name + quantity + unit
+            match2 = re.match(r'([A-Za-z].+?)\s+(\d+\.?\d*)\s*(' + '|'.join(units) + r')', line, re.IGNORECASE)
+            if match2:
+                name, quantity, unit = match2.groups()
+                parsed_items.append(f"{quantity}{unit} {name.strip().lower()}")
+                continue
+
         return parsed_items
+
     
     def _analyze_skip_pattern(self, meal_type: str) -> Dict[str, Any]:
         """Analyze skip patterns for a meal type"""
@@ -911,7 +914,7 @@ class TrackingAgent:
         """Execute tracking task"""
         tool_mapping = {
             "process_receipt": self.process_receipt_ocr,
-            "normalize_items": self.normalize_ocr_items,
+            "normalizes": self.normalize_ocr_items,
             "update_inventory": self.update_inventory,
             "log_meal": self.log_meal_consumption,
             "skip_meal": self.track_skipped_meals,

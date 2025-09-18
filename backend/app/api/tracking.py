@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, validator
 from app.models.database import get_db, User
 from app.services.consumption_services import ConsumptionService
 from app.agents.tracking_agent import TrackingAgent
-from app.services.auth import get_current_user
+from app.services.auth import get_current_user_dependency as get_current_user
 
 router = APIRouter(prefix="/tracking", tags=["Tracking"])
 

@@ -76,6 +76,7 @@ class IntelligentItemNormalizer:
                 cache['by_tokens'][token].append(item)
         
         logger.info(f"Built cache with {len(items)} items")
+        
         return cache
     
     def _load_brand_patterns(self) -> List[re.Pattern]:

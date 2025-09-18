@@ -30,4 +30,8 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 pulp==2.7.0
 scipy==1.11.4
+pytest 
+pytest-asyncio 
+pytest-cov 
+pytest-mock
 

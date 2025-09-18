@@ -1,3 +1,4 @@
+#/backend/services/inventory.py
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -30,6 +31,126 @@ class IntelligentInventoryService:
     def __init__(self, db: Session):
         self.db = db
         self.normalizer = IntelligentItemNormalizer(db)
+
+    def add_item(
+        self,
+        user_id: int,
+        item_id: int,
+        quantity_grams: float,
+        expiry_date: Optional[datetime] = None,
+        source: str = "manual"
+    ) -> Dict:
+        """
+        Add item to inventory - PUBLIC METHOD for tracking agent
+        """
+        try:
+            # Get the item
+            item = self.db.query(Item).filter(Item.id == item_id).first()
+            if not item:
+                return {"success": False, "error": "Item not found"}
+            
+            # Check if item already exists in inventory
+            existing = self.db.query(UserInventory).filter(
+                and_(
+                    UserInventory.user_id == user_id,
+                    UserInventory.item_id == item_id
+                )
+            ).first()
+            
+            if existing:
+                # Update quantity
+                existing.quantity_grams += quantity_grams
+                existing.last_updated = datetime.now()
+                remaining = existing.quantity_grams
+            else:
+                # Create new inventory entry
+                inventory_item = UserInventory(
+                    user_id=user_id,
+                    item_id=item_id,
+                    quantity_grams=quantity_grams,
+                    purchase_date=datetime.now(),
+                    expiry_date=expiry_date,
+                    source=source
+                )
+                self.db.add(inventory_item)
+                remaining = quantity_grams
+            
+            self.db.commit()
+            
+            return {
+                "success": True,
+                "item": item.canonical_name,
+                "quantity_added": quantity_grams,
+                "remaining_quantity": remaining
+            }
+            
+        except Exception as e:
+            logger.error(f"Error adding item: {str(e)}")
+            self.db.rollback()
+            return {"success": False, "error": str(e)}
+    
+    def deduct_item(
+        self,
+        user_id: int,
+        item_id: int,
+        quantity_grams: float
+    ) -> Dict:
+        """
+        Deduct item from inventory - PUBLIC METHOD for tracking agent
+        """
+        try:
+            # Find item in inventory
+            inventory_item = self.db.query(UserInventory).filter(
+                and_(
+                    UserInventory.user_id == user_id,
+                    UserInventory.item_id == item_id
+                )
+            ).first()
+            
+            if not inventory_item:
+                return {
+                    "success": False,
+                    "error": "Item not in inventory",
+                    "remaining_quantity": 0
+                }
+            
+            # Get item details
+            item = self.db.query(Item).filter(Item.id == item_id).first()
+            
+            if inventory_item.quantity_grams < quantity_grams:
+                # Not enough quantity
+                deducted = inventory_item.quantity_grams
+                inventory_item.quantity_grams = 0
+                warning = f"Only {deducted}g available, deducted all"
+            else:
+                # Normal deduction
+                inventory_item.quantity_grams -= quantity_grams
+                deducted = quantity_grams
+                warning = None
+            
+            inventory_item.last_updated = datetime.now()
+            self.db.commit()
+            
+            result = {
+                "success": True,
+                "item": item.canonical_name if item else "Unknown",
+                "quantity_deducted": deducted,
+                "remaining_quantity": inventory_item.quantity_grams
+            }
+            
+            if warning:
+                result["warning"] = warning
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error deducting item: {str(e)}")
+            self.db.rollback()
+            return {
+                "success": False,
+                "error": str(e),
+                "remaining_quantity": 0
+            }
         
     def add_items_from_text(self, user_id: int, text_input: str) -> Dict:
         """
@@ -46,6 +167,7 @@ class IntelligentInventoryService:
         
         for line in lines:
             line = line.strip()
+            print("line", line)
             if not line:
                 continue
             
@@ -305,6 +427,41 @@ class IntelligentInventoryService:
             estimated_days_remaining=days_remaining,
             recommendations=recommendations
         )
+    
+    def get_user_inventory(self, user_id: int, category: str = None, low_stock_only: bool = False, expiring_soon: bool = False):
+        """Fetch inventory items for a specific user with optional filters."""
+        query = self.db.query(UserInventory).filter(UserInventory.user_id == user_id)
+
+        if low_stock_only:
+            query = query.filter(UserInventory.quantity_grams < 100)
+
+        if expiring_soon:
+            three_days_later = datetime.now() + timedelta(days=3)
+            query = query.filter(UserInventory.expiry_date <= three_days_later)
+
+        inventory_items = query.all()
+
+        items = []
+        for inv in inventory_items:
+            item = self.db.query(Item).filter(Item.id == inv.item_id).first()
+            if category and item.category != category:
+                continue
+
+            days_until_expiry = None
+            if inv.expiry_date:
+                days_until_expiry = (inv.expiry_date - datetime.now()).days
+
+            items.append({
+                "id": inv.id,
+                "item_id": item.id,
+                "item_name": item.canonical_name,
+                "category": item.category,
+                "quantity_grams": inv.quantity_grams,
+                "expiry_date": inv.expiry_date.isoformat() if inv.expiry_date else None,
+                "days_until_expiry": days_until_expiry
+            })
+
+        return {"count": len(items), "items": items}
     
     def _generate_recommendations(
         self,
