@@ -1,0 +1,53 @@
+{
+  "component": "Consumption Service",
+  "timestamp": "2025-10-01T17:13:26.571859",
+  "summary": {
+    "passed": 4,
+    "failed": 3,
+    "total": 7
+  },
+  "tests": [
+    {
+      "test": "get_today_summary - Response Structure",
+      "status": "\u2705 PASS",
+      "message": "Response structure valid",
+      "timestamp": "2025-10-01T17:13:26.462067"
+    },
+    {
+      "test": "get_today_summary - Performance",
+      "status": "\u2705 PASS",
+      "message": "Execution time: 13.80ms (target: <100ms)",
+      "timestamp": "2025-10-01T17:13:26.462130"
+    },
+    {
+      "test": "get_today_summary - Data Accuracy",
+      "status": "\u2705 PASS",
+      "message": "Found 4 meals (expected 4)",
+      "timestamp": "2025-10-01T17:13:26.462143"
+    },
+    {
+      "test": "get_today_summary - Non-existent User",
+      "status": "\u2705 PASS",
+      "message": "Correctly returns empty result",
+      "timestamp": "2025-10-01T17:13:26.465747"
+    },
+    {
+      "test": "log_meal_consumption - Success Response",
+      "status": "\u274c FAIL",
+      "message": "Error: A transaction is already begun on this Session.",
+      "timestamp": "2025-10-01T17:13:26.471266"
+    },
+    {
+      "test": "log_meal_consumption - Duplicate Prevention",
+      "status": "\u274c FAIL",
+      "message": "Prevented duplicate: False",
+      "timestamp": "2025-10-01T17:13:26.471567"
+    },
+    {
+      "test": "log_meal_consumption - Invalid ID Handling",
+      "status": "\u274c FAIL",
+      "message": "Handled gracefully: False",
+      "timestamp": "2025-10-01T17:13:26.471741"
+    }
+  ]
+}

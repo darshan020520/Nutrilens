@@ -6,6 +6,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from app.models.database import User,get_db
+from app.models.database import NotificationPreference
 from app.schemas.user import UserCreate
 from app.core.config import settings
 
@@ -70,6 +71,8 @@ def create_user(db: Session, user_create: UserCreate) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    create_default_notification_preferences(db, user.id)
     return user
 
 def get_current_user(db: Session, token: str) -> Optional[User]:
@@ -103,6 +106,32 @@ def get_current_user_dependency(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+def create_default_notification_preferences(db: Session, user_id: int):
+    """Create default notification preferences for new user"""
+    try:
+        
+        
+        # Check if preferences already exist
+        existing = db.query(NotificationPreference).filter(
+            NotificationPreference.user_id == user_id
+        ).first()
+        
+        if not existing:
+            # Create default preferences
+            preferences = NotificationPreference(
+                user_id=user_id,
+                enabled_providers=["email"],  # Start with email
+                enabled_types=["inventory_alert", "achievement"],  # Essential notifications
+                quiet_hours_start=22,
+                quiet_hours_end=7
+            )
+            db.add(preferences)
+            db.commit()
+            logger.info(f"Created default notification preferences for user {user_id}")
+    
+    except Exception as e:
+        logger.error(f"Error creating default notification preferences: {str(e)}")
 
 def get_current_user_websocket(
     token: str = Depends(oauth2_scheme),

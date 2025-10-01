@@ -1,17 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, onboarding, recipes, inventory, meal_plan  # Add inventory
+from contextlib import asynccontextmanager
+from app.api import auth, onboarding, recipes, inventory, meal_plan, notifications, tracking, websocket  # Add inventory
 from app.core.config import settings
-from app.api.websocket_tracking import router as websocket_router
-from app.services.notification_service import NotificationService
+from app.services.websocket_manager import websocket_manager
 from app.core.events import event_bus
 import asyncio
 import logging
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize WebSocket Redis connection
+    await websocket_manager.initialize_redis()
+    print("✅ WebSocket manager initialized")
+    
+    yield
+    
+    # Shutdown: Close all connections gracefully
+    await websocket_manager.close_all_connections()
+    print("✅ WebSocket manager closed")
+
 app = FastAPI(
     title="NutriLens API",
     description="AI-powered nutrition planning system",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan 
 )
 logger = logging.getLogger(__name__)
 # CORS middleware
@@ -29,7 +42,9 @@ app.include_router(onboarding.router, prefix="/api")
 app.include_router(recipes.router, prefix="/api")
 app.include_router(inventory.router, prefix="/api")
 app.include_router(meal_plan.router, prefix="/api")
-app.include_router(websocket_router, prefix="/api")  # Add this line
+app.include_router(tracking.router)
+app.include_router(websocket.router)
+app.include_router(notifications.router, prefix="/api")  # Add this line
 
 @app.on_event("startup")
 async def startup_event():
@@ -48,3 +63,12 @@ def root():
         "version": "1.0.0",
         "status": "operational"
     }
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "websocket_stats": websocket_manager.get_stats()
+    }
+
+

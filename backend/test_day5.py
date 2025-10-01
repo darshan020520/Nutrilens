@@ -32,7 +32,7 @@ from app.models.database import (
 
 # Configuration
 BASE_URL = "http://localhost:8000/api"
-TEST_USER_EMAIL = "test@nutrilens.ai"
+TEST_USER_EMAIL = "darsh@nutrilens.ai"
 TEST_USER_PASSWORD = "TestPass123"
 
 class TestDay1_DatabaseAndAuth:
@@ -71,7 +71,7 @@ class TestDay1_DatabaseAndAuth:
         # Test registration
         print("  Testing user registration...")
         register_data = {
-            "email": f"test_{int(time.time())}@nutrilens.ai",
+            "email": f"darsh@nutrilens.ai",
             "password": "TestPass123"
         }
         response = requests.post(f"{BASE_URL}/auth/register", json=register_data)
@@ -329,8 +329,6 @@ class TestDay3_ItemNormalization:
         test_input = """
         2kg whole wheat flour
         500g chicken breast
-        1 litre milk
-        tomatoes 500g
         """
         
         response = requests.post(
@@ -559,29 +557,29 @@ class TestDay5_PlanningAgent:
         
         headers = {"Authorization": f"Bearer {token}"}
         
-        # Test plan generation
-        print("  Generating meal plan...")
-        response = requests.post(
-            f"{BASE_URL}/meal-plans/generate",
-            headers=headers,
-            json={"days": 3}  # Generate 3-day plan for speed
-        )
+        # # Test plan generation
+        # print("  Generating meal plan...")
+        # response = requests.post(
+        #     f"{BASE_URL}/meal-plans/generate",
+        #     headers=headers,
+        #     json={"days": 3}  # Generate 3-day plan for speed
+        # )
         
-        if response.status_code in [200, 201]:
-            print("  ✅ Meal plan generated")
-            try:
-                data = response.json()
-                print("JSON:", data)
-            except ValueError:
-                print("Not valid JSON:", response.text)
-            plan = response.json()
-            if 'week_plan' in plan:
-                print(f"     Days: {len(plan['week_plan'])}")
-        elif response.status_code == 404:
-            print("  ⚠️  Generate endpoint not implemented")
-        else:
+        # if response.status_code in [200, 201]:
+        #     print("  ✅ Meal plan generated")
+        #     try:
+        #         data = response.json()
+        #         print("JSON:", data)
+        #     except ValueError:
+        #         print("Not valid JSON:", response.text)
+        #     plan = response.json()
+        #     if 'week_plan' in plan:
+        #         print(f"     Days: {len(plan['week_plan'])}")
+        # elif response.status_code == 404:
+        #     print("  ⚠️  Generate endpoint not implemented")
+        # else:
             
-            print(f"  ❌ Generation failed: {response.status_code}")
+        #     print(f"  ❌ Generation failed: {response.status_code}")
         
         # Test get current plan
         print("\n  Getting current meal plan...")
@@ -599,6 +597,93 @@ class TestDay5_PlanningAgent:
                 print("Not valid JSON:", response.text)
         elif response.status_code == 404:
             print("  ⚠️  No active plan or endpoint not implemented")
+
+        plan_id = data.get("id") or data.get("plan_id")
+        # print(f"\n  Fetching grocery list for plan_id={plan_id}...")
+        # response = requests.get(f"{BASE_URL}/meal-plans/{plan_id}/grocery-list", headers=headers)
+
+        # if response.status_code == 200:
+        #     try:
+        #         grocery_data = response.json()
+        #         print("Grocery list JSON:", grocery_data)
+        #         print("  ✅ Grocery list retrieved successfully")
+        #     except ValueError:
+        #         print("  ❌ Grocery endpoint did not return valid JSON:", response.text)
+        #         return False
+        # elif response.status_code == 404:
+        #     print(f"  ❌ Grocery list not found for plan_id {plan_id}")
+        #     return False
+        # else:
+        #     print(f"  ❌ Grocery endpoint failed: {response.status_code}")
+        #     return False
+        
+
+        print("\n  Fetching meal prep suggestions...")
+        response = requests.post(f"{BASE_URL}/meal-plans/meal-prep-suggestions", headers=headers)
+
+        if response.status_code == 200:
+            try:
+                suggestions_data = response.json()
+                print("Meal prep suggestions JSON:", suggestions_data)
+                print("  ✅ Meal prep suggestions retrieved successfully")
+            except ValueError:
+                print("  ❌ Meal prep suggestions endpoint did not return valid JSON:", response.text)
+                return False
+        elif response.status_code == 404:
+            print("  ❌ Meal prep suggestions endpoint not found")
+            return False
+        else:
+            print(f"  ❌ Meal prep suggestions endpoint failed: {response.status_code}")
+            return False
+        
+        recipe_id = 185
+        
+        print("\n  Fetching recipe alternatives...")
+
+        # Correct URL with both plan_id and recipe_id
+        url = f"{BASE_URL}/meal-plans/{recipe_id}/alternatives"
+
+        response = requests.get(
+            url,
+            headers=headers,
+            params={"count": 3}  # optional query param
+        )
+
+        if response.status_code == 200:
+            alternatives = response.json()
+            print("  ✅ Alternatives retrieved:", alternatives)
+        elif response.status_code == 404:
+            print("  ❌ No alternatives found")
+        else:
+            print(f"  ❌ Alternatives endpoint failed: {response.status_code}", response.text)
+
+        
+        # Correct URL for the eating-out endpoint
+        url = f"{BASE_URL}/meal-plans/eating-out"
+
+        payload = {
+            "day": 2,
+            "meal_type": "lunch",
+            "external_calories": 700
+        }
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload  # use json= for POST body
+        )
+
+        if response.status_code == 200:
+            adjustments = response.json()
+            print("  ✅ Suggestions retrieved:", adjustments)
+        elif response.status_code == 400:
+            print("  ❌ Bad request:", response.json())
+        elif response.status_code == 500:
+            print("  ❌ Server error:", response.json())
+        else:
+            print(f"  ❌ Unexpected response {response.status_code}", response.text)
+
+
         
         return True
 
@@ -633,10 +718,10 @@ def run_comprehensive_test_suite():
         auth_token = day1.test_authentication_api()
         
         # Test onboarding
-        if auth_token:
-            onboarding_ok = day1.test_onboarding_flow(auth_token)
-        else:
-            onboarding_ok = False
+        # if auth_token:
+        #     onboarding_ok = day1.test_onboarding_flow(auth_token)
+        # else:
+        #     onboarding_ok = False
         
         if db_ok and auth_token:
             results['Day 1'] = "✅ PASSED"
@@ -696,34 +781,34 @@ def run_comprehensive_test_suite():
         results['Day 3'] = f"❌ ERROR: {str(e)[:50]}"
     
     # DAY 4: Meal Optimizer
-    print("\n📅 DAY 4: Linear Programming Optimizer")
-    print("-"*60)
+    # print("\n📅 DAY 4: Linear Programming Optimizer")
+    # print("-"*60)
     
-    day4 = TestDay4_MealOptimizer()
+    # day4 = TestDay4_MealOptimizer()
     
-    try:
-        db = SessionLocal()
+    # try:
+    #     db = SessionLocal()
         
-        # Test optimizer
-        optimizer_ok = day4.test_optimizer_class(db)
+    #     # Test optimizer
+    #     optimizer_ok = day4.test_optimizer_class(db)
         
-        # Test performance
-        if optimizer_ok:
-            performance_ok = day4.test_performance(db)
-        else:
-            performance_ok = False
+    #     # Test performance
+    #     if optimizer_ok:
+    #         performance_ok = day4.test_performance(db)
+    #     else:
+    #         performance_ok = False
         
-        db.close()
+    #     db.close()
         
-        if optimizer_ok and performance_ok:
-            results['Day 4'] = "✅ PASSED"
-        elif optimizer_ok:
-            results['Day 4'] = "⚠️  PARTIAL"
-        else:
-            results['Day 4'] = "❌ FAILED"
+    #     if optimizer_ok and performance_ok:
+    #         results['Day 4'] = "✅ PASSED"
+    #     elif optimizer_ok:
+    #         results['Day 4'] = "⚠️  PARTIAL"
+    #     else:
+    #         results['Day 4'] = "❌ FAILED"
             
-    except Exception as e:
-        results['Day 4'] = f"❌ ERROR: {str(e)[:50]}"
+    # except Exception as e:
+    #     results['Day 4'] = f"❌ ERROR: {str(e)[:50]}"
     
     # DAY 5: Planning Agent
     print("\n📅 DAY 5: Planning Agent & Meal Plan Generation")

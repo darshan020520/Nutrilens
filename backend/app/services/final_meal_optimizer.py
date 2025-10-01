@@ -10,6 +10,7 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 import random
 from app.models.database import UserProfile, UserGoal, UserPath, UserPreference, Recipe
+from app.models.database import UserGoal, UserInventory, RecipeIngredient
 from sqlalchemy import cast, String, func
 
 
@@ -95,6 +96,8 @@ class MealPlanOptimizer:
             if available_recipes:
                 self.recipes = available_recipes
             else:
+                print("user_id", user_id)
+                print("constraints", constraints)
                 self.recipes = self._get_filtered_recipes_fixed(user_id, constraints)
             
             # Filter recipes to those that can help meet constraints
@@ -530,9 +533,15 @@ class MealPlanOptimizer:
     
     def _get_filtered_recipes_fixed(self, user_id: int, constraints: OptimizationConstraints) -> List[Dict]:
         """Get actual recipes from database"""
+
+        print("goal")
         
         # Get user's goal to filter recipes
         goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+
+        print("goal", goal)
+
+        
 
         goal_str = goal.goal_type.value.lower()
         
@@ -690,7 +699,7 @@ class MealPlanOptimizer:
     # Include all other helper methods from original...
     def _score_recipes(self, recipes, constraints, inventory, user_id):
         """Score recipes based on actual user data and inventory"""
-        from app.models.database import UserGoal, UserInventory, RecipeIngredient
+        
         
         # Get user's goal
         goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()

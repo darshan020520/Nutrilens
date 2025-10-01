@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # Redis
     redis_host: str
     redis_port: int
+    redis_db: int = 0
 
     # MinIO
     minio_endpoint: str
@@ -26,6 +27,14 @@ class Settings(BaseSettings):
 
     # FDC key
     fdc_api_key: str
+
+    #Firebase
+    firebase_credentials_path: str
+
+    sendgrid_api_key: str
+
+    twilio_account_sid: str
+    twilio_auth_token: str
 
     #JWT
     access_token_expire_minutes: int = 30

@@ -1,0 +1,125 @@
+{
+  "component": "Consumption Service",
+  "timestamp": "2025-10-01T17:22:49.688809",
+  "summary": {
+    "passed": 18,
+    "failed": 1,
+    "total": 19
+  },
+  "tests": [
+    {
+      "test": "get_today_summary - Response Structure",
+      "status": "\u2705 PASS",
+      "message": "Response structure valid",
+      "timestamp": "2025-10-01T17:22:49.461337"
+    },
+    {
+      "test": "get_today_summary - Performance",
+      "status": "\u2705 PASS",
+      "message": "Execution time: 12.59ms (target: <100ms)",
+      "timestamp": "2025-10-01T17:22:49.461398"
+    },
+    {
+      "test": "get_today_summary - Data Accuracy",
+      "status": "\u2705 PASS",
+      "message": "Found 4 meals (expected 4)",
+      "timestamp": "2025-10-01T17:22:49.461412"
+    },
+    {
+      "test": "get_today_summary - Non-existent User",
+      "status": "\u2705 PASS",
+      "message": "Correctly returns empty result",
+      "timestamp": "2025-10-01T17:22:49.464876"
+    },
+    {
+      "test": "log_meal_consumption - Success Response",
+      "status": "\u274c FAIL",
+      "message": "Error: A transaction is already begun on this Session.",
+      "timestamp": "2025-10-01T17:22:49.471256"
+    },
+    {
+      "test": "log_meal_consumption - Duplicate Prevention",
+      "status": "\u2705 PASS",
+      "message": "Prevented duplicate: True",
+      "timestamp": "2025-10-01T17:22:49.501563"
+    },
+    {
+      "test": "log_meal_consumption - Invalid ID Handling",
+      "status": "\u2705 PASS",
+      "message": "Handled gracefully: True",
+      "timestamp": "2025-10-01T17:22:49.510529"
+    },
+    {
+      "test": "handle_skip_meal - Success Response",
+      "status": "\u2705 PASS",
+      "message": "",
+      "timestamp": "2025-10-01T17:22:49.556598"
+    },
+    {
+      "test": "handle_skip_meal - Database Update",
+      "status": "\u2705 PASS",
+      "message": "was_skipped set: True",
+      "timestamp": "2025-10-01T17:22:49.559610"
+    },
+    {
+      "test": "handle_skip_meal - Duplicate Skip Prevention",
+      "status": "\u2705 PASS",
+      "message": "",
+      "timestamp": "2025-10-01T17:22:49.566915"
+    },
+    {
+      "test": "get_consumption_history - Response Structure",
+      "status": "\u2705 PASS",
+      "message": "Response structure valid",
+      "timestamp": "2025-10-01T17:22:49.595229"
+    },
+    {
+      "test": "get_consumption_history - Has Historical Data",
+      "status": "\u2705 PASS",
+      "message": "Found 7 days",
+      "timestamp": "2025-10-01T17:22:49.595325"
+    },
+    {
+      "test": "get_consumption_history - 30-Day Period",
+      "status": "\u2705 PASS",
+      "message": "",
+      "timestamp": "2025-10-01T17:22:49.600606"
+    },
+    {
+      "test": "generate_consumption_analytics - Success",
+      "status": "\u2705 PASS",
+      "message": "",
+      "timestamp": "2025-10-01T17:22:49.619082"
+    },
+    {
+      "test": "generate_consumption_analytics - Has Analytics",
+      "status": "\u2705 PASS",
+      "message": "Found 8 analysis types",
+      "timestamp": "2025-10-01T17:22:49.619145"
+    },
+    {
+      "test": "generate_consumption_analytics - 30-Day Analysis",
+      "status": "\u2705 PASS",
+      "message": "",
+      "timestamp": "2025-10-01T17:22:49.628949"
+    },
+    {
+      "test": "Database Integrity - User Exists",
+      "status": "\u2705 PASS",
+      "message": "",
+      "timestamp": "2025-10-01T17:22:49.635128"
+    },
+    {
+      "test": "Database Integrity - Profile Valid",
+      "status": "\u2705 PASS",
+      "message": "BMR: 1692.5",
+      "timestamp": "2025-10-01T17:22:49.640196"
+    },
+    {
+      "test": "Database Integrity - Meal Logs",
+      "status": "\u2705 PASS",
+      "message": "Total: 4, Consumed: 0, Skipped: 1",
+      "timestamp": "2025-10-01T17:22:49.644064"
+    }
+  ]
+}

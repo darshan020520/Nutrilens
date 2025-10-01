@@ -5,6 +5,18 @@ from datetime import datetime
 import enum
 from app.core.config import settings
 
+# Add these enums
+class NotificationProvider(str, enum.Enum):  # Changed from Enum to enum.Enum
+    PUSH = "push"
+    EMAIL = "email"
+    SMS = "sms"
+    WHATSAPP = "whatsapp"
+
+class NotificationStatus(str, enum.Enum):  # Changed from Enum to enum.Enum
+    SENT = "sent"
+    FAILED = "failed"
+    PENDING = "pending"
+
 Base = declarative_base()
 
 # Create engine
@@ -70,6 +82,8 @@ class User(Base):
     receipt_uploads = relationship("ReceiptUpload", back_populates="user", cascade="all, delete-orphan")
     agent_interactions = relationship("AgentInteraction", back_populates="user", cascade="all, delete-orphan")
     whatsapp_logs = relationship("WhatsappLog", back_populates="user", cascade="all, delete-orphan")
+    notification_preference = relationship("NotificationPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    notification_logs = relationship("NotificationLog", back_populates="user", cascade="all, delete-orphan")
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
@@ -281,3 +295,60 @@ class WhatsappLog(Base):
     sent_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="whatsapp_logs")
+
+
+class NotificationPreference(Base):
+    """User notification preferences"""
+    __tablename__ = "notification_preferences"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, index=True)
+    
+    # Provider preferences (which channels to use)
+    enabled_providers = Column(JSON, default=lambda: ["push"])
+    
+    # Notification type preferences (what types to send)
+    enabled_types = Column(JSON, default=lambda: [
+        "meal_reminder", "inventory_alert", "achievement"
+    ])
+    
+    # Timing preferences
+    quiet_hours_start = Column(Integer, default=22)  # 10 PM
+    quiet_hours_end = Column(Integer, default=7)     # 7 AM
+    timezone = Column(String(50), default="UTC")
+    
+    # Contact information
+    phone_number = Column(String(20), nullable=True)
+    whatsapp_number = Column(String(20), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", back_populates="notification_preference")
+
+class NotificationLog(Base):
+    """Log of notification attempts for debugging and analytics"""
+    __tablename__ = "notification_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    
+    # Notification details
+    notification_type = Column(String(50), index=True)
+    provider = Column(Enum(NotificationProvider), nullable=True)
+    status = Column(Enum(NotificationStatus), index=True)
+    
+    # Content
+    title = Column(String(255))
+    body = Column(Text)
+    data = Column(JSON, nullable=True)
+    
+    # Error tracking
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="notification_logs")

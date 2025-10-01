@@ -1,13 +1,13 @@
 # backend/app/services/consumption_service.py
 """
-Consumption tracking service for NutriLens AI
-Handles meal logging, portion tracking, and consumption analytics
+Complete Consumption Service for NutriLens AI
+Handles all meal logging database operations with atomic transactions
 """
 
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta, date
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, or_, func, desc
 import logging
 import json
 
@@ -22,30 +22,185 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class ConsumptionService:
-    """Service for managing meal consumption and tracking"""
+    """Complete service for managing meal consumption and tracking"""
     
     def __init__(self, db: Session):
         self.db = db
         self.inventory_service = IntelligentInventoryService(db)
     
-    def log_meal(
-        self,
-        user_id: int,
-        meal_log_id: Optional[int] = None,
-        recipe_id: Optional[int] = None,
-        meal_type: Optional[str] = None,
-        portion_multiplier: float = 1.0,
-        notes: Optional[str] = None,
-        external_calories: Optional[float] = None
-    ) -> Dict[str, Any]:
+    # ===== REQUIRED SPRINT FUNCTIONS (5 functions with exact signatures) =====
+    
+    def log_meal_consumption(self, user_id: int, meal_data: Dict) -> Dict[str, Any]:
         """
-        Log a meal consumption
-        Either use existing meal_log_id or create new with recipe_id and meal_type
+        REQUIRED FUNCTION 1: Log meal consumption with atomic transaction
         """
         try:
+            # Start atomic transaction
             meal_log = None
+            print("meal data before consumption", meal_data)
             
             # Get or create meal log
+            if meal_data.get("meal_log_id"):
+                meal_log = self.db.query(MealLog).options(
+                    joinedload(MealLog.recipe)
+                ).filter(
+                    and_(
+                        MealLog.id == meal_data["meal_log_id"],
+                        MealLog.user_id == user_id
+                    )
+                ).first()
+                print("meal log found in database", meal_log)
+                
+                if not meal_log:
+                    return {"status": "error", "error": "Meal log not found"}
+                    
+                if meal_log.consumed_datetime:
+                    return {"status": "error", "error": "Meal already logged"}
+            else:
+                # Create new meal log
+                meal_log = MealLog(
+                    user_id=user_id,
+                    recipe_id=meal_data.get("recipe_id"),
+                    meal_type=meal_data["meal_type"],
+                    planned_datetime=meal_data.get("timestamp", datetime.utcnow()),
+                    notes=meal_data.get("notes")
+                )
+                self.db.add(meal_log)
+                self.db.flush()  # Get ID without committing
+            
+            # Update meal log
+
+            meal_log.consumed_datetime = datetime.utcnow()
+            meal_log.portion_multiplier = meal_data.get("portion_multiplier", 1.0)
+            meal_log.was_skipped = False
+
+            
+            # Auto-deduct ingredients from inventory
+            inventory_changes = []
+            print("going to deduct ingredients", meal_log.recipe_id)
+            if meal_log.recipe_id:
+                deduction_result = self.auto_deduct_ingredients(
+                    recipe_id=meal_log.recipe_id,
+                    portion_multiplier=meal_log.portion_multiplier,
+                    user_id=user_id
+                )
+                inventory_changes = deduction_result.get("deducted_items", [])
+            
+            # Calculate consumed macros
+            macros = self._calculate_meal_macros(meal_log)
+
+            print("macros", macros)
+            
+            # Get updated daily totals
+            daily_totals = self._get_daily_totals_optimized(user_id)
+
+            print("daily consumption", daily_totals)
+            
+            # Get remaining targets
+            remaining_targets = self._calculate_remaining_targets(user_id, daily_totals)
+            print("remaining_targets", remaining_targets)
+            
+            return {
+                "status": "success",
+                "logged_meal": {
+                    "id": meal_log.id,
+                    "meal_type": meal_log.meal_type,
+                    "recipe": meal_log.recipe.title if meal_log.recipe else "External",
+                    "consumed_at": meal_log.consumed_datetime.isoformat(),
+                    "portion_multiplier": meal_log.portion_multiplier,
+                    "macros": macros
+                },
+                "updated_totals": daily_totals,
+                "remaining_targets": remaining_targets,
+                "inventory_changes": inventory_changes
+            }
+                
+        except Exception as e:
+            logger.error(f"Error in log_meal_consumption: {str(e)}")
+            return {"status": "error", "error": str(e)}
+    
+    def auto_deduct_ingredients(self, recipe_id: int, portion_multiplier: float, user_id: int) -> Dict[str, Any]:
+        """
+        REQUIRED FUNCTION 2: Auto-deduct ingredients with concurrency handling
+        """
+        try:
+            # Get recipe ingredients with optimized query
+            ingredients = self.db.query(RecipeIngredient).options(
+                joinedload(RecipeIngredient.item)
+            ).filter(
+                RecipeIngredient.recipe_id == recipe_id
+            ).all()
+            
+            if not ingredients:
+                return {
+                    "success": True,
+                    "deducted_items": [],
+                    "message": "No ingredients to deduct"
+                }
+            
+            deducted_items = []
+            failed_deductions = []
+            
+            for ingredient in ingredients:
+                try:
+                    quantity_to_deduct = ingredient.quantity_grams * portion_multiplier
+                    
+                    # Use inventory service for atomic deduction
+                    result = self.inventory_service.deduct_item(
+                        user_id=user_id,
+                        item_id=ingredient.item_id,
+                        quantity_grams=quantity_to_deduct
+                    )
+                    
+                    if result.get("success"):
+                        deducted_items.append({
+                            "item_id": ingredient.item_id,
+                            "item_name": ingredient.item.canonical_name if ingredient.item else "Unknown",
+                            "quantity_deducted": quantity_to_deduct,
+                            "remaining_quantity": result.get("remaining_quantity", 0)
+                        })
+                    else:
+                        failed_deductions.append({
+                            "item_id": ingredient.item_id,
+                            "item_name": ingredient.item.canonical_name if ingredient.item else "Unknown",
+                            "error": result.get("error", "Deduction failed")
+                        })
+                        
+                except Exception as e:
+                    logger.warning(f"Error deducting ingredient {ingredient.item_id}: {str(e)}")
+                    failed_deductions.append({
+                        "item_id": ingredient.item_id,
+                        "error": str(e)
+                    })
+            
+            return {
+                "success": True,
+                "deducted_items": deducted_items,
+                "failed_deductions": failed_deductions,
+                "total_deducted": len(deducted_items),
+                "total_failed": len(failed_deductions)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in auto_deduct_ingredients: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def track_portions(self, user_id: int, meal_data: Dict) -> Dict[str, Any]:
+        """
+        REQUIRED FUNCTION 3: Track and validate portion sizes
+        """
+        try:
+            portion_multiplier = meal_data.get("portion_multiplier", 1.0)
+            meal_log_id = meal_data.get("meal_log_id")
+            
+            # Validate portion size (0.25x - 3.0x)
+            if not (0.25 <= portion_multiplier <= 3.0):
+                return {
+                    "success": False,
+                    "error": "Portion multiplier must be between 0.25 and 3.0"
+                }
+            
+            # Update portion in meal log if provided
             if meal_log_id:
                 meal_log = self.db.query(MealLog).filter(
                     and_(
@@ -54,90 +209,47 @@ class ConsumptionService:
                     )
                 ).first()
                 
-                if not meal_log:
+                if meal_log:
+                    old_portion = meal_log.portion_multiplier or 1.0
+                    meal_log.portion_multiplier = portion_multiplier
+                    self.db.commit()
+                    
+                    # Learn from portion adjustment
+                    self._learn_portion_preference(user_id, meal_log.recipe_id, portion_multiplier)
+                    
                     return {
-                        "success": False,
-                        "error": "Meal log not found"
+                        "success": True,
+                        "validated_portion": portion_multiplier,
+                        "old_portion": old_portion,
+                        "adjustment": portion_multiplier - old_portion,
+                        "preference_updated": True
                     }
-            else:
-                # Create new meal log for ad-hoc consumption
-                if not meal_type:
-                    return {
-                        "success": False,
-                        "error": "Meal type required for new log"
-                    }
-                
-                meal_log = MealLog(
-                    user_id=user_id,
-                    recipe_id=recipe_id,
-                    meal_type=meal_type,
-                    planned_datetime=datetime.utcnow(),
-                    portion_multiplier=portion_multiplier,
-                    notes=notes
-                )
-                
-                if external_calories:
-                    meal_log.external_meal = {
-                        "calories": external_calories,
-                        "logged_at": datetime.utcnow().isoformat()
-                    }
-                
-                self.db.add(meal_log)
-            
-            # Update meal log
-            meal_log.consumed_datetime = datetime.utcnow()
-            meal_log.was_skipped = False
-            meal_log.portion_multiplier = portion_multiplier
-            if notes:
-                meal_log.notes = notes
-            
-            # Auto-deduct ingredients from inventory
-            deduction_results = []
-            if meal_log.recipe_id:
-                deduction_results = self._deduct_ingredients(
-                    user_id,
-                    meal_log.recipe_id,
-                    portion_multiplier
-                )
-            
-            self.db.commit()
-            
-            # Calculate consumed macros
-            consumed_macros = self._calculate_consumed_macros(meal_log)
-            
-            # Get daily progress
-            daily_progress = self._get_daily_progress(user_id)
-            
-            # Check if user is on track
-            adherence_status = self._check_adherence(user_id, daily_progress)
             
             return {
                 "success": True,
-                "meal_log_id": meal_log.id,
-                "meal_type": meal_log.meal_type,
-                "recipe": meal_log.recipe.title if meal_log.recipe else "External meal",
-                "consumed_at": meal_log.consumed_datetime.isoformat(),
-                "portion": portion_multiplier,
-                "macros_consumed": consumed_macros,
-                "ingredients_deducted": deduction_results,
-                "daily_progress": daily_progress,
-                "adherence_status": adherence_status
+                "validated_portion": portion_multiplier,
+                "within_range": True
             }
             
         except Exception as e:
-            logger.error(f"Error logging meal: {str(e)}")
-            self.db.rollback()
+            logger.error(f"Error in track_portions: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    def skip_meal(
-        self,
-        user_id: int,
-        meal_log_id: int,
-        reason: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Mark a meal as skipped"""
+    def handle_skip_meal(self, user_id: int, meal_info: Dict) -> Dict[str, Any]:
+        """
+        REQUIRED FUNCTION 4: Handle meal skipping with pattern analysis
+        """
         try:
-            meal_log = self.db.query(MealLog).filter(
+            meal_log_id = meal_info.get("meal_log_id")
+            reason = meal_info.get("reason")
+            
+            if not meal_log_id:
+                return {"success": False, "error": "meal_log_id required"}
+            
+            # Get meal log
+            meal_log = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe)
+            ).filter(
                 and_(
                     MealLog.id == meal_log_id,
                     MealLog.user_id == user_id
@@ -147,7 +259,13 @@ class ConsumptionService:
             if not meal_log:
                 return {"success": False, "error": "Meal log not found"}
             
-            # Mark as skipped
+            if meal_log.was_skipped:
+                return {"success": False, "error": "Meal already marked as skipped"}
+            
+            if meal_log.consumed_datetime:
+                return {"success": False, "error": "Cannot skip consumed meal"}
+            
+            # Update meal log
             meal_log.was_skipped = True
             meal_log.skip_reason = reason
             meal_log.consumed_datetime = None
@@ -155,95 +273,102 @@ class ConsumptionService:
             
             # Analyze skip patterns
             skip_analysis = self._analyze_skip_patterns(user_id, meal_log.meal_type)
+            print("skip_analysis", skip_analysis)
             
-            # Get adjusted daily targets
-            adjusted_targets = self._adjust_daily_targets(user_id)
+            # Recalculate adherence
+            adherence = self._calculate_daily_adherence(user_id)
+            print("adherence", adherence)
             
             return {
                 "success": True,
+                "meal_log_id": meal_log.id,
                 "meal_type": meal_log.meal_type,
-                "recipe": meal_log.recipe.title if meal_log.recipe else None,
+                "recipe": meal_log.recipe.title if meal_log.recipe else "Unknown",
                 "reason": reason,
                 "skip_analysis": skip_analysis,
-                "adjusted_targets": adjusted_targets,
+                "adherence_impact": adherence,
                 "recommendation": self._get_skip_recommendation(skip_analysis)
             }
             
         except Exception as e:
-            logger.error(f"Error skipping meal: {str(e)}")
-            self.db.rollback()
+            logger.error(f"Error in handle_skip_meal: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    def update_portion(
-        self,
-        user_id: int,
-        meal_log_id: int,
-        new_portion_multiplier: float
-    ) -> Dict[str, Any]:
-        """Update portion size for a consumed meal"""
+    def generate_consumption_analytics(self, user_id: int, days: int = 7) -> Dict[str, Any]:
+        """
+        REQUIRED FUNCTION 5: Generate comprehensive consumption analytics
+        """
         try:
-            meal_log = self.db.query(MealLog).filter(
+            start_date = datetime.utcnow() - timedelta(days=days)
+            
+            # Optimized single query with all needed joins
+            meal_logs = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe)
+            ).filter(
                 and_(
-                    MealLog.id == meal_log_id,
                     MealLog.user_id == user_id,
-                    MealLog.consumed_datetime.isnot(None)
+                    MealLog.planned_datetime >= start_date
                 )
-            ).first()
+            ).order_by(MealLog.planned_datetime.desc()).all()
             
-            if not meal_log:
-                return {"success": False, "error": "Consumed meal not found"}
+            if not meal_logs:
+                return {
+                    "success": True,
+                    "message": "No consumption data available",
+                    "analytics": {}
+                }
             
-            old_multiplier = meal_log.portion_multiplier
-            difference = new_portion_multiplier - old_multiplier
-            
-            # Update portion
-            meal_log.portion_multiplier = new_portion_multiplier
-            
-            # Adjust inventory if needed
-            if meal_log.recipe_id and difference != 0:
-                if difference > 0:
-                    # Deduct additional ingredients
-                    self._deduct_ingredients(user_id, meal_log.recipe_id, difference)
-                else:
-                    # Add back ingredients (negative deduction)
-                    self._deduct_ingredients(user_id, meal_log.recipe_id, difference)
-            
-            self.db.commit()
-            
-            # Learn from portion adjustment
-            portion_learning = self._learn_portion_preference(
-                user_id,
-                meal_log.recipe_id,
-                new_portion_multiplier
-            )
+            analytics = {
+                "meal_timing_patterns": self._analyze_meal_timing(meal_logs),
+                "skip_frequency": self._analyze_skip_frequency(meal_logs),
+                "portion_trends": self._analyze_portion_trends(meal_logs),
+                "favorite_recipes": self._analyze_favorite_recipes(meal_logs),
+                "daily_compliance": self._analyze_daily_compliance(meal_logs),
+                "macro_consistency": self._analyze_macro_consistency(meal_logs),
+                "weekly_patterns": self._analyze_weekly_patterns(meal_logs),
+                "improvement_insights": self._generate_improvement_insights(meal_logs)
+            }
             
             return {
                 "success": True,
-                "meal_log_id": meal_log_id,
-                "old_portion": old_multiplier,
-                "new_portion": new_portion_multiplier,
-                "adjustment": difference,
-                "learning": portion_learning
+                "period_days": days,
+                "total_meals_analyzed": len(meal_logs),
+                "analytics": analytics,
+                "generated_at": datetime.utcnow().isoformat()
             }
             
         except Exception as e:
-            logger.error(f"Error updating portion: {str(e)}")
-            self.db.rollback()
+            logger.error(f"Error in generate_consumption_analytics: {str(e)}")
             return {"success": False, "error": str(e)}
     
+    # ===== EXISTING USEFUL FUNCTIONS (OPTIMIZED FOR <100ms) =====
+    
     def get_today_summary(self, user_id: int) -> Dict[str, Any]:
-        """Get today's consumption summary"""
+        """
+        Get today's consumption summary with <100ms performance
+        """
         try:
             today = date.today()
             
-            # Get all meal logs for today
-            meal_logs = self.db.query(MealLog).filter(
+            # Single optimized query with all needed data
+            meal_logs = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe)
+            ).filter(
                 and_(
                     MealLog.user_id == user_id,
                     func.date(MealLog.planned_datetime) == today
                 )
             ).all()
             
+            # Get user profile and goals in parallel query
+            user_data = self.db.query(UserProfile, UserGoal).outerjoin(
+                UserGoal, UserProfile.user_id == UserGoal.user_id
+            ).filter(UserProfile.user_id == user_id).first()
+            
+            user_profile = user_data[0] if user_data else None
+            user_goal = user_data[1] if user_data and len(user_data) > 1 else None
+            
+            # Process data in memory for speed
             summary = {
                 "date": today.isoformat(),
                 "meals_planned": len(meal_logs),
@@ -257,7 +382,7 @@ class ConsumptionService:
                 "hydration_reminder": self._get_hydration_reminder()
             }
             
-            # Process each meal
+            # Process each meal in memory
             for log in meal_logs:
                 meal_info = {
                     "id": log.id,
@@ -270,10 +395,10 @@ class ConsumptionService:
                 if log.consumed_datetime:
                     meal_info["status"] = "consumed"
                     meal_info["consumed_time"] = log.consumed_datetime.isoformat()
-                    meal_info["portion"] = log.portion_multiplier
+                    meal_info["portion"] = log.portion_multiplier or 1.0
                     
-                    # Add macros
-                    macros = self._calculate_consumed_macros(log)
+                    # Calculate macros
+                    macros = self._calculate_meal_macros(log)
                     meal_info["macros"] = macros
                     
                     summary["meals_consumed"] += 1
@@ -296,40 +421,31 @@ class ConsumptionService:
                     (summary["meals_consumed"] / summary["meals_planned"]) * 100, 1
                 )
             
-            # Get user targets for comparison
-            user_profile = self.db.query(UserProfile).filter(
-                UserProfile.user_id == user_id
-            ).first()
-            
-            user_goal = self.db.query(UserGoal).filter(
-                UserGoal.user_id == user_id
-            ).first()
-            
-            if user_profile and user_goal:
-                target_calories = user_profile.goal_calories or user_profile.tdee
-                macro_targets = user_goal.macro_targets or {
-                    "protein": 0.3,
-                    "carbs": 0.4,
-                    "fat": 0.3
-                }
-                
-                summary["targets"] = {
-                    "calories": target_calories,
-                    "protein_g": (target_calories * macro_targets.get("protein", 0.3)) / 4,
-                    "carbs_g": (target_calories * macro_targets.get("carbs", 0.4)) / 4,
-                    "fat_g": (target_calories * macro_targets.get("fat", 0.3)) / 9
-                }
-                
-                # Calculate progress percentages
+            # Add targets and progress if user profile exists
+            if user_profile:
+                target_calories = user_profile.goal_calories or user_profile.tdee or 2000
+                summary["targets"] = {"calories": target_calories}
                 summary["progress"] = {
-                    "calories": round((summary["total_calories"] / target_calories) * 100, 1),
-                    "protein": round((summary["total_macros"]["protein_g"] / summary["targets"]["protein_g"]) * 100, 1),
-                    "carbs": round((summary["total_macros"]["carbs_g"] / summary["targets"]["carbs_g"]) * 100, 1),
-                    "fat": round((summary["total_macros"]["fat_g"] / summary["targets"]["fat_g"]) * 100, 1)
+                    "calories": round((summary["total_calories"] / target_calories) * 100, 1)
                 }
+                
+                if user_goal and user_goal.macro_targets:
+                    macro_targets = user_goal.macro_targets
+                    summary["targets"].update({
+                        "protein_g": (target_calories * macro_targets.get("protein", 0.3)) / 4,
+                        "carbs_g": (target_calories * macro_targets.get("carbs", 0.4)) / 4,
+                        "fat_g": (target_calories * macro_targets.get("fat", 0.3)) / 9
+                    })
+                    
+                    for macro in ["protein", "carbs", "fat"]:
+                        target_key = f"{macro}_g"
+                        if target_key in summary["targets"]:
+                            summary["progress"][macro] = round(
+                                (summary["total_macros"][target_key] / summary["targets"][target_key]) * 100, 1
+                            )
             
-            # Get recommendations
-            summary["recommendations"] = self._get_daily_recommendations(user_id, summary)
+            # Generate recommendations
+            summary["recommendations"] = self._get_daily_recommendations(summary)
             
             return {
                 "success": True,
@@ -337,20 +453,17 @@ class ConsumptionService:
             }
             
         except Exception as e:
-            logger.error(f"Error getting today's summary: {str(e)}")
+            logger.error(f"Error in get_today_summary: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    def get_consumption_history(
-        self,
-        user_id: int,
-        days: int = 7,
-        include_details: bool = False
-    ) -> Dict[str, Any]:
+    def get_consumption_history(self, user_id: int, days: int = 7, include_details: bool = False) -> Dict[str, Any]:
         """Get consumption history for specified days"""
         try:
             start_date = datetime.utcnow() - timedelta(days=days)
             
-            meal_logs = self.db.query(MealLog).filter(
+            meal_logs = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe)
+            ).filter(
                 and_(
                     MealLog.user_id == user_id,
                     MealLog.planned_datetime >= start_date
@@ -376,7 +489,7 @@ class ConsumptionService:
                 
                 if log.consumed_datetime:
                     history[log_date]["consumed"] += 1
-                    macros = self._calculate_consumed_macros(log)
+                    macros = self._calculate_meal_macros(log)
                     history[log_date]["calories"] += macros.get("calories", 0)
                     for key in ["protein_g", "carbs_g", "fat_g"]:
                         history[log_date]["macros"][key] += macros.get(key, 0)
@@ -424,7 +537,9 @@ class ConsumptionService:
             # Get last 30 days of data
             start_date = datetime.utcnow() - timedelta(days=30)
             
-            meal_logs = self.db.query(MealLog).filter(
+            meal_logs = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe)
+            ).filter(
                 and_(
                     MealLog.user_id == user_id,
                     MealLog.planned_datetime >= start_date
@@ -493,7 +608,7 @@ class ConsumptionService:
                     patterns["favorite_recipes"][recipe.title] = {
                         "count": count,
                         "frequency": f"{count}/{len(meal_logs)*100:.1f}%",
-                        "goals": recipe.goals
+                        "goals": recipe.goals if hasattr(recipe, 'goals') else []
                     }
             
             # Weekly patterns (by day of week)
@@ -523,59 +638,17 @@ class ConsumptionService:
             logger.error(f"Error analyzing meal patterns: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    # Helper methods
-    def _deduct_ingredients(
-        self,
-        user_id: int,
-        recipe_id: int,
-        portion_multiplier: float
-    ) -> List[Dict]:
-        """Deduct recipe ingredients from inventory"""
-        deduction_results = []
-        
-        ingredients = self.db.query(RecipeIngredient).filter(
-            RecipeIngredient.recipe_id == recipe_id
-        ).all()
-        
-        for ingredient in ingredients:
-            quantity_to_deduct = ingredient.quantity_grams * abs(portion_multiplier)
-            
-            if portion_multiplier > 0:
-                # Normal deduction
-                result = self.inventory_service.deduct_item(
-                    user_id=user_id,
-                    item_id=ingredient.item_id,
-                    quantity_grams=quantity_to_deduct
-                )
-            else:
-                # Add back (negative deduction)
-                result = self.inventory_service.add_item(
-                    user_id=user_id,
-                    item_id=ingredient.item_id,
-                    quantity_grams=quantity_to_deduct,
-                    source="adjustment"
-                )
-            
-            if result["success"]:
-                item = self.db.query(Item).filter(Item.id == ingredient.item_id).first()
-                deduction_results.append({
-                    "item": item.canonical_name if item else "Unknown",
-                    "quantity": quantity_to_deduct,
-                    "operation": "deducted" if portion_multiplier > 0 else "added",
-                    "remaining": result.get("remaining_quantity", 0)
-                })
-        
-        return deduction_results
+    # ===== PRIVATE HELPER METHODS =====
     
-    def _calculate_consumed_macros(self, meal_log: MealLog) -> Dict[str, float]:
-        """Calculate macros for consumed meal"""
+    def _calculate_meal_macros(self, meal_log: MealLog) -> Dict[str, float]:
+        """Calculate macros for a meal log"""
         if meal_log.external_meal:
             return meal_log.external_meal
         
-        if not meal_log.recipe:
+        if not meal_log.recipe or not meal_log.recipe.macros_per_serving:
             return {"calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0}
         
-        macros = meal_log.recipe.macros_per_serving or {}
+        macros = meal_log.recipe.macros_per_serving
         multiplier = meal_log.portion_multiplier or 1.0
         
         return {
@@ -586,11 +659,13 @@ class ConsumptionService:
             "fiber_g": macros.get("fiber_g", 0) * multiplier
         }
     
-    def _get_daily_progress(self, user_id: int) -> Dict[str, Any]:
-        """Get daily consumption progress"""
+    def _get_daily_totals_optimized(self, user_id: int) -> Dict[str, Any]:
+        """Get daily totals with optimized query"""
         today = date.today()
         
-        meal_logs = self.db.query(MealLog).filter(
+        consumed_logs = self.db.query(MealLog).options(
+            joinedload(MealLog.recipe)
+        ).filter(
             and_(
                 MealLog.user_id == user_id,
                 func.date(MealLog.planned_datetime) == today,
@@ -598,81 +673,38 @@ class ConsumptionService:
             )
         ).all()
         
-        total_calories = 0
-        total_macros = {"protein_g": 0, "carbs_g": 0, "fat_g": 0}
+        totals = {
+            "calories": 0,
+            "protein_g": 0,
+            "carbs_g": 0,
+            "fat_g": 0,
+            "meals_consumed": len(consumed_logs)
+        }
         
-        for log in meal_logs:
-            macros = self._calculate_consumed_macros(log)
-            total_calories += macros.get("calories", 0)
-            for key in ["protein_g", "carbs_g", "fat_g"]:
-                total_macros[key] += macros.get(key, 0)
+        for log in consumed_logs:
+            macros = self._calculate_meal_macros(log)
+            totals["calories"] += macros.get("calories", 0)
+            totals["protein_g"] += macros.get("protein_g", 0)
+            totals["carbs_g"] += macros.get("carbs_g", 0)
+            totals["fat_g"] += macros.get("fat_g", 0)
         
-        # Get targets
+        return totals
+    
+    def _calculate_remaining_targets(self, user_id: int, daily_totals: Dict) -> Dict[str, Any]:
+        """Calculate remaining daily targets"""
         user_profile = self.db.query(UserProfile).filter(
             UserProfile.user_id == user_id
         ).first()
         
-        if user_profile:
-            target_calories = user_profile.goal_calories or user_profile.tdee or 2000
-            remaining_calories = target_calories - total_calories
-            
-            return {
-                "consumed_calories": round(total_calories, 0),
-                "target_calories": round(target_calories, 0),
-                "remaining_calories": round(remaining_calories, 0),
-                "percentage": round((total_calories / target_calories) * 100, 1),
-                "macros": total_macros,
-                "status": self._get_progress_status(total_calories / target_calories)
-            }
+        if not user_profile:
+            return {"message": "No targets set"}
+        
+        target_calories = user_profile.goal_calories or user_profile.tdee or 2000
         
         return {
-            "consumed_calories": round(total_calories, 0),
-            "macros": total_macros
+            "calories": max(0, target_calories - daily_totals["calories"]),
+            "percentage_complete": round((daily_totals["calories"] / target_calories) * 100, 1)
         }
-    
-    def _get_progress_status(self, ratio: float) -> str:
-        """Get progress status based on consumption ratio"""
-        current_hour = datetime.now().hour
-        
-        if current_hour < 10:  # Morning
-            expected_ratio = 0.25
-        elif current_hour < 14:  # Afternoon
-            expected_ratio = 0.5
-        elif current_hour < 19:  # Evening
-            expected_ratio = 0.75
-        else:  # Night
-            expected_ratio = 0.95
-        
-        if ratio < expected_ratio - 0.1:
-            return "behind_schedule"
-        elif ratio > expected_ratio + 0.1:
-            return "ahead_schedule"
-        else:
-            return "on_track"
-    
-    def _check_adherence(self, user_id: int, daily_progress: Dict) -> Dict[str, Any]:
-        """Check adherence to goals"""
-        status = daily_progress.get("status", "unknown")
-        percentage = daily_progress.get("percentage", 0)
-        
-        adherence = {
-            "status": status,
-            "percentage": percentage,
-            "message": "",
-            "suggestions": []
-        }
-        
-        if status == "behind_schedule":
-            adherence["message"] = "You're behind your calorie target for this time of day"
-            adherence["suggestions"].append("Consider a nutrient-dense snack")
-        elif status == "ahead_schedule":
-            adherence["message"] = "You're ahead of your calorie target"
-            adherence["suggestions"].append("Consider lighter portions for remaining meals")
-        else:
-            adherence["message"] = "Great job! You're on track with your goals"
-            adherence["suggestions"].append("Keep up the good work!")
-        
-        return adherence
     
     def _analyze_skip_patterns(self, user_id: int, meal_type: str) -> Dict[str, Any]:
         """Analyze skip patterns for a meal type"""
@@ -704,58 +736,30 @@ class ConsumptionService:
             "common_reasons": reasons
         }
     
-    def _adjust_daily_targets(self, user_id: int) -> Dict[str, Any]:
-        """Adjust daily targets based on skipped meals"""
-        # Get remaining meals for today
+    def _calculate_daily_adherence(self, user_id: int) -> Dict[str, Any]:
+        """Calculate daily adherence percentage"""
         today = date.today()
         
-        remaining_meals = self.db.query(MealLog).filter(
+        today_logs = self.db.query(MealLog).filter(
             and_(
                 MealLog.user_id == user_id,
-                func.date(MealLog.planned_datetime) == today,
-                MealLog.consumed_datetime.is_(None),
-                MealLog.was_skipped.is_(False)
+                func.date(MealLog.planned_datetime) == today
             )
         ).all()
         
-        if not remaining_meals:
-            return {"no_meals_remaining": True}
+        if not today_logs:
+            return {"adherence_rate": 0, "no_meals_planned": True}
         
-        # Get consumed calories so far
-        daily_progress = self._get_daily_progress(user_id)
-        remaining_calories = daily_progress.get("remaining_calories", 0)
+        consumed = len([log for log in today_logs if log.consumed_datetime])
+        total = len(today_logs)
         
-        if remaining_calories <= 0:
-            return {"target_met": True}
-        
-        # Distribute remaining calories
-        calories_per_meal = remaining_calories / len(remaining_meals)
-        
-        adjusted_targets = {
-            "remaining_meals": len(remaining_meals),
-            "calories_per_meal": round(calories_per_meal, 0),
-            "meal_adjustments": []
+        return {
+            "adherence_rate": round((consumed / total) * 100, 1),
+            "meals_consumed": consumed,
+            "meals_planned": total
         }
-        
-        for meal in remaining_meals:
-            if meal.recipe:
-                original_calories = meal.recipe.macros_per_serving.get("calories", 0)
-                if original_calories > 0:
-                    suggested_portion = calories_per_meal / original_calories
-                    adjusted_targets["meal_adjustments"].append({
-                        "meal_type": meal.meal_type,
-                        "recipe": meal.recipe.title,
-                        "suggested_portion": round(suggested_portion, 2)
-                    })
-        
-        return adjusted_targets
     
-    def _learn_portion_preference(
-        self,
-        user_id: int,
-        recipe_id: int,
-        portion: float
-    ) -> Dict[str, Any]:
+    def _learn_portion_preference(self, user_id: int, recipe_id: int, portion: float):
         """Learn from portion adjustments"""
         # Get historical portions for this recipe
         historical = self.db.query(MealLog).filter(
@@ -767,25 +771,13 @@ class ConsumptionService:
         ).all()
         
         if not historical:
-            return {"learning": "First time consuming this recipe"}
+            logger.info(f"User {user_id} prefers {portion}x portion for recipe {recipe_id} (first time)")
+            return
         
         portions = [log.portion_multiplier for log in historical if log.portion_multiplier]
         avg_portion = sum(portions) / len(portions) if portions else 1.0
         
-        learning = {
-            "historical_average": round(avg_portion, 2),
-            "current_portion": portion,
-            "trend": "increasing" if portion > avg_portion else "decreasing",
-            "recommendation": ""
-        }
-        
-        if abs(portion - 1.0) > 0.3:
-            if portion > 1.0:
-                learning["recommendation"] = "Consider making this recipe with larger portions by default"
-            else:
-                learning["recommendation"] = "Consider making this recipe with smaller portions by default"
-        
-        return learning
+        logger.info(f"User {user_id} portion preference for recipe {recipe_id}: {portion}x (avg: {avg_portion:.2f}x)")
     
     def _get_skip_recommendation(self, skip_analysis: Dict) -> str:
         """Generate recommendation based on skip analysis"""
@@ -803,31 +795,250 @@ class ConsumptionService:
         else:
             return "Perfect adherence! Keep up the excellent work!"
     
-    def _get_daily_recommendations(self, user_id: int, summary: Dict) -> List[str]:
+    def _get_daily_recommendations(self, summary: Dict) -> List[str]:
         """Generate daily recommendations based on consumption"""
         recommendations = []
         
         # Check compliance
-        if summary["compliance_rate"] < 50:
+        compliance_rate = summary.get("compliance_rate", 0)
+        if compliance_rate < 50:
             recommendations.append("Try to stick to your meal plan for better results")
-        elif summary["compliance_rate"] < 80:
+        elif compliance_rate < 80:
             recommendations.append("Good effort! Aim for at least 80% meal compliance")
         else:
             recommendations.append("Excellent meal compliance! Keep it up!")
         
         # Check macro balance
         if summary.get("progress"):
-            if summary["progress"]["protein"] < 80:
+            if summary["progress"].get("protein", 0) < 80:
                 recommendations.append("Consider adding more protein to meet your targets")
-            if summary["progress"]["calories"] > 110:
+            if summary["progress"].get("calories", 0) > 110:
                 recommendations.append("Watch your portion sizes to stay within calorie goals")
         
         # Check meal timing
         current_hour = datetime.now().hour
-        if current_hour > 20 and summary["meals_pending"] > 0:
+        if current_hour > 20 and summary.get("meals_pending", 0) > 0:
             recommendations.append("Try to eat earlier tomorrow to improve digestion")
         
         return recommendations
+    
+    def _get_hydration_reminder(self) -> str:
+        """Get contextual hydration reminder based on time"""
+        hour = datetime.now().hour
+        
+        reminders = {
+            (6, 9): "Start your day with a glass of water!",
+            (9, 12): "Mid-morning hydration check - aim for 2-3 glasses by now",
+            (12, 15): "Lunch time! Don't forget to hydrate with your meal",
+            (15, 18): "Afternoon reminder: Stay hydrated to avoid the slump",
+            (18, 21): "Evening hydration - have water with dinner",
+            (21, 24): "Light hydration before bed - not too much!"
+        }
+        
+        for time_range, reminder in reminders.items():
+            if time_range[0] <= hour < time_range[1]:
+                return reminder
+        
+        return "Stay hydrated throughout the day!"
+    
+    # Analytics helper methods (complete implementations)
+    def _analyze_meal_timing(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze meal timing patterns"""
+        timing_patterns = {}
+        
+        for meal_type in ["breakfast", "lunch", "dinner", "snack"]:
+            type_logs = [log for log in meal_logs 
+                        if log.meal_type == meal_type and log.consumed_datetime]
+            
+            if type_logs:
+                times = [log.consumed_datetime.hour + log.consumed_datetime.minute/60 
+                        for log in type_logs]
+                timing_patterns[meal_type] = {
+                    "average_time": round(sum(times) / len(times), 1),
+                    "earliest": min(times),
+                    "latest": max(times),
+                    "consistency": self._calculate_time_consistency(times)
+                }
+        
+        return timing_patterns
+    
+    def _analyze_skip_frequency(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze skip frequency patterns"""
+        skip_frequency = {}
+        
+        for meal_type in ["breakfast", "lunch", "dinner", "snack"]:
+            type_logs = [log for log in meal_logs if log.meal_type == meal_type]
+            skipped = [log for log in type_logs if log.was_skipped]
+            
+            if type_logs:
+                skip_frequency[meal_type] = {
+                    "total_planned": len(type_logs),
+                    "total_skipped": len(skipped),
+                    "skip_rate": round((len(skipped) / len(type_logs)) * 100, 1),
+                    "common_reasons": self._get_common_skip_reasons(skipped)
+                }
+        
+        return skip_frequency
+    
+    def _analyze_portion_trends(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze portion size trends"""
+        portion_logs = [log for log in meal_logs 
+                       if log.consumed_datetime and log.portion_multiplier]
+        
+        if not portion_logs:
+            return {"no_data": True}
+        
+        portions = [log.portion_multiplier for log in portion_logs]
+        
+        return {
+            "average_portion": round(sum(portions) / len(portions), 2),
+            "min_portion": min(portions),
+            "max_portion": max(portions),
+            "trend": "increasing" if len(portions) > 5 and portions[-3:] > portions[:3] else "stable",
+            "by_meal_type": self._get_portions_by_meal_type(meal_logs)
+        }
+    
+    def _analyze_favorite_recipes(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze favorite recipes"""
+        recipe_counts = {}
+        for log in meal_logs:
+            if log.recipe_id and log.consumed_datetime:
+                recipe_counts[log.recipe_id] = recipe_counts.get(log.recipe_id, 0) + 1
+        
+        if not recipe_counts:
+            return {"no_data": True}
+        
+        top_recipes = sorted(recipe_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        favorite_recipes = {}
+        
+        for recipe_id, count in top_recipes:
+            recipe = self.db.query(Recipe).filter(Recipe.id == recipe_id).first()
+            if recipe:
+                favorite_recipes[recipe.title] = {
+                    "count": count,
+                    "percentage": round((count / len(meal_logs)) * 100, 1)
+                }
+        
+        return favorite_recipes
+    
+    def _analyze_daily_compliance(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze daily compliance patterns"""
+        daily_compliance = {}
+        
+        # Group by date
+        for log in meal_logs:
+            log_date = log.planned_datetime.date().isoformat()
+            if log_date not in daily_compliance:
+                daily_compliance[log_date] = {"planned": 0, "consumed": 0}
+            
+            daily_compliance[log_date]["planned"] += 1
+            if log.consumed_datetime:
+                daily_compliance[log_date]["consumed"] += 1
+        
+        # Calculate compliance rates
+        compliance_rates = []
+        for date_data in daily_compliance.values():
+            if date_data["planned"] > 0:
+                rate = (date_data["consumed"] / date_data["planned"]) * 100
+                compliance_rates.append(rate)
+        
+        if not compliance_rates:
+            return {"no_data": True}
+        
+        return {
+            "average_compliance": round(sum(compliance_rates) / len(compliance_rates), 1),
+            "best_compliance": max(compliance_rates),
+            "worst_compliance": min(compliance_rates),
+            "consistent_days": len([r for r in compliance_rates if r >= 80])
+        }
+    
+    def _analyze_macro_consistency(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze macro consistency"""
+        consumed_logs = [log for log in meal_logs if log.consumed_datetime]
+        
+        if not consumed_logs:
+            return {"no_data": True}
+        
+        daily_macros = {}
+        for log in consumed_logs:
+            log_date = log.consumed_datetime.date().isoformat()
+            if log_date not in daily_macros:
+                daily_macros[log_date] = {"calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0}
+            
+            macros = self._calculate_meal_macros(log)
+            for key in ["calories", "protein_g", "carbs_g", "fat_g"]:
+                daily_macros[log_date][key] += macros.get(key, 0)
+        
+        if not daily_macros:
+            return {"no_data": True}
+        
+        # Calculate averages and consistency
+        avg_macros = {}
+        for macro in ["calories", "protein_g", "carbs_g", "fat_g"]:
+            values = [day[macro] for day in daily_macros.values()]
+            avg_macros[macro] = {
+                "average": round(sum(values) / len(values), 1),
+                "min": min(values),
+                "max": max(values),
+                "consistency": "high" if max(values) - min(values) < avg_macros.get(macro, {}).get("average", 0) * 0.3 else "moderate"
+            }
+        
+        return avg_macros
+    
+    def _analyze_weekly_patterns(self, meal_logs: List[MealLog]) -> Dict:
+        """Analyze weekly consumption patterns"""
+        weekly_patterns = {}
+        
+        for day in range(7):
+            day_name = ["Monday", "Tuesday", "Wednesday", "Thursday", 
+                       "Friday", "Saturday", "Sunday"][day]
+            day_logs = [log for log in meal_logs 
+                       if log.planned_datetime.weekday() == day]
+            consumed = [log for log in day_logs if log.consumed_datetime]
+            
+            if day_logs:
+                weekly_patterns[day_name] = {
+                    "planned": len(day_logs),
+                    "consumed": len(consumed),
+                    "compliance": round((len(consumed) / len(day_logs)) * 100, 1)
+                }
+        
+        return weekly_patterns
+    
+    def _generate_improvement_insights(self, meal_logs: List[MealLog]) -> List[str]:
+        """Generate actionable improvement insights"""
+        insights = []
+        
+        # Analyze overall compliance
+        consumed = len([log for log in meal_logs if log.consumed_datetime])
+        total = len(meal_logs)
+        
+        if total > 0:
+            compliance_rate = (consumed / total) * 100
+            
+            if compliance_rate < 70:
+                insights.append("Focus on meal prep to improve adherence")
+                insights.append("Consider simpler recipes for busy days")
+            elif compliance_rate < 90:
+                insights.append("Great progress! Small adjustments can get you to 90%+")
+            else:
+                insights.append("Excellent adherence! You're on track for your goals")
+        
+        # Analyze skip patterns
+        skip_reasons = {}
+        for log in meal_logs:
+            if log.was_skipped and log.skip_reason:
+                reasons = skip_reasons.get(log.skip_reason, 0) + 1
+                skip_reasons[log.skip_reason] = reasons
+        
+        if skip_reasons:
+            most_common_reason = max(skip_reasons.items(), key=lambda x: x[1])
+            if "time" in most_common_reason[0].lower():
+                insights.append("Time constraints are your main challenge - try quick recipes")
+            elif "appetite" in most_common_reason[0].lower():
+                insights.append("Consider smaller portions or different meal timing")
+        
+        return insights
     
     def _analyze_trends(self, history: Dict) -> Dict[str, Any]:
         """Analyze consumption trends"""
@@ -957,17 +1168,31 @@ class ConsumptionService:
         
         # Meal timing insights
         if patterns.get("meal_timing"):
-            most_consistent = min(patterns["meal_timing"].items(), 
-                                 key=lambda x: x[1].get("consistency", "inconsistent"))
+            most_consistent = None
+            best_consistency = "inconsistent"
+            
+            for meal_type, timing_data in patterns["meal_timing"].items():
+                consistency = timing_data.get("consistency", "inconsistent")
+                if consistency in ["very_consistent", "consistent"] and (most_consistent is None or consistency == "very_consistent"):
+                    most_consistent = meal_type
+                    best_consistency = consistency
+            
             if most_consistent:
-                insights.append(f"{most_consistent[0].capitalize()} is your most consistent meal")
+                insights.append(f"{most_consistent.capitalize()} is your most consistent meal")
         
         # Skip pattern insights
         if patterns.get("skip_patterns"):
-            most_skipped = max(patterns["skip_patterns"].items(), 
-                              key=lambda x: x[1].get("skip_rate", 0))
-            if most_skipped[1]["skip_rate"] > 30:
-                insights.append(f"Consider adjusting {most_skipped[0]} timing or recipes")
+            highest_skip_rate = 0
+            most_skipped_meal = None
+            
+            for meal_type, skip_data in patterns["skip_patterns"].items():
+                skip_rate = skip_data.get("skip_rate", 0)
+                if skip_rate > highest_skip_rate:
+                    highest_skip_rate = skip_rate
+                    most_skipped_meal = meal_type
+            
+            if highest_skip_rate > 30:
+                insights.append(f"Consider adjusting {most_skipped_meal} timing or recipes (high skip rate)")
         
         # Portion insights
         if patterns.get("portion_patterns"):
@@ -979,25 +1204,12 @@ class ConsumptionService:
         
         # Weekly pattern insights
         if patterns.get("weekly_patterns"):
-            best_day = max(patterns["weekly_patterns"].items(), 
-                          key=lambda x: x[1].get("compliance", 0))
-            worst_day = min(patterns["weekly_patterns"].items(), 
-                           key=lambda x: x[1].get("compliance", 100))
-            
-            if best_day[1]["compliance"] - worst_day[1]["compliance"] > 30:
-                insights.append(f"Compliance varies significantly between {best_day[0]} and {worst_day[0]}")
+            compliances = [(day, data.get("compliance", 0)) for day, data in patterns["weekly_patterns"].items()]
+            if compliances:
+                best_day = max(compliances, key=lambda x: x[1])
+                worst_day = min(compliances, key=lambda x: x[1])
+                
+                if best_day[1] - worst_day[1] > 30:
+                    insights.append(f"Compliance varies significantly between {best_day[0]} and {worst_day[0]}")
         
         return insights
-    
-    def _get_hydration_reminder(self) -> str:
-        """Get contextual hydration reminder"""
-        hour = datetime.now().hour
-        
-        if hour < 10:
-            return "Start your day with a glass of water! Aim for 8-10 glasses today."
-        elif hour < 14:
-            return "Remember to stay hydrated! You should have had 3-4 glasses by now."
-        elif hour < 18:
-            return "Afternoon hydration check! Aim for 2-3 more glasses before evening."
-        else:
-            return "Evening hydration: Have a glass of water, but not too close to bedtime."

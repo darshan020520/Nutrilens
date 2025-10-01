@@ -48,6 +48,18 @@ class MealPlanService:
             self.db.add(meal_plan)
             self.db.commit()
             self.db.refresh(meal_plan)
+            # create meal logging 
+            for day_key, day_data in meal_plan.plan_data['week_plan'].items():
+                for meal_type, meal in day_data['meals'].items():
+                    if meal:
+                        log_entry = MealLog(
+                            user_id=user_id,
+                            recipe_id=meal.get('id'),
+                            planned_datetime=day_data.get('date') or meal_plan.week_start_date,
+                            portion_multiplier=1,
+                            status='planned'
+                        )
+                        self.db.add(log_entry)
             
             logger.info(f"Created meal plan {meal_plan.id} for user {user_id}")
             return MealPlanResponse.from_orm(meal_plan)
@@ -169,6 +181,25 @@ class MealPlanService:
             self._recalculate_plan_totals(meal_plan)
             
             self.db.commit()
+
+            # after swapping the meal lets add the new meal to Meallog 
+
+            log_entry = self.db.query(MealLog).filter_by(user_id=user_id, planned_datetime=swap_request.day, meal_type=swap_request.meal_type).first()
+
+            if log_entry:
+                log_entry.recipe_id = swap_request.new_recipe_id
+                log_entry.status = 'planned'
+            else:
+                log_entry = MealLog(
+                    user_id=user_id,
+                    recipe_id=swap_request.new_recipe_id,
+                    planned_datetime=day_date,
+                    meal_type=swap_request.meal_type,
+                    portion_multiplier=1,
+                    status='planned'
+                )
+                self.db.add(log_entry)
+
             
             logger.info(f"Swapped meal for user {user_id}: day {swap_request.day}, {swap_request.meal_type}")
             
@@ -400,6 +431,27 @@ class MealPlanService:
             self._recalculate_plan_totals(meal_plan)
             
             self.db.commit()
+
+            log_entry = self.db.query(MealLog).filter_by(
+                user_id=user_id,
+                planned_datetime=day_date,
+                meal_type=meal_type
+            ).first()
+
+            if log_entry:
+                log_entry.status = 'eaten_external'
+                log_entry.recipe_id = None
+                log_entry.portion_multiplier = 1
+            else:
+                log_entry = MealLog(
+                    user_id=user_id,
+                    planned_datetime=day_date,
+                    meal_type=meal_type,
+                    status='eaten_external',
+                    portion_multiplier=1
+                )
+                self.db.add(log_entry)
+
             
             return {
                 'success': True,

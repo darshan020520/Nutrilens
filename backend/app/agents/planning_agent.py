@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, List, Optional, Any, Tuple
+from collections import defaultdict
 from sqlalchemy import cast, String
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
@@ -15,11 +16,13 @@ from langchain.schema import BaseMessage
 
 from app.services.final_meal_optimizer import MealPlanOptimizer, OptimizationConstraints
 from app.services.meal_plan_service import MealPlanService
-from app.models.database import MealPlan, Recipe, UserInventory, UserProfile, UserGoal, UserPath, UserPreference
+from app.models.database import MealPlan, Recipe, Item, UserInventory, UserProfile, UserGoal, UserPath, UserPreference, RecipeIngredient, MealLog
 from app.schemas.meal_plan import MealPlanCreate, MealPlanResponse
+from app.schemas.nutrition import RecipeResponse
 from app.schemas.user import ProfileResponse
 
 logger = logging.getLogger(__name__)
+
 
 class PlanningState(Enum):
     """States for planning agent"""
@@ -186,7 +189,7 @@ class PlanningAgent:
                 inventory=self.context.current_inventory
             )
 
-            print("MEAL PLAN", meal_plan)
+            print("MEAL PLAN IN GENERATE WEEKLY API CALL", meal_plan)
             
             if not meal_plan:
                 raise Exception("Optimizer failed to generate plan")
@@ -198,10 +201,12 @@ class PlanningAgent:
             meal_plan['constraints'] = constraints.__dict__
             
             # Calculate grocery list
-            meal_plan['grocery_list'] = self.calculate_grocery_list(meal_plan)
+            meal_plan['grocery_list'] = self.calculate_grocery_list(meal_plan['week_plan'], self.db, user_id)
             
             # Save to database
             saved_plan = self._save_meal_plan(meal_plan)
+
+            self._create_meal_logs(meal_plan)
 
             print("saved_plan", saved_plan)
             
@@ -256,57 +261,106 @@ class PlanningAgent:
             return []
     
     # Tool 3: Calculate Grocery List
-    def calculate_grocery_list(self, meal_plan: Dict) -> Dict:
+    def calculate_grocery_list(self, meal_plan: Dict, db_session, user_id: int) -> Dict[str, Any]:
         """
-        Calculate aggregated grocery list from meal plan
-        
-        Args:
-            meal_plan: Meal plan dictionary
-            
-        Returns:
-            Aggregated grocery list with quantities
+        Build a grocery list from a meal plan.
         """
         try:
-            grocery_list = {}
-            
-            # Iterate through all meals in the plan
-            for day_key, day_data in meal_plan.get('week_plan', {}).items():
-                for meal_name, recipe in day_data.get('meals', {}).items():
-                    if recipe and 'ingredients' in recipe:
-                        for ingredient in recipe['ingredients']:
-                            item_id = ingredient.get('item_id')
-                            quantity = ingredient.get('quantity_g', 0)
-                            
-                            if item_id:
-                                if item_id not in grocery_list:
-                                    grocery_list[item_id] = {
-                                        'quantity_needed': 0,
-                                        'quantity_available': 0,
-                                        'to_buy': 0
-                                    }
-                                
-                                grocery_list[item_id]['quantity_needed'] += quantity
-            
-            # Check against inventory
-            if self.context.current_inventory:
-                for item_id, item_data in grocery_list.items():
-                    available = self.context.current_inventory.get(item_id, 0)
-                    item_data['quantity_available'] = available
-                    item_data['to_buy'] = max(0, item_data['quantity_needed'] - available)
-            
-            # Group by category and add item names
-            categorized = self._categorize_grocery_list(grocery_list)
-            
-            return {
-                'items': grocery_list,
-                'categorized': categorized,
-                'total_items': len(grocery_list),
-                'items_to_buy': sum(1 for item in grocery_list.values() if item['to_buy'] > 0)
+            grocery_list: Dict[int, Dict[str, Any]] = {}
+
+            # --- Step 1: collect recipe IDs ---
+            recipe_ids = [
+                recipe["id"]
+                for day_data in meal_plan.values()
+                for recipe in (day_data.get("meals", {}) or {}).values()
+                if recipe and recipe.get("id")
+            ]
+            if not recipe_ids:
+                # 🔹 Return an EMPTY valid response instead of bare dict
+                return {                                                        # 🔹 CHANGED
+                    "items": {},
+                    "categorized": {},
+                    "total_items": 0,
+                    "items_to_buy": 0,
+                    "estimated_cost": None
+                }
+
+            # --- Step 2: fetch recipe ingredients ---
+            recipe_ingredients = (
+                db_session.query(RecipeIngredient)
+                .filter(RecipeIngredient.recipe_id.in_(recipe_ids))
+                .all()
+            )
+
+            # --- Step 3: map item_id -> Item ---
+            item_ids = list({ri.item_id for ri in recipe_ingredients})
+            items_map = {
+                item.id: item
+                for item in db_session.query(Item).filter(Item.id.in_(item_ids)).all()
             }
-            
+
+            # --- Step 4: user inventory ---
+            inventory_map = {
+                inv.item_id: inv.quantity_grams
+                for inv in db_session.query(UserInventory)
+                .filter(UserInventory.user_id == user_id, UserInventory.item_id.in_(item_ids))
+                .all()
+            }
+
+            # --- Step 5: aggregate ---
+            for ri in recipe_ingredients:
+                if not ri.item_id:
+                    continue
+                if ri.item_id not in grocery_list:
+                    item = items_map.get(ri.item_id)
+                    grocery_list[ri.item_id] = {
+                        "item_id": ri.item_id,                                  # 🔹 ADDED
+                        "item_name": item.canonical_name if item else f"Item {ri.item_id}",
+                        "category": self._normalize_category(                   # 🔹 CHANGED
+                            item.category if item else "other"
+                        ),
+                        "unit": item.unit if item else "g",
+                        "quantity_needed": 0.0,                                 # 🔹 CHANGED: ensure float
+                        "quantity_available": 0.0,                              # 🔹 CHANGED
+                        "to_buy": 0.0,                                          # 🔹 CHANGED
+                    }
+                grocery_list[ri.item_id]["quantity_needed"] += ri.quantity_grams
+
+            # --- Step 6: compute to_buy ---
+            for item_id, data in grocery_list.items():
+                available = inventory_map.get(item_id, 0)
+                data["quantity_available"] = available
+                data["to_buy"] = max(0, data["quantity_needed"] - available)
+
+            # --- Step 7: categorize ---
+            categorized = self._categorize_grocery_list(grocery_list)
+
+            # --- Step 8: convert keys to strings for Pydantic ---
+            items_str_keys = {str(k): v for k, v in grocery_list.items()}
+
+            # 🔹 Placeholder for future cost logic
+            estimated_cost = None                                               # 🔹 ADDED
+
+            return {
+                "items": items_str_keys,
+                "categorized": categorized,
+                "total_items": len(items_str_keys),
+                "items_to_buy": sum(1 for d in grocery_list.values() if d["to_buy"] > 0),
+                "estimated_cost": estimated_cost
+            }
+
         except Exception as e:
-            logger.error(f"Error calculating grocery list: {str(e)}")
-            return {}
+            logger.exception("Error calculating grocery list")                  # 🔹 CHANGED: use exception
+            # 🔹 Return valid but empty response instead of bare dict
+            return {                                                            # 🔹 CHANGED
+                "items": {},
+                "categorized": {},
+                "total_items": 0,
+                "items_to_buy": 0,
+                "estimated_cost": None
+            }
+
+
     
     # Tool 4: Suggest Meal Prep
     def suggest_meal_prep(self, meal_plan: Dict) -> Dict:
@@ -331,33 +385,41 @@ class PlanningAgent:
             recipe_frequency = {}
             prep_intensive = []
             
-            for day_data in meal_plan.get('week_plan', {}).values():
-                for recipe in day_data.get('meals', {}).values():
-                    if recipe:
-                        recipe_id = recipe.get('id')
-                        prep_time = recipe.get('prep_time_min', 0)
-                        cook_time = recipe.get('cook_time_min', 0)
-                        
-                        # Track frequency
-                        if recipe_id not in recipe_frequency:
-                            recipe_frequency[recipe_id] = {
-                                'count': 0,
-                                'recipe': recipe
-                            }
-                        recipe_frequency[recipe_id]['count'] += 1
-                        
-                        # Identify prep-intensive recipes
-                        if prep_time + cook_time > 30:
-                            prep_intensive.append(recipe)
+            for day_key, day_data in meal_plan.items():
+                if not day_key.startswith("day_"):
+                    continue
+                meals = day_data.get("meals", {})
+                for recipe in meals.values():
+                    if not recipe:
+                        continue
+
+                    rid = recipe.get("id")
+                    prep_time = recipe.get("prep_time_min", 0)
+                    cook_time = recipe.get("cook_time_min", 0)
+
+                    # Track frequency
+                    if rid not in recipe_frequency:
+                        recipe_frequency[rid] = {"count": 0, "recipe": recipe}
+                    recipe_frequency[rid]["count"] += 1
+
+                    # Identify prep-intensive (>30 min total)
+                    if prep_time + cook_time > 30:
+                        prep_intensive.append(recipe)
             
             # Suggest batch cooking for repeated recipes
-            for recipe_id, data in recipe_frequency.items():
-                if data['count'] >= 2:
-                    prep_suggestions['batch_cooking'].append({
-                        'recipe': data['recipe']['title'],
-                        'quantity': f"{data['count']} servings",
-                        'benefit': f"Save {(data['count']-1) * data['recipe'].get('cook_time_min', 0)} minutes"
+            for rid, data in recipe_frequency.items():
+                if data["count"] >= 2:
+                    prep_suggestions["batch_cooking"].append({
+                        "recipe": data["recipe"]["title"],
+                        "quantity": f"{data['count']} servings",
+                        "benefit": f"Save {(data['count']-1) * data['recipe'].get('cook_time_min', 0)} minutes"
                     })
+
+            for r in prep_intensive:
+                prep_suggestions["daily_prep"].append(
+                    f"Pre-chop or marinate for '{r['title']}' "
+                    f"(~{r.get('prep_time_min',0)}+{r.get('cook_time_min',0)} min)"
+                )
             
             # Sunday prep for the week
             prep_suggestions['sunday_prep'] = [
@@ -421,7 +483,7 @@ class PlanningAgent:
                 
                 if similarity > 0.7 and time_compatible:
                     alternatives.append({
-                        'recipe': recipe.to_dict(),
+                        'recipe': RecipeResponse.from_orm(recipe),
                         'similarity_score': similarity,
                         'macro_difference': {
                             'calories': recipe.macros_per_serving['calories'] - original_macros['calories'],
@@ -433,6 +495,8 @@ class PlanningAgent:
             
             # Sort by similarity and return top N
             alternatives.sort(key=lambda x: x['similarity_score'], reverse=True)
+
+            print("alternatives", alternatives[:count])
             
             return alternatives[:count]
             
@@ -443,71 +507,95 @@ class PlanningAgent:
     # Tool 6: Adjust Plan for Eating Out
     def adjust_plan_for_eating_out(self, day: int, meal: str, restaurant_calories: int) -> Dict:
         """
-        Adjust remaining meals when eating out
-        
+        Suggest adjusted meals after logging an eating-out event.
+        Does not modify the database—only returns suggestions.
+
         Args:
             day: Day of the week (0-6)
             meal: Meal being replaced (breakfast/lunch/dinner)
             restaurant_calories: Estimated calories from restaurant meal
-            
+
         Returns:
-            Adjusted meal plan for the day
+            Dict containing suggested adjustments or deficit/surplus info.
         """
         try:
             if not self.context.active_meal_plan:
                 return {"error": "No active meal plan"}
-            
+
             plan = self.context.active_meal_plan
+            week_start = plan["week_start_date"]
+            day_date = week_start + timedelta(days=day)
+
             day_key = f"day_{day}"
-            
-            if day_key not in plan['week_plan']:
+            if day_key not in plan["plan_data"]:
                 return {"error": f"Day {day} not in plan"}
-            
-            day_plan = plan['week_plan'][day_key]
-            
-            # Calculate remaining calorie budget
-            daily_target = self.context.user_profile.get('goal_calories', 2000)
-            remaining_calories = daily_target - restaurant_calories
-            
-            # Adjust other meals for the day
-            meals_to_adjust = [m for m in day_plan['meals'] if m != meal]
-            calories_per_meal = remaining_calories / len(meals_to_adjust) if meals_to_adjust else 0
-            
+
+            day_plan = plan["plan_data"][day_key]
+
+            print("day plan", day_plan)
+            daily_target = day_plan.get("day_calories") or self.context.user_profile.get("goal_calories", 2000)
+
+            # 1️⃣ Get calories already consumed earlier today from MealLog
+            consumed_calories = self._get_consumed_calories(user_id=self.context.user_profile["id"], day=day_date, skip_meal=meal, plan_day_data=day_plan)
+
+            # 2️⃣ Add restaurant calories to consumed
+            consumed_with_restaurant = consumed_calories + restaurant_calories
+
+            # 3️⃣ Find remaining meals in today's plan (excluding current meal)
+            meal_order = list(day_plan["meals"].keys())
+            current_index = meal_order.index(meal) if meal in meal_order else -1
+            remaining_meals = meal_order[current_index + 1 :] if current_index >= 0 else []
+
+            print("")
+
+            # 4️⃣ If no meals remain, return surplus/deficit info
+            if not remaining_meals:
+                surplus_deficit = consumed_with_restaurant - daily_target
+                return {
+                    "adjusted_day": day,
+                    "message": f"No remaining meals today. Net {'surplus' if surplus_deficit > 0 else 'deficit'}: {abs(surplus_deficit)} kcal",
+                    "consumed": consumed_with_restaurant,
+                    "daily_target": daily_target,
+                }
+
+            # 5️⃣ Calculate remaining calories for the rest of the day
+            remaining_calories = max(0, daily_target - consumed_with_restaurant)
+            calories_per_meal = remaining_calories / len(remaining_meals)
+
+            # 6️⃣ Suggest adjusted recipes for remaining meals
             adjusted_meals = {}
-            
-            for meal_name in meals_to_adjust:
-                # Find a recipe close to target calories
-                suitable_recipes = self._find_recipes_by_calories(
-                    calories_per_meal,
-                    tolerance=0.2,
-                    meal_type=meal_name
+            for meal_name in remaining_meals:
+                candidates = self._find_recipes_by_calories(
+                    calories_per_meal, tolerance=0.2, meal_type=meal_name
                 )
-                
-                if suitable_recipes:
-                    adjusted_meals[meal_name] = suitable_recipes[0]
-            
-            # Update the plan
+                if candidates:
+                    adjusted_meals[meal_name] = candidates[0]
+
+        
+
+            # Include the external meal for clarity in the suggestion payload
             adjusted_meals[meal] = {
-                'title': 'Eating Out',
-                'macros_per_serving': {
-                    'calories': restaurant_calories,
-                    'protein_g': restaurant_calories * 0.3 / 4,  # Estimate
-                    'carbs_g': restaurant_calories * 0.4 / 4,
-                    'fat_g': restaurant_calories * 0.3 / 9
+                "title": "Eating Out",
+                "macros_per_serving": {
+                    "calories": restaurant_calories,
+                    "protein_g": restaurant_calories * 0.3 / 4,
+                    "carbs_g": restaurant_calories * 0.4 / 4,
+                    "fat_g": restaurant_calories * 0.3 / 9,
                 },
-                'is_external': True
+                "is_external": True,
             }
-            
+
+            print("adjusted_meals", adjusted_meals)
+
             return {
-                'adjusted_day': day,
-                'meals': adjusted_meals,
-                'total_calories': sum(
-                    m['macros_per_serving']['calories'] 
-                    for m in adjusted_meals.values()
-                ),
-                'message': f"Adjusted meals for day {day+1} to accommodate eating out"
+                "adjusted_day": day,
+                "meals": adjusted_meals,
+                "remaining_calories": remaining_calories,
+                "consumed_so_far": consumed_with_restaurant,
+                "daily_target": daily_target,
+                "message": f"Suggested adjustments for day {day+1} after eating out",
             }
-            
+
         except Exception as e:
             logger.error(f"Error adjusting for eating out: {str(e)}")
             return {"error": str(e)}
@@ -854,28 +942,30 @@ class PlanningAgent:
         avg_diff = sum(differences) / len(differences)
         return max(0, 1 - avg_diff)
     
-    def _categorize_grocery_list(self, grocery_list: Dict) -> Dict:
-        """Categorize grocery items by type"""
-        categories = {
-            'proteins': [],
-            'grains': [],
-            'vegetables': [],
-            'fruits': [],
-            'dairy': [],
-            'pantry': [],
-            'other': []
-        }
-        
-        # TODO: Implement categorization logic based on item database
-        # For now, return a simple structure
+    def _categorize_grocery_list(self, grocery_list: Dict[int, Dict[str, Any]]) -> Dict[str, List[Dict]]:
+        categories = defaultdict(list)
         for item_id, data in grocery_list.items():
-            if data['to_buy'] > 0:
-                categories['other'].append({
-                    'item_id': item_id,
-                    'quantity': data['to_buy']
+            if data["to_buy"] > 0:
+                
+                cat = self._normalize_category(data.get("category", "other") or "other")  
+
+                categories[cat].append({                                        
+                    "item_id": item_id,
+                    "item_name": data["item_name"],
+                    "category": cat,                                           
+                    "unit": data["unit"],
+                    "quantity_needed": data["quantity_needed"],                  
+                    "quantity_available": data["quantity_available"],            
+                    "to_buy": data["to_buy"]                                    
                 })
-        
         return categories
+    
+
+    def _normalize_category(self, category: str) -> str:
+        mapping = {"fats": "fat"}  # Extend as needed
+        return mapping.get(category.lower(), category.lower())
+
+
     
     def _find_recipes_by_calories(self, target_calories: float, tolerance: float, meal_type: str) -> List[Dict]:
         """Find recipes within calorie range"""
@@ -883,7 +973,7 @@ class PlanningAgent:
         max_cal = target_calories * (1 + tolerance)
         
         recipes = self.db.query(Recipe).filter(
-            Recipe.suitable_meal_times.contains([meal_type])
+            cast(Recipe.suitable_meal_times, String).contains(meal_type)
         ).all()
         
         suitable = []
@@ -891,6 +981,8 @@ class PlanningAgent:
             calories = recipe.macros_per_serving.get('calories', 0)
             if min_cal <= calories <= max_cal:
                 suitable.append(recipe.to_dict())
+
+        print("suitable meals", suitable)
         
         return suitable
     
@@ -922,6 +1014,8 @@ class PlanningAgent:
                 user_id=meal_plan['user_id'],
                 is_active=True
             ).update({'is_active': False})
+
+            print("during saving grocery list", meal_plan.get('grocery_list', {}))
             
             # Create new plan
             new_plan = MealPlan(
@@ -946,3 +1040,78 @@ class PlanningAgent:
             self.db.rollback()
             logger.error(f"Error saving meal plan: {str(e)}")
             raise
+
+    def _create_meal_logs(self, meal_plan: Dict):
+        """
+        Create MealLog entries for each planned meal in the weekly plan.
+        Matches the MealLog model exactly.
+        """
+        try:
+            logs_to_add = []
+            start_date = datetime.fromisoformat(meal_plan['start_date'])
+            print("printing meal plan format inside MealLog save function",meal_plan.get('week_plan', {}))
+            for day_key, day_data in meal_plan.get('week_plan', {}).items():
+                # Extract the numeric day offset (e.g., 'day_0' → 0)
+                day_offset = int(day_key.split('_')[1])
+                planned_date = start_date + timedelta(days=day_offset)
+
+                for meal_name, recipe in day_data.get('meals', {}).items():
+                    if not recipe:
+                        continue  # Skip empty meal slots
+                    
+                    logs_to_add.append(
+                        MealLog(
+                            user_id=self.context.user_id,
+                            recipe_id=recipe['id'],
+                            meal_type=meal_name,
+                            planned_datetime=planned_date,
+                            consumed_datetime=None,
+                            was_skipped=False,
+                            skip_reason=None,
+                            portion_multiplier=1.0,
+                            notes=None,
+                            external_meal=None
+                        )
+                    )
+
+            if logs_to_add:
+                self.db.bulk_save_objects(logs_to_add)
+                self.db.commit()
+                logger.info(f"Created {len(logs_to_add)} MealLog entries for user {self.context.user_id}")
+            else:
+                logger.warning("No MealLog entries to create—meal plan may be empty.")
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Failed to create MealLog entries: {str(e)}")
+
+    def _get_consumed_calories(self, user_id: int, day: datetime, skip_meal: str, plan_day_data: Dict) -> int:
+        """
+        Sum calories consumed for a given day using MealLog entries.
+        Fallback: if a meal isn't logged, use its planned calories from the meal plan.
+        """
+        consumed = 0
+        # Fetch all MealLog entries for the user/day
+
+        start_dt = datetime.combine(day.date(), datetime.min.time())
+        end_dt = datetime.combine(day.date(), datetime.max.time())
+        logs = self.db.query(MealLog).filter(
+                    MealLog.user_id == user_id,
+                    MealLog.consumed_datetime >= start_dt,
+                    MealLog.consumed_datetime <= end_dt,
+                    MealLog.was_skipped == False
+                ).all()
+
+        logged_meals = {log.meal_type: log for log in logs}
+        for meal_type, meal_data in plan_day_data.get("meals", {}).items():
+            if meal_type == skip_meal:
+                continue
+            if meal_type in logged_meals:
+                log = logged_meals[meal_type]
+                if log.external_meal:
+                    consumed += log.external_meal.get("calories", 0)
+                else:
+                    consumed += meal_data.get("macros_per_serving", {}).get("calories", 0)
+            else:
+                consumed += meal_data.get("macros_per_serving", {}).get("calories", 0)
+
+        return int(consumed)

@@ -19,12 +19,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - nutrilens-network
 
   redis:
     image: redis:7
     restart: unless-stopped
     ports:
       - "6379:6379"
+    networks:
+      - nutrilens-network
 
   minio:
     image: minio/minio:latest
@@ -40,6 +44,8 @@ services:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
       interval: 10s
       retries: 3
+    networks:
+      - nutrilens-network
 
 
   api:
@@ -61,6 +67,35 @@ services:
     ports:
       - "8000:8000"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - nutrilens-network
+
+  # Add this service to existing docker-compose.yml
+  notification-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python -m app.workers.notification_worker
+    environment:
+      DATABASE_URL: postgresql://nutri:nutri@postgres:5432/nutrilens
+      REDIS_URL: redis://redis:6379/0
+      # Add notification service credentials when ready:
+      # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      # FROM_EMAIL: ${FROM_EMAIL}
+      # TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      # TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+    networks:
+      - nutrilens-network
+    restart: unless-stopped
+
+networks:
+  nutrilens-network:
+    driver: bridge
 
 volumes:
   pgdata:

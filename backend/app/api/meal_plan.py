@@ -18,7 +18,8 @@ from app.schemas.meal_plan import (
     MealLogCreate,
     GeneratePlanRequest,
     AlternativesResponse,
-    GroceryListResponse
+    GroceryListResponse,
+    EatingOutRequest
 )
 
 router = APIRouter(prefix="/meal-plans", tags=["meal-plans"])
@@ -35,9 +36,7 @@ async def generate_meal_plan(
     """
     try:
         # Initialize planning agent
-        print(" here ")
         agent = PlanningAgent(db)
-        print("here agent", agent)
         await agent.initialize_context(current_user.id)
         print("current user id", current_user.id)
         
@@ -108,6 +107,32 @@ async def adjust_meal_plan(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.get("/{recipe_id}/alternatives", response_model=List[Dict])
+async def get_recipe_alternatives(
+    recipe_id: int,
+    count: int = Query(3, ge=1, le=10, description="Number of alternatives to return"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get alternative recipes with similar macros and compatible meal times.
+    """
+    try:
+        agent = PlanningAgent(db)
+        alternatives = agent.find_recipe_alternatives(recipe_id, count)
+
+        if not alternatives:
+            raise HTTPException(status_code=404, detail="No alternative recipes found")
+
+        return alternatives
+
+    except HTTPException:
+        # re-raise custom HTTP exceptions
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch alternatives: {str(e)}")
 
 @router.post("/{plan_id}/swap-meal")
 async def swap_meal(
@@ -156,16 +181,20 @@ async def get_grocery_list(
     try:
         # Get meal plan
         service = MealPlanService(db)
+        print("getting current plan for", current_user.id)
+        print("plan id", plan_id)
         plan = service.get_meal_plan_by_id(plan_id, current_user.id)
         
         if not plan:
             raise HTTPException(status_code=404, detail="Meal plan not found")
         
+        print("got meal plan for", plan.dict()['plan_data'])
+        
         # Calculate grocery list using agent
         agent = PlanningAgent(db)
         await agent.initialize_context(current_user.id)
-        grocery_list = agent.calculate_grocery_list(plan.dict())
-        
+        grocery_list = agent.calculate_grocery_list(plan.dict()['plan_data'], db_session=db, user_id=current_user.id)
+        print("grocery list from api point", grocery_list)
         return grocery_list
         
     except Exception as e:
@@ -205,25 +234,27 @@ async def get_meal_history(
 
 @router.post("/eating-out")
 async def adjust_for_eating_out(
-    day: int,
-    meal_type: str,
-    external_calories: int,
+    payload: EatingOutRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Adjust meal plan when eating out
+    Suggest adjusted meals when eating out (agent function).
+    Returns suggestions only; does not modify the DB.
     """
     try:
-        service = MealPlanService(db)
-        result = service.adjust_for_eating_out(
-            current_user.id, 
-            day, 
-            meal_type, 
-            external_calories
-        )
-        return result
+        # Initialize agent with user context
+        agent = PlanningAgent(db)
+        await agent.initialize_context(current_user.id)
         
+        # Call agent function to get suggested adjustments
+        suggestions = agent.adjust_plan_for_eating_out(
+            day=payload.day,
+            meal=payload.meal_type,
+            restaurant_calories=payload.external_calories
+        )
+        return suggestions
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -248,7 +279,7 @@ async def get_meal_prep_suggestions(
         # Get suggestions from agent
         agent = PlanningAgent(db)
         await agent.initialize_context(current_user.id)
-        suggestions = agent.suggest_meal_prep(plan.dict())
+        suggestions = agent.suggest_meal_prep(plan.dict()['plan_data'])
         
         return suggestions
         

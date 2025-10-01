@@ -119,19 +119,19 @@ class AlternativesResponse(BaseModel):
 
 class GroceryItemDetail(BaseModel):
     item_id: int
-    item_name: Optional[str]
+    item_name: str
+    category: str
+    unit: str
     quantity_needed: float
     quantity_available: float
     to_buy: float
-    unit: Optional[str] = "grams"
-    category: Optional[str]
 
 class GroceryListResponse(BaseModel):
-    items: Dict[int, Dict[str, float]]
+    items: Dict[str, GroceryItemDetail]  # Strong typing
     categorized: Dict[str, List[GroceryItemDetail]]
     total_items: int
     items_to_buy: int
-    estimated_cost: Optional[float]
+    estimated_cost: Optional[float] = None  # Optional placeholder
 
 class MealScheduleItem(BaseModel):
     time: str
@@ -160,3 +160,10 @@ class BulkCookingSuggestion(BaseModel):
     time_saved: Optional[int]
     storage_tip: Optional[str]
     items: Optional[List[str]]
+
+class EatingOutRequest(BaseModel):
+    day: int
+    meal_type: str
+    external_calories: int
+    restaurant_name: Optional[str] = None
+    meal_notes: Optional[str] = None

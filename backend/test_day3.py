@@ -8,7 +8,7 @@ def get_auth_token():
     """Get authentication token"""
     response = requests.post(
         f"{BASE_URL}/auth/login",
-        data={"username": "test@nutrilens.ai", "password": "TestPass123"}
+        data={"username": "darsh@nutrilens.ai", "password": "TestPass123"}
     )
     if response.status_code == 200:
         return response.json()['access_token']
@@ -34,14 +34,8 @@ def test_day3_implementation():
     500g chicken breast
     1 litre milk
     3 piece onion
-    tomatoes 500g
-    panner 200g
-    1 dozen eggs
-    brocoli 300g
-    2 packet maggi noodles
-    organic spinach 250g
-    basmati rice 5kg
-    masoor daal 1kg
+    tomatoes 200g
+    panner 500g
     """
     
     response = requests.post(

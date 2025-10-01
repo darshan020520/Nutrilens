@@ -12,7 +12,7 @@ def test_day1_implementation():
     # Test 1: Register a new user
     print("1. Testing user registration...")
     register_data = {
-        "email": "test4@nutrilens.ai",
+        "email": "darsh@nutrilens.ai",
         "password": "TestPass123"
     }
     response = requests.post(f"{BASE_URL}/auth/register", json=register_data)
@@ -27,7 +27,7 @@ def test_day1_implementation():
     # Test 2: Login
     print("\n2. Testing login...")
     login_data = {
-        "username": "test@nutrilens.ai",  # OAuth2 uses username field
+        "username": "darsh@nutrilens.ai",  # OAuth2 uses username field
         "password": "TestPass123"
     }
     response = requests.post(
@@ -57,10 +57,10 @@ def test_day1_implementation():
     # Test 4: Submit basic info
     print("\n4. Testing onboarding - basic info...")
     profile_data = {
-        "name": "John Doe",
-        "age": 30,
-        "height_cm": 175,
-        "weight_kg": 75,
+        "name": "Darsh",
+        "age": 25,
+        "height_cm": 178,
+        "weight_kg": 70,
         "sex": "male",
         "activity_level": "moderately_active",
         "medical_conditions": []
@@ -82,7 +82,7 @@ def test_day1_implementation():
     print("\n5. Testing goal selection...")
     goal_data = {
         "goal_type": "muscle_gain",
-        "target_weight": 80,
+        "target_weight": 85,
         "macro_targets": {
             "protein": 0.30,
             "carbs": 0.45,
@@ -121,7 +121,7 @@ def test_day1_implementation():
     print("\n7. Testing preferences...")
     pref_data = {
         "dietary_type": "non_vegetarian",
-        "allergies": ["nuts"],
+        "allergies": ["nuts, seeds"],
         "disliked_ingredients": ["broccoli"],
         "cuisine_preferences": ["indian", "continental"],
         "max_prep_time_weekday": 30,

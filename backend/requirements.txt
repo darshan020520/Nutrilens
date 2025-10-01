@@ -34,4 +34,8 @@ pytest
 pytest-asyncio 
 pytest-cov 
 pytest-mock
+#Notification service
+firebase-admin==6.2.0
+sendgrid==6.10.0
+twilio==8.10.0
 
