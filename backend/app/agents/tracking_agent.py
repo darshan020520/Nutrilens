@@ -113,6 +113,8 @@ class TrackingAgent:
             alerts=alerts,
             consumption_patterns=consumption_patterns
         )
+
+        
     
     def _generate_intelligent_alerts(self, inventory_items: List[Dict]) -> List[Dict]:
         """Generate intelligent alerts from inventory data"""
@@ -473,6 +475,8 @@ class TrackingAgent:
 
                 # FIX: CHECK FOR ACHIEVEMENTS AND SEND NOTIFICATIONS
                 achievements = self._check_meal_achievements(result)
+
+                print("achievements", achievements)
                 for achievement in achievements:
                     try:
                         await self.notification_service.send_achievement(
@@ -706,6 +710,8 @@ class TrackingAgent:
             
             # Sort by urgency (expired first, then by days)
             expiring_items.sort(key=lambda x: (x["days_until_expiry"], x["item"]))
+
+            print("expiring items", expiring_items)
 
             # FIX: SEND NOTIFICATION FOR URGENT EXPIRING ITEMS
             urgent_items = [item for item in expiring_items if item["priority"] == "urgent"]
@@ -1501,6 +1507,7 @@ class TrackingAgent:
     def get_state(self) -> Dict:
         """Get current tracking state"""
         return self.state.to_dict()
+        
     
 
 

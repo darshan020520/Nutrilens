@@ -37,7 +37,6 @@ class ConsumptionService:
         try:
             # Start atomic transaction
             meal_log = None
-            print("meal data before consumption", meal_data)
             
             # Get or create meal log
             if meal_data.get("meal_log_id"):
@@ -49,7 +48,7 @@ class ConsumptionService:
                         MealLog.user_id == user_id
                     )
                 ).first()
-                print("meal log found in database", meal_log)
+
                 
                 if not meal_log:
                     return {"status": "error", "error": "Meal log not found"}
@@ -77,7 +76,7 @@ class ConsumptionService:
             
             # Auto-deduct ingredients from inventory
             inventory_changes = []
-            print("going to deduct ingredients", meal_log.recipe_id)
+
             if meal_log.recipe_id:
                 deduction_result = self.auto_deduct_ingredients(
                     recipe_id=meal_log.recipe_id,
@@ -89,16 +88,16 @@ class ConsumptionService:
             # Calculate consumed macros
             macros = self._calculate_meal_macros(meal_log)
 
-            print("macros", macros)
+
             
             # Get updated daily totals
             daily_totals = self._get_daily_totals_optimized(user_id)
 
-            print("daily consumption", daily_totals)
+
             
             # Get remaining targets
             remaining_targets = self._calculate_remaining_targets(user_id, daily_totals)
-            print("remaining_targets", remaining_targets)
+
             
             return {
                 "status": "success",
@@ -273,11 +272,11 @@ class ConsumptionService:
             
             # Analyze skip patterns
             skip_analysis = self._analyze_skip_patterns(user_id, meal_log.meal_type)
-            print("skip_analysis", skip_analysis)
+
             
             # Recalculate adherence
             adherence = self._calculate_daily_adherence(user_id)
-            print("adherence", adherence)
+
             
             return {
                 "success": True,

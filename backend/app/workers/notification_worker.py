@@ -39,6 +39,7 @@ class NotificationWorker:
     
     async def run(self):
         """Main worker loop - handles all notification types"""
+        print("")
         logger.info("Starting complete notification worker...")
         
         while not self.should_stop:
@@ -53,6 +54,7 @@ class NotificationWorker:
                 await self._process_scheduled_notifications(notification_service, consumption_service)
                 
                 # NEW: Handle meal reminders
+                print("calling process meal reminders")
                 await self._process_meal_reminders(notification_service, db)
                 
             except Exception as e:
@@ -108,6 +110,7 @@ class NotificationWorker:
              (current_time - self.last_meal_reminder_check).total_seconds() >= 300)):
             
             try:
+                print("triggering the trigger process meal reminders")
                 await self._trigger_meal_reminders(notification_service, db)
                 self.last_meal_reminder_check = current_time
                 
@@ -133,6 +136,8 @@ class NotificationWorker:
                     MealLog.was_skipped == False
                 )
             ).all()
+
+            print("generated upcoming_meals", upcoming_meals)
             
             reminder_count = 0
             
@@ -143,6 +148,7 @@ class NotificationWorker:
                         
                         if 25 <= time_until <= 35:
                             # CALL THE API METHOD - This will queue the notification properly
+                            print("calling meal reminder for user {} meal {}").format(meal.user_id, meal.recipe.title)
                             await notification_service.send_meal_reminder(
                                 user_id=meal.user_id,
                                 meal_type=meal.meal_type,
@@ -227,10 +233,38 @@ async def run_notification_queue_processor():
         finally:
             db.close()
 
+
 async def main():
-    """Main entry point"""
-    worker = NotificationWorker()
-    await worker.run()
+    """Main entry point - supports producer, consumer, or both"""
+    
+    # Check if command line argument provided
+    if len(sys.argv) > 1:
+        mode = sys.argv[1].lower()
+        
+        if mode == "producer":
+            logger.info("Starting in PRODUCER mode (worker only)")
+            worker = NotificationWorker()
+            await worker.run()
+            
+        elif mode == "consumer":
+            logger.info("Starting in CONSUMER mode (queue processor only)")
+            await run_notification_queue_processor()
+            
+        else:
+            logger.error(f"Unknown mode: {mode}")
+            logger.info("Usage: python -m app.workers.notification_worker [producer|consumer]")
+            logger.info("  producer - Run worker that triggers notifications")
+            logger.info("  consumer - Run queue processor that sends notifications")
+            logger.info("  (no arg) - Run both together")
+            sys.exit(1)
+    else:
+        # No argument - run both
+        logger.info("Starting in BOTH mode (worker + queue processor)")
+        worker = NotificationWorker()
+        await asyncio.gather(
+            worker.run(),
+            run_notification_queue_processor()
+        )
 
 if __name__ == "__main__":
     asyncio.run(main())

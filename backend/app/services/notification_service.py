@@ -11,6 +11,8 @@ import asyncio
 import logging
 import json
 import redis
+import os
+import sys
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
@@ -21,6 +23,25 @@ from app.models.database import (
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+
+async def _mock_send_provider(notification_data: Dict, provider_name: str) -> bool:
+    """Mock provider function for testing - prints data and returns success"""
+    print("\n" + "="*60)
+    print(f"📧 MOCK [{provider_name.upper()}] NOTIFICATION SENT")
+    print("="*60)
+    print(f"User ID      : {notification_data.get('user_id')}")
+    print(f"Type         : {notification_data.get('type')}")
+    print(f"Priority     : {notification_data.get('priority')}")
+    print(f"Title        : {notification_data.get('title')}")
+    print(f"Body         : {notification_data.get('body')}")
+    print(f"Data         : {notification_data.get('data', {})}")
+    print(f"Created At   : {notification_data.get('created_at')}")
+    print("="*60)
+    print(f"✅ {provider_name.upper()} notification sent successfully (MOCKED)")
+    print("="*60 + "\n")
+    return True
 
 class NotificationType(str, Enum):
     MEAL_REMINDER = "meal_reminder"
@@ -153,6 +174,7 @@ class NotificationService:
             "created_at": datetime.utcnow().isoformat()
         }
         
+        
         return await self._queue_notification(notification_data)
     
     async def send_inventory_alert(
@@ -191,6 +213,8 @@ class NotificationService:
             "action_url": "/inventory",
             "created_at": datetime.utcnow().isoformat()
         }
+
+        print("notification data befor adding to queue", notification_data)
         
         return await self._queue_notification(notification_data)
     
@@ -309,6 +333,8 @@ class NotificationService:
         try:
             # Get user preferences
             preferences = self._get_user_preferences(notification_data["user_id"])
+
+            print("get notification prefrences", preferences)
             
             # Check if user wants this type of notification
             notification_type = notification_data["type"]
@@ -323,6 +349,7 @@ class NotificationService:
             
             # Add to Redis queue based on priority
             queue_name = f"notifications:{notification_data['priority']}"
+
             
             # Add retry count and attempt tracking
             notification_data["retry_count"] = 0
@@ -330,7 +357,12 @@ class NotificationService:
             notification_data["queued_at"] = datetime.utcnow().isoformat()
             
             # Push to Redis queue
-            self.redis_client.lpush(queue_name, json.dumps(notification_data))
+            print("notification data befor pushing to queue", notification_data)
+
+
+            result = self.redis_client.lpush(queue_name, json.dumps(notification_data))
+
+
             
             logger.info(f"Queued {notification_type} notification for user {notification_data['user_id']}")
             return True
@@ -368,9 +400,12 @@ class NotificationService:
     async def process_notification_queue(self):
         """Main queue processor - runs continuously"""
         logger.info("Starting notification queue processor")
+
+        print("STARTING NOTIFICATION QUEUE")
         
         while True:
             try:
+                print("STARTING _process_priority_queue")
                 await asyncio.gather(
                     self._process_priority_queue("urgent"),
                     self._process_priority_queue("high"),
@@ -460,6 +495,7 @@ class NotificationService:
                     success = await self._send_via_provider(notification_data, provider)
                     
                     if success:
+                        print("proceeding to log the notification")
                         # Log successful notification
                         self._log_notification(notification_data, provider, "sent")
                         return True
@@ -478,15 +514,16 @@ class NotificationService:
     
     async def _send_via_provider(self, notification_data: Dict, provider: NotificationProvider) -> bool:
         """Send notification via specific provider"""
-        
+
+
         if provider == NotificationProvider.PUSH:
-            return await self._send_push_notification(notification_data)
+            return await _mock_send_provider(notification_data, "PUSH")
         elif provider == NotificationProvider.EMAIL:
-            return await self._send_email_notification(notification_data)
+            return await _mock_send_provider(notification_data, "EMAIL")
         elif provider == NotificationProvider.SMS:
-            return await self._send_sms_notification(notification_data)
+            return await _mock_send_provider(notification_data, "SMS")
         elif provider == NotificationProvider.WHATSAPP:
-            return await self._send_whatsapp_notification(notification_data)
+            return await _mock_send_provider(notification_data, "WHATSAPP")
         else:
             logger.error(f"Unknown provider: {provider}")
             return False
@@ -919,5 +956,6 @@ async def start_notification_processor(db_session_factory):
         try:
             await run_processor()
         except Exception as e:
+            print("Restarting notification processor after error:", str(e))
             logger.error(f"Restarting notification processor after error: {str(e)}")
             await asyncio.sleep(10)  # Wait before restart

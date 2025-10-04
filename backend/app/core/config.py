@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     firebase_credentials_path: str
 
     sendgrid_api_key: str
+    from_email: str
 
     twilio_account_sid: str
     twilio_auth_token: str

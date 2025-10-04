@@ -75,15 +75,29 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: python -m app.workers.notification_worker
+    command: python -m app.workers.notification_worker producer
     environment:
       DATABASE_URL: postgresql://nutri:nutri@postgres:5432/nutrilens
       REDIS_URL: redis://redis:6379/0
-      # Add notification service credentials when ready:
-      # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
-      # FROM_EMAIL: ${FROM_EMAIL}
-      # TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
-      # TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+    networks:
+      - nutrilens-network
+    restart: unless-stopped
+
+  
+  notification-processor:
+    build:
+        context: ./backend
+        dockerfile: Dockerfile
+    image: nutrilens/backend:latest
+    command: python -m app.workers.notification_worker consumer
+    environment:
+      - DATABASE_URL=postgresql://...
+      - REDIS_HOST=redis
     depends_on:
       - postgres
       - redis
