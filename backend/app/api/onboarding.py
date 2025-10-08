@@ -6,6 +6,7 @@ from app.schemas.user import (
     GoalCreate, PathSelection, PreferenceCreate,
     OnboardingTargets
 )
+from datetime import datetime
 from app.services.onboarding import OnboardingService
 from app.services.auth import oauth2_scheme, get_current_user
 
@@ -23,19 +24,35 @@ def get_current_user_from_token(token: str = Depends(oauth2_scheme), db: Session
         )
     return user
 
-@router.post("/basic-info", response_model=ProfileResponse)
+@router.post("/basic-info")
 def submit_basic_info(
     profile_data: ProfileCreate,
     current_user: User = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     """Submit basic user information"""
+    # Complete profile
+    print("going to create profile")
     profile = onboarding_service.complete_profile(
         db, 
         current_user.id, 
         profile_data.dict()
     )
-    return profile
+    
+    # Update onboarding tracking
+    if not current_user.onboarding_started_at:
+        current_user.onboarding_started_at = datetime.utcnow()
+    
+    current_user.basic_info_completed = True
+    current_user.onboarding_current_step = 2
+    db.commit()
+    
+    return {
+        "success": True,
+        "data": profile,
+        "message": "Basic information saved successfully",
+        "next_step": "/onboarding/goal-selection"
+    }
 
 @router.post("/goal-selection")
 def select_goal(
@@ -44,15 +61,37 @@ def select_goal(
     db: Session = Depends(get_db)
 ):
     """Select fitness goal"""
+    # Validate prerequisite
+    if not current_user.basic_info_completed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "PREREQUISITE_NOT_MET",
+                "message": "Please complete basic information first",
+                "redirect_to": "/onboarding/basic-info"
+            }
+        )
+    
+    # Set goal
     goal = onboarding_service.set_user_goal(
         db,
         current_user.id,
         goal_data.dict()
     )
+    
+    # Update tracking
+    current_user.goal_selection_completed = True
+    current_user.onboarding_current_step = 3
+    db.commit()
+    
     return {
+        "success": True,
+        "data": {
+            "goal_type": goal.goal_type,
+            "macro_targets": goal.macro_targets
+        },
         "message": "Goal set successfully",
-        "goal_type": goal.goal_type,
-        "macro_targets": goal.macro_targets
+        "next_step": "/onboarding/path-selection"
     }
 
 @router.post("/path-selection")
@@ -62,16 +101,38 @@ def select_path(
     db: Session = Depends(get_db)
 ):
     """Select eating path/strategy"""
+    # Validate prerequisite
+    if not current_user.goal_selection_completed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "PREREQUISITE_NOT_MET",
+                "message": "Please complete goal selection first",
+                "redirect_to": "/onboarding/goal-selection"
+            }
+        )
+    
+    # Set path
     path = onboarding_service.set_user_path(
         db,
         current_user.id,
         path_data.dict()
     )
+    
+    # Update tracking
+    current_user.path_selection_completed = True
+    current_user.onboarding_current_step = 4
+    db.commit()
+    
     return {
+        "success": True,
+        "data": {
+            "path_type": path.path_type,
+            "meals_per_day": path.meals_per_day,
+            "meal_windows": path.meal_windows
+        },
         "message": "Path set successfully",
-        "path_type": path.path_type,
-        "meals_per_day": path.meals_per_day,
-        "meal_windows": path.meal_windows
+        "next_step": "/onboarding/preferences"
     }
 
 @router.post("/preferences")
@@ -81,15 +142,38 @@ def set_preferences(
     db: Session = Depends(get_db)
 ):
     """Set dietary preferences"""
+    # Validate prerequisite
+    if not current_user.path_selection_completed:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "PREREQUISITE_NOT_MET",
+                "message": "Please complete path selection first",
+                "redirect_to": "/onboarding/path-selection"
+            }
+        )
+    
+    # Set preferences
     preferences = onboarding_service.set_user_preferences(
         db,
         current_user.id,
         pref_data.dict()
     )
+    
+    # Complete onboarding
+    current_user.preferences_completed = True
+    current_user.onboarding_completed = True
+    current_user.onboarding_completed_at = datetime.utcnow()
+    db.commit()
+    
     return {
-        "message": "Preferences set successfully",
-        "dietary_type": preferences.dietary_type,
-        "allergies": preferences.allergies
+        "success": True,
+        "data": {
+            "dietary_type": preferences.dietary_type,
+            "allergies": preferences.allergies
+        },
+        "message": "Onboarding complete! Welcome to NutriLens AI.",
+        "redirect_to": "/dashboard"
     }
 
 @router.get("/calculated-targets", response_model=OnboardingTargets)

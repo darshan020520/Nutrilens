@@ -53,9 +53,26 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     created_at: datetime
+    last_login: Optional[datetime]
+    
+    # Onboarding status (ADD THESE)
+    onboarding_completed: bool
+    onboarding_current_step: int
+    basic_info_completed: bool
+    goal_selection_completed: bool
+    path_selection_completed: bool
+    preferences_completed: bool
     
     class Config:
         from_attributes = True
+
+# Add new schema for onboarding status
+class OnboardingStatus(BaseModel):
+    completed: bool
+    current_step: int
+    completed_steps: List[int]
+    redirect_to: str
+    next_step_name: Optional[str]
 
 # Profile Schemas
 class ProfileCreate(BaseModel):
@@ -87,7 +104,7 @@ class ProfileResponse(BaseModel):
     medical_conditions: List[str]
     bmr: Optional[float]
     tdee: Optional[float]
-    goal_calories: Optional[float]
+    goal_calories: Optional[float] = None
     
     class Config:
         from_attributes = True

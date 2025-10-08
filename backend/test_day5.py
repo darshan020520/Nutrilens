@@ -71,7 +71,7 @@ class TestDay1_DatabaseAndAuth:
         # Test registration
         print("  Testing user registration...")
         register_data = {
-            "email": f"darsh@nutrilens.ai",
+            "email": f"darsh1222@nutrilens.ai",
             "password": "TestPass123"
         }
         response = requests.post(f"{BASE_URL}/auth/register", json=register_data)

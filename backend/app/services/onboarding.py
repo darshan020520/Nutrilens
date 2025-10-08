@@ -119,6 +119,7 @@ class OnboardingService:
        
        # Calculate TDEE
        tdee = self.calculate_tdee(bmr, profile_data['activity_level'])
+       print("tdee", tdee)
        
        # Create or update profile
        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
@@ -136,6 +137,8 @@ class OnboardingService:
            db.add(profile)
        db.commit()
        db.refresh(profile)
+
+       print("profile", profile.tdee)
        
        return profile
    

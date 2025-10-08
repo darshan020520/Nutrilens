@@ -806,19 +806,6 @@ class MealPlanOptimizer:
         
         return scored
     
-    def _get_user_constraints(self, user_id):
-        """Get user constraints (unchanged)"""
-        return OptimizationConstraints(
-            daily_calories_min=1800,
-            daily_calories_max=2200,
-            daily_protein_min=120,
-            daily_carbs_min=150,
-            daily_carbs_max=250,
-            daily_fat_min=50,
-            daily_fat_max=80,
-            meals_per_day=3,
-            max_recipe_repeat_in_days=2
-        )
     
     def _get_user_constraints(self, user_id):
         """Get user constraints from database"""

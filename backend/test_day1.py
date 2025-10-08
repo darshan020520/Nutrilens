@@ -12,7 +12,7 @@ def test_day1_implementation():
     # Test 1: Register a new user
     print("1. Testing user registration...")
     register_data = {
-        "email": "darsh@nutrilens.ai",
+        "email": "darsh32@nutrilens.ai",
         "password": "TestPass123"
     }
     response = requests.post(f"{BASE_URL}/auth/register", json=register_data)
@@ -27,7 +27,7 @@ def test_day1_implementation():
     # Test 2: Login
     print("\n2. Testing login...")
     login_data = {
-        "username": "darsh@nutrilens.ai",  # OAuth2 uses username field
+        "username": "darsh32@nutrilens.ai",  # OAuth2 uses username field
         "password": "TestPass123"
     }
     response = requests.post(

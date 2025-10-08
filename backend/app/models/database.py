@@ -70,6 +70,14 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+    onboarding_current_step = Column(Integer, default=1, nullable=False)
+    basic_info_completed = Column(Boolean, default=False, nullable=False)
+    goal_selection_completed = Column(Boolean, default=False, nullable=False)
+    path_selection_completed = Column(Boolean, default=False, nullable=False)
+    preferences_completed = Column(Boolean, default=False, nullable=False)
+    onboarding_started_at = Column(DateTime, nullable=True)
+    onboarding_completed_at = Column(DateTime, nullable=True)
     
     # Relationships
     profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

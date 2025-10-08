@@ -1,5 +1,5 @@
 #/backend/services/auth.py
-
+from loguru import logger
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -15,7 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 
 # OAuth2 password flow
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 # Password hashing
@@ -132,6 +132,53 @@ def create_default_notification_preferences(db: Session, user_id: int):
     
     except Exception as e:
         logger.error(f"Error creating default notification preferences: {str(e)}")
+# ADD this helper function
+def _calculate_onboarding_status(user: User) -> dict:
+    """Calculate user's onboarding status and redirect"""
+    
+    # If onboarding complete
+    if user.onboarding_completed:
+        return {
+            "completed": True,
+            "current_step": 4,
+            "completed_steps": [1, 2, 3, 4],
+            "redirect_to": "/dashboard",
+            "next_step_name": None
+        }
+    
+    # Calculate completed steps
+    completed_steps = []
+    if user.basic_info_completed:
+        completed_steps.append(1)
+    if user.goal_selection_completed:
+        completed_steps.append(2)
+    if user.path_selection_completed:
+        completed_steps.append(3)
+    if user.preferences_completed:
+        completed_steps.append(4)
+    
+    # Determine next step
+    current_step = user.onboarding_current_step
+    step_names = {
+        1: "basic-info",
+        2: "goal-selection",
+        3: "path-selection",
+        4: "preferences"
+    }
+    
+    next_step_name = step_names.get(current_step, "basic-info")
+    redirect_to = f"/onboarding/{next_step_name}"
+    
+    return {
+        "completed": False,
+        "current_step": current_step,
+        "completed_steps": completed_steps,
+        "redirect_to": redirect_to,
+        "next_step_name": next_step_name
+    }
+
+
+
 
 def get_current_user_websocket(
     token: str = Depends(oauth2_scheme),

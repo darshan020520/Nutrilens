@@ -9,12 +9,13 @@ from app.services.auth import (
     create_user, 
     create_access_token,
     get_current_user,
+    _calculate_onboarding_status,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 @router.post("/register", response_model=UserResponse)
 def register(user_create: UserCreate, db: Session = Depends(get_db)):
@@ -59,9 +60,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "user": UserResponse.from_orm(user)
     }
 
-@router.get("/me", response_model=UserResponse)
-def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    """Get current user information"""
+@router.get("/me")
+def get_me(
+    token: str = Depends(oauth2_scheme), 
+    db: Session = Depends(get_db)
+):
+    """Get current user information with onboarding status"""
     user = get_current_user(db, token)
     if not user:
         raise HTTPException(
@@ -69,7 +73,19 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return user
+    
+    # Calculate onboarding status
+    onboarding_status = _calculate_onboarding_status(user)
+    
+    return {
+        "success": True,
+        "data": {
+            "user": UserResponse.from_orm(user),
+            "onboarding": onboarding_status
+        }
+    }
+
+
 
 @router.post("/refresh")
 def refresh_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -92,3 +108,5 @@ def refresh_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get
         "access_token": access_token,
         "token_type": "bearer"
     }
+
+

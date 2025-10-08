@@ -216,6 +216,7 @@ class TrackingAgent:
                 return {"success": False, "error": "No OCR text available"}
             
             # Parse items from OCR text
+            print("receipt.ocr_raw_text", receipt.ocr_raw_text)
             parsed_items = self._parse_ocr_text(receipt.ocr_raw_text)
 
             print("parsed_items", parsed_items)
@@ -308,7 +309,7 @@ class TrackingAgent:
     
     async def update_inventory(self, updates: List[Dict], operation: str = "add") -> Dict[str, Any]:
         """Update inventory with add or deduct operations"""
-
+        print("items being send for update", updates)
         if not updates or not isinstance(updates, list):
             return {
                 "success": False,
