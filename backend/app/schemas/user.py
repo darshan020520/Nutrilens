@@ -104,7 +104,9 @@ class ProfileResponse(BaseModel):
     medical_conditions: List[str]
     bmr: Optional[float]
     tdee: Optional[float]
-    goal_calories: Optional[float] = None
+    goal_calories: Optional[float]
+    created_at: datetime           # ADD
+    updated_at: datetime           # ADD
     
     class Config:
         from_attributes = True
@@ -160,3 +162,9 @@ class OnboardingTargets(BaseModel):
     macro_targets: Dict[str, float]
     meal_windows: List[MealWindow]
     meals_per_day: int
+
+class BasicInfoResponse(BaseModel):
+    success: bool
+    data: ProfileResponse  # Nested profile data
+    message: str
+    next_step: str

@@ -383,12 +383,15 @@ class ConsumptionService:
             
             # Process each meal in memory
             for log in meal_logs:
+                macros = self._calculate_meal_macros(log) if log.recipe else {}
                 meal_info = {
                     "id": log.id,
                     "meal_type": log.meal_type,
                     "planned_time": log.planned_datetime.isoformat(),
+                    "recipe_id": log.recipe.id,
                     "recipe": log.recipe.title if log.recipe else "External",
-                    "status": "pending"
+                    "status": "pending",
+                    "macros": macros
                 }
                 
                 if log.consumed_datetime:
@@ -397,8 +400,6 @@ class ConsumptionService:
                     meal_info["portion"] = log.portion_multiplier or 1.0
                     
                     # Calculate macros
-                    macros = self._calculate_meal_macros(log)
-                    meal_info["macros"] = macros
                     
                     summary["meals_consumed"] += 1
                     summary["total_calories"] += macros.get("calories", 0)
@@ -442,9 +443,24 @@ class ConsumptionService:
                             summary["progress"][macro] = round(
                                 (summary["total_macros"][target_key] / summary["targets"][target_key]) * 100, 1
                             )
-            
+            # 🔹 Compute remaining calories and macros on the fly
+            if "targets" in summary:
+                target_calories = summary["targets"].get("calories", 0)
+                summary["target_calories"] = target_calories
+                summary["remaining_calories"] = max(0.0, round(target_calories - summary["total_calories"], 2))
+
+                remaining_macros = {}
+                for key in ["protein_g", "carbs_g", "fat_g", "fiber_g", "calorie"]:
+                    target_value = summary["targets"].get(key, 0)
+                    total_value = summary["total_macros"].get(key, 0)
+                    remaining_macros[key] = max(0.0, round(target_value - total_value, 2))
+                
+                summary["remaining_macros"] = remaining_macros
+
             # Generate recommendations
             summary["recommendations"] = self._get_daily_recommendations(summary)
+
+        
             
             return {
                 "success": True,
@@ -456,24 +472,30 @@ class ConsumptionService:
             return {"success": False, "error": str(e)}
     
     def get_consumption_history(self, user_id: int, days: int = 7, include_details: bool = False) -> Dict[str, Any]:
-        """Get consumption history for specified days"""
+        """Get consumption history for specified days (up to today only)."""
         try:
-            start_date = datetime.utcnow() - timedelta(days=days)
-            
-            meal_logs = self.db.query(MealLog).options(
-                joinedload(MealLog.recipe)
-            ).filter(
-                and_(
-                    MealLog.user_id == user_id,
-                    MealLog.planned_datetime >= start_date
+            today = datetime.utcnow().date()
+            start_date = today - timedelta(days=days)
+
+            meal_logs = (
+                self.db.query(MealLog)
+                .options(joinedload(MealLog.recipe))
+                .filter(
+                    and_(
+                        MealLog.user_id == user_id,
+                        func.date(MealLog.planned_datetime) >= start_date,
+                        func.date(MealLog.planned_datetime) <= today,  # ✅ exclude future logs
+                    )
                 )
-            ).order_by(MealLog.planned_datetime.desc()).all()
-            
+                .order_by(MealLog.planned_datetime.desc())
+                .all()
+            )
+
             # Group by date
             history = {}
             for log in meal_logs:
                 log_date = log.planned_datetime.date().isoformat()
-                
+
                 if log_date not in history:
                     history[log_date] = {
                         "planned": 0,
@@ -481,11 +503,11 @@ class ConsumptionService:
                         "skipped": 0,
                         "calories": 0,
                         "macros": {"protein_g": 0, "carbs_g": 0, "fat_g": 0},
-                        "meals": [] if include_details else None
+                        "meals": [] if include_details else None,
                     }
-                
+
                 history[log_date]["planned"] += 1
-                
+
                 if log.consumed_datetime:
                     history[log_date]["consumed"] += 1
                     macros = self._calculate_meal_macros(log)
@@ -494,21 +516,21 @@ class ConsumptionService:
                         history[log_date]["macros"][key] += macros.get(key, 0)
                 elif log.was_skipped:
                     history[log_date]["skipped"] += 1
-                
+
                 if include_details and history[log_date]["meals"] is not None:
                     history[log_date]["meals"].append({
                         "meal_type": log.meal_type,
                         "recipe": log.recipe.title if log.recipe else "External",
                         "status": "consumed" if log.consumed_datetime else ("skipped" if log.was_skipped else "pending"),
-                        "time": log.consumed_datetime.isoformat() if log.consumed_datetime else log.planned_datetime.isoformat()
+                        "time": log.consumed_datetime.isoformat() if log.consumed_datetime else log.planned_datetime.isoformat(),
                     })
-            
+
             # Calculate statistics
             total_days = len(history)
             total_planned = sum(day["planned"] for day in history.values())
             total_consumed = sum(day["consumed"] for day in history.values())
             total_skipped = sum(day["skipped"] for day in history.values())
-            
+
             statistics = {
                 "period_days": days,
                 "active_days": total_days,
@@ -517,18 +539,20 @@ class ConsumptionService:
                 "total_meals_skipped": total_skipped,
                 "overall_compliance": round((total_consumed / total_planned) * 100, 1) if total_planned > 0 else 0,
                 "average_daily_calories": round(sum(day["calories"] for day in history.values()) / total_days, 0) if total_days > 0 else 0,
-                "trends": self._analyze_trends(history)
+                "trends": self._analyze_trends(history),
             }
-            
+
+
             return {
                 "success": True,
                 "history": history,
-                "statistics": statistics
+                "statistics": statistics,
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting consumption history: {str(e)}")
             return {"success": False, "error": str(e)}
+
     
     def get_meal_patterns(self, user_id: int) -> Dict[str, Any]:
         """Analyze and return meal consumption patterns"""

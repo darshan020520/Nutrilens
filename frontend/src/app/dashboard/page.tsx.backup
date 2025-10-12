@@ -1,0 +1,118 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { useDashboard } from "./hooks/useDashboard";
+import { MealsCard } from "./components/MealsCard";
+import { MacrosCard } from "./components/MacrosCard";
+import { InventoryCard } from "./components/InventoryCard";
+import { GoalCard } from "./components/GoalCard";
+import { QuickActions } from "./components/QuickActions";
+import { RecentActivity } from "./components/RecentActivity";
+import { Button } from "@/components/ui/button";
+import { LogOut, Menu } from "lucide-react";
+import { toast } from "sonner";
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
+  const { summary, activity, isLoading, error, refetch } = useDashboard();
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/login");
+    }
+  }, [user, router]);
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+    router.push("/login");
+  };
+
+  if (!user) {
+    return null;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            Error Loading Dashboard
+          </h2>
+          <p className="text-slate-600 mb-4">{error}</p>
+          <Button onClick={() => refetch()}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="lg:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+              <h1 className="text-xl font-bold text-slate-900">
+                NutriLens AI
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-slate-900">
+                  {user.email}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {user.onboarding_completed ? "Active" : "Setup Incomplete"}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-slate-900">
+            Welcome back! 👋
+          </h2>
+          <p className="text-slate-600 mt-1">
+            Here's your nutrition overview for today
+          </p>
+        </div>
+
+        {/* Summary Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MealsCard data={summary?.meals_card} isLoading={isLoading} />
+          <MacrosCard data={summary?.macros_card} isLoading={isLoading} />
+          <InventoryCard data={summary?.inventory_card} isLoading={isLoading} />
+          <GoalCard data={summary?.goal_card} isLoading={isLoading} />
+        </div>
+
+        {/* Quick Actions */}
+        <QuickActions />
+
+        {/* Recent Activity */}
+        <RecentActivity data={activity} isLoading={isLoading} />
+      </main>
+    </div>
+  );
+}

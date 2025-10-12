@@ -544,6 +544,8 @@ class MealPlanOptimizer:
         
 
         goal_str = goal.goal_type.value.lower()
+
+        print("goal_str", goal_str)
         
         # Start with all recipes
         query = self.db.query(Recipe)
@@ -552,15 +554,15 @@ class MealPlanOptimizer:
         if goal:
             # Recipe.goals is JSON array like ["muscle_gain", "fat_loss"]
             # We need recipes that contain the user's goal
-            query = query.filter(func.lower(cast(Recipe.goals, String)).contains(goal_str))
-        
+            query = query.filter(cast(Recipe.goals, String).contains(goal_str))
+
         # Filter by dietary restrictions
         if constraints.dietary_restrictions:
             for restriction in constraints.dietary_restrictions:
                 if restriction == 'vegetarian':
-                    query = query.filter(Recipe.dietary_tags.contains(['vegetarian']))
+                    query = query.filter(cast(Recipe.dietary_tags, String).contains('vegetarian'))
                 elif restriction == 'vegan':
-                    query = query.filter(Recipe.dietary_tags.contains(['vegan']))
+                    query = query.filter(cast(Recipe.dietary_tags, String).contains('vegan'))
                 # non_vegetarian recipes don't need filtering - they can eat everything
         
         # Filter by prep time

@@ -167,15 +167,11 @@ class TodaySummaryResponse(BaseModel):
 
 
 class ConsumptionHistoryResponse(BaseModel):
-    """Response schema for consumption history"""
-    period_days: int
-    start_date: str
-    end_date: str
-    total_meals_logged: int
-    total_meals_skipped: int
-    average_compliance: float
-    daily_summaries: List[Dict[str, Any]]
-    trends: Dict[str, Any]
+    """Response schema aligned with frontend expectations"""
+    period: Dict[str, Any]          
+    statistics: Dict[str, Any]     
+    history: List[Dict[str, Any]]  
+    trends: Dict[str, Any] = {}    
 
 
 class ConsumptionPattern(BaseModel):

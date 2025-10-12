@@ -29,8 +29,8 @@ def setup():
     try:
         # Create user
         user = User(
-            email=f"test_summary_{datetime.now().timestamp()}@test.com",
-            hashed_password="test_hash",
+            email=f"test_consumption_user12@test.com",
+            hashed_password="Test@123",
             is_active=True
         )
         db.add(user)

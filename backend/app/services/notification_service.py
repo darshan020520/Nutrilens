@@ -185,6 +185,8 @@ class NotificationService:
         priority: NotificationPriority = NotificationPriority.HIGH
     ) -> bool:
         """Send inventory alert notification"""
+
+        print("sending alert to inventory for user")
         
         if alert_type == "low_stock":
             title = "Low Stock Alert"
@@ -275,6 +277,8 @@ class NotificationService:
             "action_url": "/achievements",
             "created_at": datetime.utcnow().isoformat()
         }
+
+        print("SENDING TO QUEUE", notification_data)
         
         return await self._queue_notification(notification_data)
     

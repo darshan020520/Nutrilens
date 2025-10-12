@@ -477,6 +477,7 @@ class TrackingAgent:
                 # FIX: CHECK FOR ACHIEVEMENTS AND SEND NOTIFICATIONS
                 achievements = self._check_meal_achievements(result)
 
+
                 print("achievements", achievements)
                 for achievement in achievements:
                     try:
@@ -830,10 +831,16 @@ class TrackingAgent:
                     UserInventory.quantity_grams > 0
                 )
             ).all()
+
+            
             
             for inv_item in inventory_items:
                 if inv_item.item:
                     current_inventory[inv_item.item_id] = inv_item.quantity_grams
+                    print("current_inventory[inv_item.item_id]", current_inventory[inv_item.item_id])
+                    print("inv_item.quantity_grams", inv_item.quantity_grams)
+            
+
             
             # Calculate status
             inventory_status = {
@@ -853,6 +860,10 @@ class TrackingAgent:
             total_score = 0
             item_count = 0
             category_stats = {}
+
+            print("user current inv", current_inventory)
+
+            print("user required inv", required_items)
             
             for item_id, required_qty in required_items.items():
                 try:
@@ -873,6 +884,7 @@ class TrackingAgent:
                         "usage_frequency": consumption_frequency.get(item_id, 0),
                         "days_supply": round((current_qty / (required_qty / 7)), 1) if required_qty > 0 else 999
                     }
+                    print("item_info", item_info)
                     
                     # Categorize items
                     if percentage < 20:
@@ -912,6 +924,7 @@ class TrackingAgent:
                     }
 
             # FIX: SEND NOTIFICATION FOR CRITICAL ITEMS
+            
             critical_item_names = [item["name"] for item in inventory_status["critical_items"]]
             if critical_item_names:
                 try:
@@ -941,7 +954,7 @@ class TrackingAgent:
             for category, data in inventory_status["category_breakdown"].items():
                 if data["critical_items"] > 0:
                     inventory_status["recommendations"].append(f"Urgent: Restock {category} items ({data['critical_items']} critical)")
-            
+            print("user inventory status", inventory_status)
             return {"success": True, **inventory_status}
             
         except Exception as e:
@@ -1199,7 +1212,7 @@ class TrackingAgent:
             
             # Nutrition target achievement
             daily_totals = meal_result.get("updated_totals", {})
-            if daily_totals.get("protein_g", 0) >= 100:  # Example protein target need to change with actual target
+            if daily_totals.get("protein_g", 0) >= 50 :  # Example protein target need to change with actual target
                 achievements.append({
                     "type": "nutrition_target",
                     "message": "Protein goal achieved! Great job hitting your nutrition targets!"

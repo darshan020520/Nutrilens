@@ -799,6 +799,6 @@ if __name__ == "__main__":
         test_check_expiring_items(test_data)
         test_calculate_inventory_status(test_data)
         test_generate_restock_list(test_data)
-        cleanup(test_data)
+        # cleanup(test_data)
     else:
         print("❌ Setup failed, cannot run tests")

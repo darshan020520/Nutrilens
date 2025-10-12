@@ -38,6 +38,7 @@ async def generate_meal_plan(
         # Initialize planning agent
         agent = PlanningAgent(db)
         await agent.initialize_context(current_user.id)
+        print("generating new meal plan")
         print("current user id", current_user.id)
         
         # Generate plan
@@ -181,20 +182,15 @@ async def get_grocery_list(
     try:
         # Get meal plan
         service = MealPlanService(db)
-        print("getting current plan for", current_user.id)
-        print("plan id", plan_id)
         plan = service.get_meal_plan_by_id(plan_id, current_user.id)
         
         if not plan:
             raise HTTPException(status_code=404, detail="Meal plan not found")
         
-        print("got meal plan for", plan.dict()['plan_data'])
-        
         # Calculate grocery list using agent
         agent = PlanningAgent(db)
         await agent.initialize_context(current_user.id)
         grocery_list = agent.calculate_grocery_list(plan.dict()['plan_data'], db_session=db, user_id=current_user.id)
-        print("grocery list from api point", grocery_list)
         return grocery_list
         
     except Exception as e:

@@ -42,6 +42,7 @@ export function useAuth() {
     const meResponse = await authAPI.getMe();
     setOnboardingStatus(meResponse.data.onboarding);
     
+    
     return meResponse.data.onboarding;
   };
 

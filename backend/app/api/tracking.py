@@ -226,6 +226,8 @@ async def skip_meal(
                 detail="Cannot skip a meal that has already been logged"
             )
         
+        print("request to skip meal", request)
+        
         # Skip the meal via tracking agent
         result = tracking_agent.track_skipped_meals(
             meal_log_id=request.meal_log_id,
@@ -455,6 +457,8 @@ async def get_today_summary(
         
         # Get today's summary
         result = consumption_service.get_today_summary(current_user.id)
+
+        print("todays summary", result)
         
         if not result.get("success"):
             raise HTTPException(
@@ -462,7 +466,7 @@ async def get_today_summary(
                 detail="Failed to fetch today's summary"
             )
         
-        summary = result["summary"]
+        summary = result
         
         # Format response
         response = TodaySummaryResponse(
@@ -473,13 +477,12 @@ async def get_today_summary(
             total_calories=summary.get("total_calories", 0),
             total_macros=format_macro_nutrients(summary.get("total_macros", {})),
             target_calories=summary.get("target_calories", 0),
-            target_macros=format_macro_nutrients(summary.get("target_macros", {})),
+            target_macros=format_macro_nutrients(summary.get("targets", {})),
             remaining_calories=summary.get("remaining_calories", 0),
             remaining_macros=format_macro_nutrients(summary.get("remaining_macros", {})),
             compliance_rate=summary.get("compliance_rate", 0),
-            meal_details=summary.get("meal_details", [])
+            meal_details=summary.get("meals", [])
         )
-        
         return response
         
     except HTTPException:
@@ -500,44 +503,67 @@ async def get_consumption_history(
 ):
     """
     Get historical consumption data
-    
-    Query Parameters:
-    - days: Number of days of history (1-90, default 7)
-    
-    Returns consumption history with daily summaries and trends.
     """
     try:
-        # Initialize consumption service
         consumption_service = ConsumptionService(db)
-        
-        # Get consumption history
         result = consumption_service.get_consumption_history(
             user_id=current_user.id,
-            days=days
+            days=days,
+            include_details=True
         )
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to fetch consumption history"
             )
-        
-        history = result["history"]
-        
-        # Format response
+
+        history_dict = result["history"]
+        stats = result["statistics"]
+        trends = stats.get("trends", {})
+
+        # Sort and derive period range
+        sorted_dates = sorted(history_dict.keys())
+        start_date = sorted_dates[0] if sorted_dates else ""
+        end_date = sorted_dates[-1] if sorted_dates else ""
+
+        # Transform history for frontend
+        history = []
+        for date, info in history_dict.items():
+            meals = []
+            if info.get("meals"):
+                for m in info["meals"]:
+                    meals.append({
+                        "meal_type": m.get("meal_type"),
+                        "recipe_name": m.get("recipe"),
+                        "status": (
+                            "logged" if m.get("status") == "consumed"
+                            else "skipped" if m.get("status") == "skipped"
+                            else "pending"
+                        ),
+                        "time": m.get("time")
+                    })
+            history.append({"date": date, "meals": meals or []})
+
+        # Construct frontend-compatible response
         response = ConsumptionHistoryResponse(
-            period_days=days,
-            start_date=history.get("start_date", ""),
-            end_date=history.get("end_date", ""),
-            total_meals_logged=history.get("total_meals_logged", 0),
-            total_meals_skipped=history.get("total_meals_skipped", 0),
-            average_compliance=history.get("average_compliance", 0),
-            daily_summaries=history.get("daily_summaries", []),
-            trends=history.get("trends", {})
+            period={
+                "start_date": start_date,
+                "end_date": end_date,
+                "days": days,
+            },
+            statistics={
+                "total_meals": stats.get("total_meals_planned", 0),
+                "logged_meals": stats.get("total_meals_consumed", 0),
+                "skipped_meals": stats.get("total_meals_skipped", 0),
+                "adherence_rate": stats.get("overall_compliance", 0),
+            },
+            history=history,
+            trends=trends or {}
         )
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:

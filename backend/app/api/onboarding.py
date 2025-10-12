@@ -4,7 +4,7 @@ from app.models.database import get_db, User
 from app.schemas.user import (
     ProfileCreate, ProfileResponse,
     GoalCreate, PathSelection, PreferenceCreate,
-    OnboardingTargets
+    OnboardingTargets, BasicInfoResponse
 )
 from datetime import datetime
 from app.services.onboarding import OnboardingService
@@ -24,7 +24,7 @@ def get_current_user_from_token(token: str = Depends(oauth2_scheme), db: Session
         )
     return user
 
-@router.post("/basic-info")
+@router.post("/basic-info", response_model=BasicInfoResponse)
 def submit_basic_info(
     profile_data: ProfileCreate,
     current_user: User = Depends(get_current_user_from_token),
