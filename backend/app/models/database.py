@@ -1,3 +1,4 @@
+#/backend/models/database.py
 from sqlalchemy import create_engine, Column, Integer, String, Float, JSON, DateTime, ForeignKey, Text, Boolean, Time, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
@@ -88,6 +89,7 @@ class User(Base):
     meal_plans = relationship("MealPlan", back_populates="user", cascade="all, delete-orphan")
     meal_logs = relationship("MealLog", back_populates="user", cascade="all, delete-orphan")
     receipt_uploads = relationship("ReceiptUpload", back_populates="user", cascade="all, delete-orphan")
+    receipt_scans = relationship("ReceiptScan", back_populates="user", cascade="all, delete-orphan")
     agent_interactions = relationship("AgentInteraction", back_populates="user", cascade="all, delete-orphan")
     whatsapp_logs = relationship("WhatsappLog", back_populates="user", cascade="all, delete-orphan")
     notification_preference = relationship("NotificationPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -338,25 +340,66 @@ class NotificationPreference(Base):
 class NotificationLog(Base):
     """Log of notification attempts for debugging and analytics"""
     __tablename__ = "notification_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    
+
     # Notification details
     notification_type = Column(String(50), index=True)
     provider = Column(Enum(NotificationProvider), nullable=True)
     status = Column(Enum(NotificationStatus), index=True)
-    
+
     # Content
     title = Column(String(255))
     body = Column(Text)
     data = Column(JSON, nullable=True)
-    
+
     # Error tracking
     error_message = Column(Text, nullable=True)
     retry_count = Column(Integer, default=0)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    
+
     # Relationships
     user = relationship("User", back_populates="notification_logs")
+
+
+# Receipt Scanner Integration Tables
+class ReceiptScan(Base):
+    """Track receipt scanning uploads and processing status"""
+    __tablename__ = "receipt_scans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    s3_url = Column(Text, nullable=False)
+    status = Column(String(20), default="processing")  # processing, completed, failed
+    items_count = Column(Integer, nullable=True)
+    auto_added_count = Column(Integer, nullable=True)
+    needs_confirmation_count = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    processed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="receipt_scans")
+    pending_items = relationship("ReceiptPendingItem", back_populates="receipt_scan", cascade="all, delete-orphan")
+
+
+class ReceiptPendingItem(Base):
+    """Store items needing user confirmation from receipt scans"""
+    __tablename__ = "receipt_pending_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    receipt_scan_id = Column(Integer, ForeignKey("receipt_scans.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_name = Column(Text, nullable=False)
+    quantity = Column(Float, nullable=False)
+    unit = Column(String(20), nullable=False)
+    suggested_item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
+    confidence = Column(Float, nullable=True)
+    status = Column(String(20), default="pending", index=True)  # pending, confirmed, skipped
+    created_at = Column(DateTime, default=datetime.utcnow)
+    confirmed_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    receipt_scan = relationship("ReceiptScan", back_populates="pending_items")
+    suggested_item = relationship("Item")

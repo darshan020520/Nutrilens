@@ -30,7 +30,10 @@ class IntelligentInventoryService:
     
     def __init__(self, db: Session):
         self.db = db
-        self.normalizer = IntelligentItemNormalizer(db)
+        # Get all items for normalizer initialization
+        items_list = self.db.query(Item).all()
+        from app.core.config import settings
+        self.normalizer = IntelligentItemNormalizer(items_list, settings.openai_api_key)
 
     def add_item(
         self,
@@ -222,40 +225,29 @@ class IntelligentInventoryService:
         
         return results
     
-    def _add_to_inventory(
-        self,
-        user_id: int,
-        item: Item,
-        quantity: float,
-        unit: str,
-        expiry_days: Optional[int] = None
-    ) -> UserInventory:
-        """Add or update item in user's inventory"""
-        # Convert to grams
-        quantity_grams = self.normalizer.convert_to_grams(quantity, unit, item)
-        
-        # Check if item already exists in inventory
+    def _add_to_inventory(self, user_id, item_id, quantity_grams, expiry_days=None):
+        # pass this function to take the user id for each items to be added to the inventory
+        """Add item to inventory (quantity already in grams)"""
+        # Check if item already exists
         existing = self.db.query(UserInventory).filter(
             and_(
                 UserInventory.user_id == user_id,
-                UserInventory.item_id == item.id
+                UserInventory.item_id == item_id
             )
         ).first()
         
         if existing:
-            # Update quantity
             existing.quantity_grams += quantity_grams
             existing.last_updated = datetime.now()
             inventory_item = existing
         else:
-            # Create new inventory entry
             inventory_item = UserInventory(
                 user_id=user_id,
-                item_id=item.id,
+                item_id=item_id,
                 quantity_grams=quantity_grams,
                 purchase_date=datetime.now(),
                 expiry_date=datetime.now() + timedelta(days=expiry_days) if expiry_days else None,
-                source='manual'
+                source='receipt_scanner'
             )
             self.db.add(inventory_item)
         
@@ -605,5 +597,62 @@ class IntelligentInventoryService:
         
         # Sort by goal alignment (this would be enhanced with user preferences)
         makeable.sort(key=lambda x: x.get('prep_time', 999))
-        
+
         return makeable[:limit]
+
+    async def process_receipt_items(
+        self,
+        user_id: int,
+        receipt_items: List[Dict],
+        auto_add_threshold: float = 0.75
+    ) -> Dict:
+        """
+        Process receipt items with LLM-enhanced normalizer
+        This is the main method for receipt scanner integration
+
+        Args:
+            user_id: User ID
+            receipt_items: Raw items from receipt scanner
+                Example: [{"item_name": "Onion", "quantity": 2, "unit": "kg"}]
+            auto_add_threshold: Confidence threshold for auto-adding (default: 0.75)
+
+        Returns:
+            {
+                "auto_added": List of auto-added items,
+                "needs_confirmation": List of items needing review
+            }
+        """
+        try:
+            # Use LLM-enhanced normalizer's batch processing
+            normalized_results = await self.normalizer.normalize_batch(receipt_items)
+
+            # Categorize by confidence
+            auto_added = []
+            needs_confirmation = []
+
+            for result in normalized_results:
+                result_dict = result.to_dict()
+
+                if result.confidence >= auto_add_threshold and result.item and result.quantity_grams:
+                    # Auto-add to inventory
+                    inventory_item = self._add_to_inventory(
+                        user_id=user_id,
+                        item_id=result.item.id,
+                        quantity_grams=result.quantity_grams,
+                        expiry_days=None  # Could be enhanced with expiry prediction
+                    )
+                    auto_added.append(result_dict)
+                    logger.info(f"Auto-added: {result.item.canonical_name} ({result.quantity_grams}g)")
+                else:
+                    # Needs confirmation
+                    needs_confirmation.append(result_dict)
+                    logger.info(f"Needs confirmation: {result.original_input} (confidence: {result.confidence})")
+
+            return {
+                "auto_added": auto_added,
+                "needs_confirmation": needs_confirmation
+            }
+
+        except Exception as e:
+            logger.error(f"Error processing receipt items: {str(e)}")
+            raise

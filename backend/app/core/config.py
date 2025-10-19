@@ -42,6 +42,21 @@ class Settings(BaseSettings):
 
     base_dir: str
 
+    # AWS S3 (for receipt images)
+    s3_access_key: str
+    s3_secret_key: str
+    s3_region: str
+    s3_bucket: str
+
+    # Receipt Scanner Microservice
+    receipt_scanner_url: str
+
+    # OpenAI (for LLM normalizer)
+    openai_api_key: str
+
+    # Receipt Processing Settings
+    receipt_auto_add_threshold: float
+
     @property
     def database_url(self) -> str:
         return (
