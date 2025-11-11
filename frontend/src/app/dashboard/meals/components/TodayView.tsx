@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Check, Clock, XCircle, Utensils } from "lucide-react";
+import { Check, Clock, XCircle, Utensils, UtensilsCrossed } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import ExternalMealDialog from "./ExternalMealDialog";
 
 interface MacroGroup {
   calories: number;
@@ -61,6 +62,8 @@ export function TodayView() {
   const [selectedMeal, setSelectedMeal] = useState<MealDetail | null>(null);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
+  const [externalMealDialogOpen, setExternalMealDialogOpen] = useState(false);
+  const [mealToReplace, setMealToReplace] = useState<MealDetail | null>(null);
 
   // Fetch today's meals and progress
   const { data: todayData, isLoading, error } = useQuery<TodayData>({
@@ -341,7 +344,7 @@ export function TodayView() {
                   </div>
 
                   {meal.status === "pending" && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         onClick={() => handleLogMeal(meal)}
@@ -353,14 +356,22 @@ export function TodayView() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
+                          setMealToReplace(meal);
+                          setExternalMealDialogOpen(true);
+                        }}
+                      >
+                        <UtensilsCrossed className="mr-1 h-3 w-3" />
+                        External Meal
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
                           setSelectedMeal(meal);
                           setSkipDialogOpen(true);
                         }}
                       >
                         Skip
-                      </Button>
-                      <Button size="sm" variant="ghost">
-                        Swap
                       </Button>
                     </div>
                   )}
@@ -423,6 +434,17 @@ export function TodayView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* External Meal Dialog */}
+      <ExternalMealDialog
+        open={externalMealDialogOpen}
+        onOpenChange={setExternalMealDialogOpen}
+        mealLogId={mealToReplace?.id}
+        mealType={mealToReplace?.meal_type}
+        onSuccess={() => {
+          setMealToReplace(null);
+        }}
+      />
     </div>
   );
 }

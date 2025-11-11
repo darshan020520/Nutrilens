@@ -1,0 +1,1058 @@
+================================================================================
+ANALYZING 21 FDC DEBUG FILES
+================================================================================
+
+
+================================================================================
+Item: balsamic_vinegar
+================================================================================
+
+  Match 0: Vinegar, balsamic (SR Legacy)
+  Total nutrients: 28
+    [OK] PROTEIN: ID 1003 = 0.49 G (Protein)
+    [OK] SODIUM: ID 1093 = 23.0 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.0 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 17.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 88.0 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 369 kJ (Energy)
+
+  Match 1: Vinegar, cider (SR Legacy)
+  Total nutrients: 97
+    [OK] FAT: ID 1292 = 0.0 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.0 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 0.0 G (Fatty acids, total saturated)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] CARBS: ID 1005 = 0.93 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 21.0 KCAL (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] SODIUM: ID 1093 = 5.0 MG (Sodium, Na)
+    [OK] CALORIES: ID 1062 = 90.0 kJ (Energy)
+
+  Match 2: Vinegar, distilled (SR Legacy)
+  Total nutrients: 72
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.0 G (Fatty acids, total saturated)
+    [OK] SODIUM: ID 1093 = 2.0 MG (Sodium, Na)
+    [OK] CALORIES: ID 1062 = 76.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] CARBS: ID 1005 = 0.04 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 18.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.0 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.0 G (Fatty acids, total polyunsaturated)
+
+================================================================================
+Item: basil_leaves
+================================================================================
+
+  Match 0: Drumstick leaves, raw (SR Legacy)
+  Total nutrients: 54
+    [OK] CALORIES: ID 1062 = 268 kJ (Energy)
+    [OK] PROTEIN: ID 1003 = 9.4 G (Protein)
+    [OK] FIBER: ID 1079 = 2.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 9.0 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 1.4 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 8.28 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 64.0 KCAL (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+
+  Match 1: Amaranth leaves, raw (SR Legacy)
+  Total nutrients: 63
+    [OK] CARBS: ID 1005 = 4.02 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 23.0 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 97.0 kJ (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1004 = 0.33 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 0.076 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.147 G (Fatty acids, total polyunsaturated)
+    [OK] SODIUM: ID 1093 = 20.0 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 2.46 G (Protein)
+    [OK] FAT: ID 1258 = 0.091 G (Fatty acids, total saturated)
+
+  Match 2: Broccoli, leaves, raw (SR Legacy)
+  Total nutrients: 66
+    [OK] CALORIES: ID 1062 = 118 kJ (Energy)
+    [OK] FIBER: ID 1079 = 2.3 G (Fiber, total dietary)
+    [OK] CARBS: ID 1005 = 5.06 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1292 = 0.024 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.167 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1004 = 0.35 G (Total lipid (fat))
+    [OK] CALORIES: ID 1008 = 28.0 KCAL (Energy)
+    [OK] PROTEIN: ID 1003 = 2.98 G (Protein)
+    [OK] FAT: ID 1258 = 0.054 G (Fatty acids, total saturated)
+    [OK] SODIUM: ID 1093 = 27.0 MG (Sodium, Na)
+
+================================================================================
+Item: celery
+================================================================================
+
+  Match 0: Celery, raw (Foundation)
+  Total nutrients: 20
+    [OK] SODIUM: ID 1093 = 97.2 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 0.162 G (Total lipid (fat))
+    [OK] PROTEIN: ID 1003 = 0.492 G (Protein)
+    [OK] CARBS: ID 1005 = 3.32 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 2047 = 16.7 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 14.8 KCAL (Energy (Atwater Specific Factors))
+
+  Match 1: Celery, raw (SR Legacy)
+  Total nutrients: 108
+    [OK] CALORIES: ID 1062 = 57.0 kJ (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] CALORIES: ID 1008 = 14.0 KCAL (Energy)
+    [OK] FAT: ID 1258 = 0.042 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.032 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.079 G (Fatty acids, total polyunsaturated)
+    [OK] CARBS: ID 1005 = 2.97 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1004 = 0.17 G (Total lipid (fat))
+    [OK] SODIUM: ID 1093 = 80.0 MG (Sodium, Na)
+    [OK] FIBER: ID 1079 = 1.6 G (Fiber, total dietary)
+    [OK] PROTEIN: ID 1003 = 0.69 G (Protein)
+
+  Match 2: Spices, celery seed (SR Legacy)
+  Total nutrients: 74
+    [OK] FAT: ID 1292 = 15.9 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 3.72 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1004 = 25.3 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 41.4 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 392 KCAL (Energy)
+    [OK] FIBER: ID 1079 = 11.8 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 160 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 18.1 G (Protein)
+    [OK] FAT: ID 1258 = 2.19 G (Fatty acids, total saturated)
+    [OK] CALORIES: ID 1062 = 1640.0 kJ (Energy)
+
+================================================================================
+Item: chicken_wings
+================================================================================
+
+  Match 0: Chicken, wing, meat and skin, raw (Foundation)
+  Total nutrients: 18
+    [OK] SODIUM: ID 1093 = 84.1 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 10.6 G (Total lipid (fat))
+    [OK] PROTEIN: ID 1003 = 18.4 G (Protein)
+    [OK] CARBS: ID 1005 = -0.459 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 2047 = 168 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 173 KCAL (Energy (Atwater Specific Factors))
+
+  Match 1: Chicken, wing, frozen, glazed, barbecue flavored (SR Legacy)
+  Total nutrients: 108
+    [OK] FAT: ID 1004 = 12.7 G (Total lipid (fat))
+    [OK] PROTEIN: ID 1003 = 19.7 G (Protein)
+    [OK] FIBER: ID 1079 = 0.6 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 615 MG (Sodium, Na)
+    [OK] FAT: ID 1292 = 5.77 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 2.36 G (Fatty acids, total polyunsaturated)
+    [OK] CALORIES: ID 1008 = 211 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 884 kJ (Energy)
+    [OK] CARBS: ID 1005 = 3.34 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1258 = 3.32 G (Fatty acids, total saturated)
+
+  Match 2: Chicken, broiler, rotisserie, BBQ, wing, meat and skin (SR Legacy)
+  Total nutrients: 107
+    [OK] FAT: ID 1004 = 18.0 G (Total lipid (fat))
+    [OK] CALORIES: ID 1008 = 257 KCAL (Energy)
+    [OK] FAT: ID 1292 = 7.33 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 2.18 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 23.4 G (Protein)
+    [OK] CALORIES: ID 1062 = 1070.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 579 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.164 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 4.63 G (Fatty acids, total saturated)
+    [OK] CARBS: ID 1005 = 0.6 G (Carbohydrate, by difference)
+
+================================================================================
+Item: coconut_milk
+================================================================================
+
+  Match 0: Beverages, coconut milk, sweetened, fortified with calcium, vitamins A, B12, D2 (SR Legacy)
+  Total nutrients: 71
+    [OK] FAT: ID 1004 = 2.08 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 2.92 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 31.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.0 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.0 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 0.21 G (Protein)
+    [OK] CALORIES: ID 1062 = 131 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 19.0 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 2.08 G (Fatty acids, total saturated)
+
+  Match 1: Puddings, coconut cream, dry mix, instant, prepared with 2% milk (SR Legacy)
+  Total nutrients: 70
+    [OK] CALORIES: ID 1062 = 448 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.1 G (Fiber, total dietary)
+    [OK] FAT: ID 1004 = 2.3 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 19.2 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 107 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.62 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.19 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 1.37 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 2.9 G (Protein)
+    [OK] SODIUM: ID 1093 = 246 MG (Sodium, Na)
+
+  Match 2: Puddings, coconut cream, dry mix, instant, prepared with whole milk (SR Legacy)
+  Total nutrients: 69
+    [OK] CALORIES: ID 1062 = 490 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.1 G (Fiber, total dietary)
+    [OK] FAT: ID 1004 = 3.5 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 19.1 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 117 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.96 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.24 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 2.1 G (Fatty acids, total saturated)
+    [OK] SODIUM: ID 1093 = 246 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 2.9 G (Protein)
+
+================================================================================
+Item: cottage_cheese
+================================================================================
+
+  Match 0: Cheese, cottage, with vegetables (SR Legacy)
+  Total nutrients: 88
+    [OK] FAT: ID 1258 = 2.65 G (Fatty acids, total saturated)
+    [OK] SODIUM: ID 1093 = 403 MG (Sodium, Na)
+    [OK] CALORIES: ID 1062 = 397 kJ (Energy)
+    [OK] PROTEIN: ID 1003 = 10.9 G (Protein)
+    [OK] FAT: ID 1292 = 1.19 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.14 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1004 = 4.2 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 3.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 95.0 KCAL (Energy)
+    [OK] FIBER: ID 1079 = 0.1 G (Fiber, total dietary)
+
+  Match 1: Cheese, cottage, creamed, with fruit (SR Legacy)
+  Total nutrients: 90
+    [OK] FAT: ID 1004 = 3.85 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 4.61 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1292 = 1.04 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.124 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 2.31 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 10.7 G (Protein)
+    [OK] FIBER: ID 1079 = 0.2 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 344 MG (Sodium, Na)
+    [OK] CALORIES: ID 1008 = 97.0 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 407 kJ (Energy)
+
+  Match 2: Cheese, cottage, lowfat, 1% milkfat (SR Legacy)
+  Total nutrients: 90
+    [OK] CALORIES: ID 1008 = 72.0 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 303 kJ (Energy)
+    [OK] PROTEIN: ID 1003 = 12.4 G (Protein)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 406 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.645 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 1.02 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 2.72 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1292 = 0.291 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.031 G (Fatty acids, total polyunsaturated)
+
+================================================================================
+Item: couscous
+================================================================================
+
+  Match 0: Couscous, cooked (SR Legacy)
+  Total nutrients: 89
+    [OK] CALORIES: ID 1062 = 469 kJ (Energy)
+    [OK] FAT: ID 1004 = 0.16 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 23.2 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 112 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.022 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.064 G (Fatty acids, total polyunsaturated)
+    [OK] FIBER: ID 1079 = 1.4 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 5.0 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 3.79 G (Protein)
+    [OK] FAT: ID 1258 = 0.029 G (Fatty acids, total saturated)
+
+  Match 1: Couscous, dry (SR Legacy)
+  Total nutrients: 62
+    [OK] CALORIES: ID 1062 = 1570.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 5.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 10.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.117 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 12.8 G (Protein)
+    [OK] FAT: ID 1004 = 0.64 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 77.4 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 376 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.089 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.252 G (Fatty acids, total polyunsaturated)
+
+================================================================================
+Item: feta_cheese
+================================================================================
+
+  Match 0: Cheese, feta (SR Legacy)
+  Total nutrients: 90
+    [OK] FAT: ID 1004 = 21.5 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 3.88 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 265 KCAL (Energy)
+    [OK] FAT: ID 1258 = 13.3 G (Fatty acids, total saturated)
+    [OK] CALORIES: ID 1062 = 1110.0 kJ (Energy)
+    [OK] SODIUM: ID 1093 = 1140.0 MG (Sodium, Na)
+    [OK] FAT: ID 1292 = 4.62 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.591 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 14.2 G (Protein)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+
+  Match 1: Cheese, feta, whole milk, crumbled (Foundation)
+  Total nutrients: 52
+    [OK] SODIUM: ID 1093 = 1030.0 MG (Sodium, Na)
+    [OK] FAT: ID 1292 = 4.18 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1258 = 11.2 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 19.1 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 5.58 G (Carbohydrate, by difference)
+    [OK] PROTEIN: ID 1003 = 19.7 G (Protein)
+    [OK] CALORIES: ID 2047 = 273 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 273 KCAL (Energy (Atwater Specific Factors))
+
+  Match 2: Cheese spread, cream cheese base (SR Legacy)
+  Total nutrients: 70
+    [OK] FAT: ID 1292 = 8.07 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 1.03 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1004 = 28.6 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 3.5 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 295 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 1230.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] PROTEIN: ID 1003 = 7.1 G (Protein)
+    [OK] FAT: ID 1258 = 18.0 G (Fatty acids, total saturated)
+    [OK] SODIUM: ID 1093 = 436 MG (Sodium, Na)
+
+================================================================================
+Item: green_apple
+================================================================================
+
+  Match 0: Croissants, apple (SR Legacy)
+  Total nutrients: 71
+    [OK] CALORIES: ID 1062 = 1060.0 kJ (Energy)
+    [OK] FAT: ID 1004 = 8.7 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 37.1 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 254 KCAL (Energy)
+    [OK] PROTEIN: ID 1003 = 7.4 G (Protein)
+    [OK] FIBER: ID 1079 = 2.5 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 274 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 4.99 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 2.39 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.628 G (Fatty acids, total polyunsaturated)
+
+  Match 1: Strudel, apple (SR Legacy)
+  Total nutrients: 89
+    [OK] CALORIES: ID 1062 = 1150.0 kJ (Energy)
+    [OK] SODIUM: ID 1093 = 135 MG (Sodium, Na)
+    [OK] FIBER: ID 1079 = 2.2 G (Fiber, total dietary)
+    [OK] PROTEIN: ID 1003 = 3.3 G (Protein)
+    [OK] FAT: ID 1004 = 11.2 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 41.1 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 274 KCAL (Energy)
+    [OK] FAT: ID 1292 = 3.27 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 5.32 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 2.04 G (Fatty acids, total saturated)
+
+  Match 2: Asparagus, green, raw (Foundation)
+  Total nutrients: 23
+    [OK] SODIUM: ID 1093 = 2.46 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 0.216 G (Total lipid (fat))
+    [OK] FIBER: ID 1079 = 1.88 G (Fiber, total dietary)
+    [OK] CALORIES: ID 2047 = 28.1 KCAL (Energy (Atwater General Factors))
+    [OK] PROTEIN: ID 1003 = 1.44 G (Protein)
+    [OK] CARBS: ID 1005 = 5.1 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 2048 = 23.5 KCAL (Energy (Atwater Specific Factors))
+
+================================================================================
+Item: green_tea
+================================================================================
+
+  Match 0: Beverages, tea, green, brewed, decaffeinated (SR Legacy)
+  Total nutrients: 69
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] CALORIES: ID 1062 = 0.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 0.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.0 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 0.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.0 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.0 G (Fatty acids, total polyunsaturated)
+
+  Match 1: Beverages, tea, green, brewed, regular (SR Legacy)
+  Total nutrients: 76
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 1.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.0 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.0 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 0.22 G (Protein)
+    [OK] CALORIES: ID 1062 = 4.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 1.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.0 G (Fatty acids, total saturated)
+
+  Match 2: Beverages, tea, green, ready to drink, unsweetened (SR Legacy)
+  Total nutrients: 69
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 0.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.0 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.0 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] CALORIES: ID 1062 = 0.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 7.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.0 G (Fatty acids, total saturated)
+
+================================================================================
+Item: ground_turkey
+================================================================================
+
+  Match 0: Turkey, Ground, cooked (SR Legacy)
+  Total nutrients: 128
+    [OK] PROTEIN: ID 1003 = 27.4 G (Protein)
+    [OK] SODIUM: ID 1093 = 78.0 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.134 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 2.67 G (Fatty acids, total saturated)
+    [OK] CALORIES: ID 1062 = 850 kJ (Energy)
+    [OK] FAT: ID 1329 = 0.103 G (Fatty acids, total trans-monoenoic)
+    [OK] CALORIES: ID 1008 = 203 KCAL (Energy)
+    [OK] FAT: ID 1004 = 10.4 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 3.46 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 2.92 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1331 = 0.031 G (Fatty acids, total trans-polyenoic)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+
+  Match 1: Turkey, Ground, raw (SR Legacy)
+  Total nutrients: 128
+    [OK] FAT: ID 1004 = 7.66 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 2.64 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 2.2 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1331 = 0.025 G (Fatty acids, total trans-polyenoic)
+    [OK] FAT: ID 1257 = 0.103 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 2.02 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1329 = 0.078 G (Fatty acids, total trans-monoenoic)
+    [OK] SODIUM: ID 1093 = 58.0 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 19.7 G (Protein)
+    [OK] CALORIES: ID 1062 = 618 kJ (Energy)
+    [OK] CALORIES: ID 1008 = 148 KCAL (Energy)
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+
+  Match 2: Turkey, ground, fat free, raw (SR Legacy)
+  Total nutrients: 127
+    [OK] FAT: ID 1004 = 1.95 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 0.512 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.594 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1331 = 0.004 G (Fatty acids, total trans-polyenoic)
+    [OK] FAT: ID 1257 = 0.017 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.487 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1329 = 0.013 G (Fatty acids, total trans-monoenoic)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 51.0 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 23.6 G (Protein)
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 112 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 468 kJ (Energy)
+
+================================================================================
+Item: herb_mint
+================================================================================
+
+  Match 0: Beverages, tea, herb, brewed, chamomile (SR Legacy)
+  Total nutrients: 72
+    [OK] CALORIES: ID 1062 = 4.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 1.0 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] FAT: ID 1004 = 0.0 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.2 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 1.0 KCAL (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.002 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.001 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.005 G (Fatty acids, total polyunsaturated)
+
+  Match 1: Candies, NESTLE, AFTER EIGHT Mints (SR Legacy)
+  Total nutrients: 20
+    [OK] FIBER: ID 1079 = 2.4 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 1.0 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 8.33 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 1.67 G (Protein)
+    [OK] FAT: ID 1004 = 11.9 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 79.5 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 432 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 1810.0 kJ (Energy)
+
+  Match 2: Tomato products, canned, sauce, with herbs and cheese (SR Legacy)
+  Total nutrients: 68
+    [OK] CALORIES: ID 1062 = 247 kJ (Energy)
+    [OK] FIBER: ID 1079 = 2.2 G (Fiber, total dietary)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.627 G (Fatty acids, total saturated)
+    [OK] SODIUM: ID 1093 = 543 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 2.13 G (Protein)
+    [OK] FAT: ID 1004 = 1.93 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 10.2 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 59.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.38 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.825 G (Fatty acids, total polyunsaturated)
+
+================================================================================
+Item: japanese_pumpkin
+================================================================================
+
+  Match 0: Persimmons, japanese, dried (SR Legacy)
+  Total nutrients: 48
+    [OK] CALORIES: ID 1062 = 1150.0 kJ (Energy)
+    [OK] FAT: ID 1004 = 0.59 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 73.4 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 274 KCAL (Energy)
+    [OK] PROTEIN: ID 1003 = 1.38 G (Protein)
+    [OK] FIBER: ID 1079 = 14.5 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 2.0 MG (Sodium, Na)
+
+  Match 1: Persimmons, japanese, raw (SR Legacy)
+  Total nutrients: 93
+    [OK] FAT: ID 1258 = 0.02 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.037 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.043 G (Fatty acids, total polyunsaturated)
+    [OK] CALORIES: ID 1062 = 293 kJ (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] PROTEIN: ID 1003 = 0.58 G (Protein)
+    [OK] FIBER: ID 1079 = 3.6 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 1.0 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 0.19 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 18.6 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 70.0 KCAL (Energy)
+
+  Match 2: Noodles, japanese, soba, cooked (SR Legacy)
+  Total nutrients: 63
+    [OK] CALORIES: ID 1062 = 414 kJ (Energy)
+    [OK] FAT: ID 1004 = 0.1 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 21.4 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 99.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.026 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.031 G (Fatty acids, total polyunsaturated)
+    [OK] SODIUM: ID 1093 = 60.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.019 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 5.06 G (Protein)
+
+================================================================================
+Item: kimchi
+================================================================================
+
+  Match 0: Cabbage, kimchi (SR Legacy)
+  Total nutrients: 69
+    [OK] FAT: ID 1004 = 0.5 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 2.4 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 15.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.037 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.241 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 1.1 G (Protein)
+    [OK] CALORIES: ID 1062 = 65.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 1.6 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 498 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.067 G (Fatty acids, total saturated)
+
+================================================================================
+Item: pita_bread
+================================================================================
+
+  Match 0: Bread, pita, white, enriched (SR Legacy)
+  Total nutrients: 89
+    [OK] FIBER: ID 1079 = 2.2 G (Fiber, total dietary)
+    [OK] CALORIES: ID 1062 = 1150.0 kJ (Energy)
+    [OK] FAT: ID 1004 = 1.2 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 55.7 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 275 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.105 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.535 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 9.1 G (Protein)
+    [OK] SODIUM: ID 1093 = 536 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.166 G (Fatty acids, total saturated)
+
+  Match 1: Bread, pita, white, unenriched (SR Legacy)
+  Total nutrients: 60
+    [OK] CALORIES: ID 1062 = 1150.0 kJ (Energy)
+    [OK] FAT: ID 1004 = 1.2 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 55.7 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 275 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.105 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.535 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 9.1 G (Protein)
+    [OK] SODIUM: ID 1093 = 536 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.166 G (Fatty acids, total saturated)
+    [OK] FIBER: ID 1079 = 2.2 G (Fiber, total dietary)
+
+  Match 2: Bread, pita, whole-wheat (SR Legacy)
+  Total nutrients: 89
+    [OK] FAT: ID 1004 = 1.71 G (Total lipid (fat))
+    [OK] FIBER: ID 1079 = 6.1 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 421 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.208 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.349 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 1.06 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 9.8 G (Protein)
+    [OK] CARBS: ID 1005 = 55.9 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 262 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 1100.0 kJ (Energy)
+
+================================================================================
+Item: pork_loin
+================================================================================
+
+  Match 0: Pork, loin, boneless, raw (Foundation)
+  Total nutrients: 22
+    [OK] SODIUM: ID 1093 = 40.2 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.0288 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 3.28 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 9.47 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 3.95 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 1.38 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 21.1 G (Protein)
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 2047 = 168 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 174 KCAL (Energy (Atwater Specific Factors))
+
+  Match 1: Pork, loin, tenderloin, boneless, raw (Foundation)
+  Total nutrients: 22
+    [OK] SODIUM: ID 1093 = 41.4 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.01 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.866 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 3.9 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 0.862 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.418 G (Fatty acids, total polyunsaturated)
+    [OK] CALORIES: ID 2047 = 119 KCAL (Energy (Atwater General Factors))
+    [OK] PROTEIN: ID 1003 = 21.6 G (Protein)
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 2048 = 125 KCAL (Energy (Atwater Specific Factors))
+
+  Match 2: HORMEL ALWAYS TENDER, Boneless Pork Loin, Fresh Pork (SR Legacy)
+  Total nutrients: 29
+    [OK] CALORIES: ID 1062 = 609 kJ (Energy)
+    [OK] CARBS: ID 1005 = 0.76 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1004 = 7.18 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 3.42 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.64 G (Fatty acids, total polyunsaturated)
+    [OK] PROTEIN: ID 1003 = 19.0 G (Protein)
+    [OK] FAT: ID 1258 = 2.84 G (Fatty acids, total saturated)
+    [OK] CALORIES: ID 1008 = 145 KCAL (Energy)
+    [OK] SODIUM: ID 1093 = 358 MG (Sodium, Na)
+
+================================================================================
+Item: raspberry
+================================================================================
+
+  Match 0: Raspberries, raw (Foundation)
+  Total nutrients: 31
+    [OK] SODIUM: ID 1093 = 0.0 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 0.188 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 12.9 G (Carbohydrate, by difference)
+    [OK] PROTEIN: ID 1003 = 1.01 G (Protein)
+    [OK] CALORIES: ID 2047 = 57.3 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 51.4 KCAL (Energy (Atwater Specific Factors))
+
+  Match 1: Raspberries, raw (SR Legacy)
+  Total nutrients: 88
+    [OK] CALORIES: ID 1062 = 220 kJ (Energy)
+    [OK] FAT: ID 1258 = 0.019 G (Fatty acids, total saturated)
+    [OK] CARBS: ID 1005 = 11.9 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 52.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.064 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.375 G (Fatty acids, total polyunsaturated)
+    [OK] SODIUM: ID 1093 = 1.0 MG (Sodium, Na)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1004 = 0.65 G (Total lipid (fat))
+    [OK] FIBER: ID 1079 = 6.5 G (Fiber, total dietary)
+    [OK] PROTEIN: ID 1003 = 1.2 G (Protein)
+
+  Match 2: Raspberries, puree, seedless (SR Legacy)
+  Total nutrients: 96
+    [OK] PROTEIN: ID 1003 = 1.02 G (Protein)
+    [OK] CALORIES: ID 1062 = 170 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.9 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 4.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 0.064 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 0.87 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 7.99 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 41.0 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.016 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.09 G (Fatty acids, total polyunsaturated)
+
+================================================================================
+Item: rice_noodles
+================================================================================
+
+  Match 0: Rice noodles, cooked (SR Legacy)
+  Total nutrients: 89
+    [OK] FIBER: ID 1079 = 1.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 19.0 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 0.2 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 24.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 108 KCAL (Energy)
+    [OK] PROTEIN: ID 1003 = 1.79 G (Protein)
+    [OK] CALORIES: ID 1062 = 454 kJ (Energy)
+    [OK] FAT: ID 1292 = 0.026 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.023 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 0.023 G (Fatty acids, total saturated)
+
+  Match 1: Rice noodles, dry (SR Legacy)
+  Total nutrients: 89
+    [OK] FAT: ID 1004 = 0.56 G (Total lipid (fat))
+    [OK] CALORIES: ID 1008 = 364 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 1520.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 1.6 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 182 MG (Sodium, Na)
+    [OK] PROTEIN: ID 1003 = 5.95 G (Protein)
+    [OK] CARBS: ID 1005 = 80.2 G (Carbohydrate, by difference)
+    [OK] FAT: ID 1258 = 0.153 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.175 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.15 G (Fatty acids, total polyunsaturated)
+
+  Match 2: Noodles, chinese, cellophane or long rice (mung beans), dehydrated (SR Legacy)
+  Total nutrients: 90
+    [OK] CARBS: ID 1005 = 86.1 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 351 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 1470.0 kJ (Energy)
+    [OK] FAT: ID 1257 = 0.0 G (Fatty acids, total trans)
+    [OK] FAT: ID 1258 = 0.017 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 0.16 G (Protein)
+    [OK] FIBER: ID 1079 = 0.5 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 10.0 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 0.06 G (Total lipid (fat))
+    [OK] FAT: ID 1292 = 0.008 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.018 G (Fatty acids, total polyunsaturated)
+
+================================================================================
+Item: sardines
+================================================================================
+
+  Match 0: Fish oil, sardine (SR Legacy)
+  Total nutrients: 53
+    [OK] CALORIES: ID 1062 = 3770.0 kJ (Energy)
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 0.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 29.9 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 100 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 902 KCAL (Energy)
+    [OK] FAT: ID 1292 = 33.8 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 31.9 G (Fatty acids, total polyunsaturated)
+
+  Match 1: Fish, sardine, Atlantic, canned in oil, drained solids with bone (SR Legacy)
+  Total nutrients: 90
+    [OK] SODIUM: ID 1093 = 307 MG (Sodium, Na)
+    [OK] CALORIES: ID 1062 = 871 kJ (Energy)
+    [OK] FAT: ID 1004 = 11.4 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 208 KCAL (Energy)
+    [OK] FAT: ID 1292 = 3.87 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 5.15 G (Fatty acids, total polyunsaturated)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] PROTEIN: ID 1003 = 24.6 G (Protein)
+    [OK] FAT: ID 1258 = 1.53 G (Fatty acids, total saturated)
+
+  Match 2: Fish, sardine, Pacific, canned in tomato sauce, drained solids with bone (SR Legacy)
+  Total nutrients: 101
+    [OK] FIBER: ID 1079 = 0.1 G (Fiber, total dietary)
+    [OK] PROTEIN: ID 1003 = 20.9 G (Protein)
+    [OK] CALORIES: ID 1062 = 774 kJ (Energy)
+    [OK] FAT: ID 1258 = 2.68 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 10.4 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.54 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 185 KCAL (Energy)
+    [OK] FAT: ID 1292 = 4.82 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 2.11 G (Fatty acids, total polyunsaturated)
+    [OK] SODIUM: ID 1093 = 414 MG (Sodium, Na)
+
+================================================================================
+Item: sesame_oil
+================================================================================
+
+  Match 0: Oil, sesame, salad or cooking (SR Legacy)
+  Total nutrients: 89
+    [OK] PROTEIN: ID 1003 = 0.0 G (Protein)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 0.0 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 14.2 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 100 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 884 KCAL (Energy)
+    [OK] FAT: ID 1292 = 39.7 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 41.7 G (Fatty acids, total polyunsaturated)
+    [OK] CALORIES: ID 1062 = 3700.0 kJ (Energy)
+
+  Match 1: Candies, sesame crunch (SR Legacy)
+  Total nutrients: 71
+    [OK] PROTEIN: ID 1003 = 11.6 G (Protein)
+    [OK] FAT: ID 1004 = 33.3 G (Total lipid (fat))
+    [OK] SODIUM: ID 1093 = 167 MG (Sodium, Na)
+    [OK] CARBS: ID 1005 = 50.3 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 516 KCAL (Energy)
+    [OK] FAT: ID 1292 = 12.6 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 14.6 G (Fatty acids, total polyunsaturated)
+    [OK] FAT: ID 1258 = 4.66 G (Fatty acids, total saturated)
+    [OK] CALORIES: ID 1062 = 2160.0 kJ (Energy)
+    [OK] FIBER: ID 1079 = 7.7 G (Fiber, total dietary)
+
+  Match 2: Sesame butter, creamy (Foundation)
+  Total nutrients: 60
+    [OK] FAT: ID 1292 = 22.6 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 26.4 G (Fatty acids, total polyunsaturated)
+    [OK] FIBER: ID 1079 = 8.37 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 63.6 MG (Sodium, Na)
+    [OK] FAT: ID 1258 = 8.97 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1004 = 62.4 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 14.2 G (Carbohydrate, by difference)
+    [OK] PROTEIN: ID 1003 = 19.7 G (Protein)
+    [OK] CALORIES: ID 2047 = 697 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 648 KCAL (Energy (Atwater Specific Factors))
+
+================================================================================
+Item: tilapia_fish
+================================================================================
+
+  Match 0: Fish, tilapia, raw (SR Legacy)
+  Total nutrients: 109
+    [OK] FAT: ID 1004 = 1.7 G (Total lipid (fat))
+    [OK] PROTEIN: ID 1003 = 20.1 G (Protein)
+    [OK] SODIUM: ID 1093 = 52.0 MG (Sodium, Na)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 96.0 KCAL (Energy)
+    [OK] CALORIES: ID 1062 = 400 kJ (Energy)
+    [OK] FAT: ID 1258 = 0.585 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.498 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.363 G (Fatty acids, total polyunsaturated)
+
+  Match 1: Fish, tilapia, cooked, dry heat (SR Legacy)
+  Total nutrients: 110
+    [OK] FAT: ID 1258 = 0.94 G (Fatty acids, total saturated)
+    [OK] PROTEIN: ID 1003 = 26.2 G (Protein)
+    [OK] CALORIES: ID 1062 = 538 kJ (Energy)
+    [OK] FIBER: ID 1079 = 0.0 G (Fiber, total dietary)
+    [OK] SODIUM: ID 1093 = 56.0 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 2.65 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] CALORIES: ID 1008 = 128 KCAL (Energy)
+    [OK] FAT: ID 1292 = 0.955 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.6 G (Fatty acids, total polyunsaturated)
+
+  Match 2: Fish, tilapia, farm raised, raw (Foundation)
+  Total nutrients: 40
+    [OK] SODIUM: ID 1093 = 93.7 MG (Sodium, Na)
+    [OK] FAT: ID 1004 = 2.48 G (Total lipid (fat))
+    [OK] CARBS: ID 1005 = 0.0 G (Carbohydrate, by difference)
+    [OK] PROTEIN: ID 1003 = 19.0 G (Protein)
+    [OK] CALORIES: ID 2047 = 94.7 KCAL (Energy (Atwater General Factors))
+    [OK] CALORIES: ID 2048 = 100 KCAL (Energy (Atwater Specific Factors))
+    [OK] FAT: ID 1258 = 0.647 G (Fatty acids, total saturated)
+    [OK] FAT: ID 1292 = 0.769 G (Fatty acids, total monounsaturated)
+    [OK] FAT: ID 1293 = 0.358 G (Fatty acids, total polyunsaturated)
+
+
+
+================================================================================
+SUMMARY: NUTRIENT ID MAPPINGS FOR TARGET FIELDS
+================================================================================
+
+CALORIES:
+----------------------------------------
+
+  Nutrient ID 1008:
+    Name: Energy
+    Data types: {'SR Legacy': 51}
+    Total occurrences: 51
+    Example values:
+      balsamic_vinegar (match 0): 88.0 KCAL
+      balsamic_vinegar (match 1): 21.0 KCAL
+      balsamic_vinegar (match 2): 18.0 KCAL
+
+  Nutrient ID 1062:
+    Name: Energy
+    Data types: {'SR Legacy': 51}
+    Total occurrences: 51
+    Example values:
+      balsamic_vinegar (match 0): 369 kJ
+      balsamic_vinegar (match 1): 90.0 kJ
+      balsamic_vinegar (match 2): 76.0 kJ
+
+  Nutrient ID 2047:
+    Name: Energy (Atwater General Factors)
+    Data types: {'Foundation': 9}
+    Total occurrences: 9
+    Example values:
+      celery (match 0): 16.7 KCAL
+      chicken_wings (match 0): 168 KCAL
+      feta_cheese (match 1): 273 KCAL
+
+  Nutrient ID 2048:
+    Name: Energy (Atwater Specific Factors)
+    Data types: {'Foundation': 9}
+    Total occurrences: 9
+    Example values:
+      celery (match 0): 14.8 KCAL
+      chicken_wings (match 0): 173 KCAL
+      feta_cheese (match 1): 273 KCAL
+
+PROTEIN:
+----------------------------------------
+
+  Nutrient ID 1003:
+    Name: Protein
+    Data types: {'SR Legacy': 51, 'Foundation': 9}
+    Total occurrences: 60
+    Example values:
+      balsamic_vinegar (match 0): 0.49 G
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+
+CARBS:
+----------------------------------------
+
+  Nutrient ID 1005:
+    Name: Carbohydrate, by difference
+    Data types: {'SR Legacy': 51, 'Foundation': 9}
+    Total occurrences: 60
+    Example values:
+      balsamic_vinegar (match 0): 17.0 G
+      balsamic_vinegar (match 1): 0.93 G
+      balsamic_vinegar (match 2): 0.04 G
+
+FAT:
+----------------------------------------
+
+  Nutrient ID 1004:
+    Name: Total lipid (fat)
+    Data types: {'SR Legacy': 51, 'Foundation': 9}
+    Total occurrences: 60
+    Example values:
+      balsamic_vinegar (match 0): 0.0 G
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+
+  Nutrient ID 1257:
+    Name: Fatty acids, total trans
+    Data types: {'SR Legacy': 18, 'Foundation': 2}
+    Total occurrences: 20
+    Example values:
+      balsamic_vinegar (match 0): 0.0 G
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+
+  Nutrient ID 1258:
+    Name: Fatty acids, total saturated
+    Data types: {'SR Legacy': 49, 'Foundation': 5}
+    Total occurrences: 54
+    Example values:
+      balsamic_vinegar (match 0): 0.0 G
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+
+  Nutrient ID 1292:
+    Name: Fatty acids, total monounsaturated
+    Data types: {'SR Legacy': 47, 'Foundation': 5}
+    Total occurrences: 52
+    Example values:
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+      basil_leaves (match 1): 0.076 G
+
+  Nutrient ID 1293:
+    Name: Fatty acids, total polyunsaturated
+    Data types: {'SR Legacy': 47, 'Foundation': 4}
+    Total occurrences: 51
+    Example values:
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+      basil_leaves (match 1): 0.147 G
+
+  Nutrient ID 1329:
+    Name: Fatty acids, total trans-monoenoic
+    Data types: {'SR Legacy': 3}
+    Total occurrences: 3
+    Example values:
+      ground_turkey (match 0): 0.103 G
+      ground_turkey (match 1): 0.078 G
+      ground_turkey (match 2): 0.013 G
+
+  Nutrient ID 1331:
+    Name: Fatty acids, total trans-polyenoic
+    Data types: {'SR Legacy': 3}
+    Total occurrences: 3
+    Example values:
+      ground_turkey (match 0): 0.031 G
+      ground_turkey (match 1): 0.025 G
+      ground_turkey (match 2): 0.004 G
+
+FIBER:
+----------------------------------------
+
+  Nutrient ID 1079:
+    Name: Fiber, total dietary
+    Data types: {'SR Legacy': 47, 'Foundation': 2}
+    Total occurrences: 49
+    Example values:
+      balsamic_vinegar (match 1): 0.0 G
+      balsamic_vinegar (match 2): 0.0 G
+      basil_leaves (match 0): 2.0 G
+
+SODIUM:
+----------------------------------------
+
+  Nutrient ID 1093:
+    Name: Sodium, Na
+    Data types: {'SR Legacy': 51, 'Foundation': 9}
+    Total occurrences: 60
+    Example values:
+      balsamic_vinegar (match 0): 23.0 MG
+      balsamic_vinegar (match 1): 5.0 MG
+      balsamic_vinegar (match 2): 2.0 MG
+
+
+
+================================================================================
+RECOMMENDED NUTRIENT MAP
+================================================================================
+
+nutrient_map = {
+    # calories
+    1008: 'calories_g' if 'calories' != 'calories' else 'calories',  # Energy
+    1062: 'calories_g' if 'calories' != 'calories' else 'calories',  # Energy
+    2047: 'calories_g' if 'calories' != 'calories' else 'calories',  # Energy (Atwater General Factors)
+    2048: 'calories_g' if 'calories' != 'calories' else 'calories',  # Energy (Atwater Specific Factors)
+    # protein
+    1003: 'protein_g' if 'protein' != 'calories' else 'calories',  # Protein
+    # carbs
+    1005: 'carbs_g' if 'carbs' != 'calories' else 'calories',  # Carbohydrate, by difference
+    # fat
+    1004: 'fat_g' if 'fat' != 'calories' else 'calories',  # Total lipid (fat)
+    1257: 'fat_g' if 'fat' != 'calories' else 'calories',  # Fatty acids, total trans
+    1258: 'fat_g' if 'fat' != 'calories' else 'calories',  # Fatty acids, total saturated
+    1292: 'fat_g' if 'fat' != 'calories' else 'calories',  # Fatty acids, total monounsaturated
+    1293: 'fat_g' if 'fat' != 'calories' else 'calories',  # Fatty acids, total polyunsaturated
+    1329: 'fat_g' if 'fat' != 'calories' else 'calories',  # Fatty acids, total trans-monoenoic
+    1331: 'fat_g' if 'fat' != 'calories' else 'calories',  # Fatty acids, total trans-polyenoic
+    # fiber
+    1079: 'fiber_g' if 'fiber' != 'calories' else 'calories',  # Fiber, total dietary
+    # sodium
+    1093: 'sodium_g' if 'sodium' != 'calories' else 'calories',  # Sodium, Na
+}
+
+
+
+================================================================================
+STATISTICS
+================================================================================
+Total FDC files analyzed: 21
+Total matches analyzed: 60
+Unique nutrient IDs found: 159

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import auth, onboarding, recipes, inventory, meal_plan, notifications, tracking, websocket, dashboard, receipt
+from app.api import auth, onboarding, recipes, inventory, meal_plan, notifications, tracking, websocket, dashboard, receipt, orchestrator, nutrition_chat
 from app.core.config import settings
 from app.services.websocket_manager import websocket_manager
 from app.core.events import event_bus
@@ -47,6 +47,8 @@ app.include_router(websocket.router)
 app.include_router(notifications.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(receipt.router, prefix="/api")
+app.include_router(orchestrator.router, prefix="/api")
+app.include_router(nutrition_chat.router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():

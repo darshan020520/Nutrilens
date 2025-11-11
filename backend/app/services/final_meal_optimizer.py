@@ -534,75 +534,89 @@ class MealPlanOptimizer:
     def _get_filtered_recipes_fixed(self, user_id: int, constraints: OptimizationConstraints) -> List[Dict]:
         """Get actual recipes from database"""
 
-        print("goal")
-        
+        print("\n" + "="*80)
+        print("DEBUG: _get_filtered_recipes_fixed()")
+        print("="*80)
+
         # Get user's goal to filter recipes
         goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+        goal_str = goal.goal_type.value.lower() if goal else None
 
-        print("goal", goal)
+        print(f"User goal: {goal_str}")
+        print(f"Constraints: daily_cal={constraints.daily_calories_min}-{constraints.daily_calories_max}, meals/day={constraints.meals_per_day}")
+        print(f"Dietary restrictions: {constraints.dietary_restrictions}")
+        print(f"Max prep time: {constraints.max_prep_time_minutes}")
 
-        
-
-        goal_str = goal.goal_type.value.lower()
-
-        print("goal_str", goal_str)
-        
         # Start with all recipes
+        print("\n1. Starting with all recipes in database...")
+        total_recipes = self.db.query(Recipe).count()
+        print(f"   Total recipes in DB: {total_recipes}")
+
         query = self.db.query(Recipe)
-        
+
         # Filter by goal if user has one
         if goal:
-            # Recipe.goals is JSON array like ["muscle_gain", "fat_loss"]
-            # We need recipes that contain the user's goal
+            print(f"\n2. Filtering by goal: {goal_str}")
             query = query.filter(cast(Recipe.goals, String).contains(goal_str))
+            count_after_goal = query.count()
+            print(f"   Recipes after goal filter: {count_after_goal}")
+
+            # Show sample of filtered recipes
+            sample = query.limit(5).all()
+            print(f"   Sample recipes that passed goal filter:")
+            for r in sample:
+                print(f"     - ID {r.id}: {r.title[:40]} | goals={r.goals} | source={r.source}")
 
         # Filter by dietary restrictions
         if constraints.dietary_restrictions:
+            print(f"\n3. Filtering by dietary restrictions: {constraints.dietary_restrictions}")
             for restriction in constraints.dietary_restrictions:
                 if restriction == 'vegetarian':
                     query = query.filter(cast(Recipe.dietary_tags, String).contains('vegetarian'))
                 elif restriction == 'vegan':
                     query = query.filter(cast(Recipe.dietary_tags, String).contains('vegan'))
-                # non_vegetarian recipes don't need filtering - they can eat everything
-        
+            count_after_dietary = query.count()
+            print(f"   Recipes after dietary filter: {count_after_dietary}")
+
         # Filter by prep time
         if constraints.max_prep_time_minutes:
+            print(f"\n4. Filtering by prep time: <= {constraints.max_prep_time_minutes} min")
             query = query.filter(
                 (Recipe.prep_time_min + Recipe.cook_time_min) <= constraints.max_prep_time_minutes
             )
-        
+            count_after_time = query.count()
+            print(f"   Recipes after prep time filter: {count_after_time}")
+
         # Execute query
+        print("\n5. Executing query to get all filtered recipes...")
         recipes_from_db = query.all()
-        
+        print(f"   Total recipes from DB query: {len(recipes_from_db)}")
+
+        # Count by source
+        source_counts = {}
+        for r in recipes_from_db:
+            source = r.source or 'unknown'
+            source_counts[source] = source_counts.get(source, 0) + 1
+        print(f"   Breakdown by source: {source_counts}")
+
         # Convert to dict format expected by optimizer
+        print("\n6. Applying calorie range filter...")
+        min_cal_per_meal = constraints.daily_calories_min / constraints.meals_per_day * 0.5
+        max_cal_per_meal = constraints.daily_calories_max / constraints.meals_per_day * 1.5
+        print(f"   Calorie range per meal: {min_cal_per_meal:.1f} - {max_cal_per_meal:.1f} cal")
+
         recipes = []
+        filtered_out_by_calories = []
+
         for recipe in recipes_from_db:
-            # Calculate if recipe fits calorie constraints
             calories = recipe.macros_per_serving.get('calories', 0)
-            min_cal_per_meal = constraints.daily_calories_min / constraints.meals_per_day * 0.5
-            max_cal_per_meal = constraints.daily_calories_max / constraints.meals_per_day * 1.5
-            
+
             # Only include recipes that could fit in the meal plan
             if min_cal_per_meal <= calories <= max_cal_per_meal:
                 recipes.append({
                     'id': recipe.id,
                     'title': recipe.title,
-                    'suitable_meal_times': recipe.suitable_meal_times or [],
-                    'goals': recipe.goals or [],
-                    'dietary_tags': recipe.dietary_tags or [],
-                    'macros_per_serving': recipe.macros_per_serving,
-                    'prep_time_min': recipe.prep_time_min or 0,
-                    'cook_time_min': recipe.cook_time_min or 0,
-                    'ingredients': []  # Would need to join with RecipeIngredient if needed
-                })
-        
-        # If we don't have enough recipes, relax the calorie constraints
-        if len(recipes) < constraints.meals_per_day * 3:
-            recipes = []
-            for recipe in recipes_from_db:
-                recipes.append({
-                    'id': recipe.id,
-                    'title': recipe.title,
+                    'source': recipe.source,
                     'suitable_meal_times': recipe.suitable_meal_times or [],
                     'goals': recipe.goals or [],
                     'dietary_tags': recipe.dietary_tags or [],
@@ -611,7 +625,61 @@ class MealPlanOptimizer:
                     'cook_time_min': recipe.cook_time_min or 0,
                     'ingredients': []
                 })
-        
+            else:
+                filtered_out_by_calories.append({
+                    'id': recipe.id,
+                    'title': recipe.title[:40],
+                    'source': recipe.source,
+                    'calories': calories
+                })
+
+        print(f"   Recipes passing calorie filter: {len(recipes)}")
+        print(f"   Recipes filtered out by calories: {len(filtered_out_by_calories)}")
+
+        if filtered_out_by_calories:
+            print(f"\n   Sample of recipes filtered out by calorie range:")
+            for r in filtered_out_by_calories[:5]:
+                print(f"     - ID {r['id']}: {r['title']} | {r['calories']:.0f} cal | source={r['source']}")
+
+        # Count by source after calorie filter
+        source_counts_after_cal = {}
+        for r in recipes:
+            source = r.get('source', 'unknown')
+            source_counts_after_cal[source] = source_counts_after_cal.get(source, 0) + 1
+        print(f"\n   Final recipes by source: {source_counts_after_cal}")
+
+        # Show sample of LLM recipes that made it through
+        llm_recipes = [r for r in recipes if r.get('source') == 'llm_generated']
+        print(f"   LLM recipes that passed all filters: {len(llm_recipes)}")
+        if llm_recipes:
+            print(f"   Sample LLM recipes:")
+            for r in llm_recipes[:5]:
+                print(f"     - ID {r['id']}: {r['title'][:40]} | {r['macros_per_serving']['calories']:.0f} cal")
+
+        # If we don't have enough recipes, relax the calorie constraints
+        if len(recipes) < constraints.meals_per_day * 3:
+            print(f"\n7. NOT ENOUGH RECIPES! Relaxing calorie constraints...")
+            print(f"   Need at least {constraints.meals_per_day * 3} recipes, have {len(recipes)}")
+            recipes = []
+            for recipe in recipes_from_db:
+                recipes.append({
+                    'id': recipe.id,
+                    'title': recipe.title,
+                    'source': recipe.source,
+                    'suitable_meal_times': recipe.suitable_meal_times or [],
+                    'goals': recipe.goals or [],
+                    'dietary_tags': recipe.dietary_tags or [],
+                    'macros_per_serving': recipe.macros_per_serving,
+                    'prep_time_min': recipe.prep_time_min or 0,
+                    'cook_time_min': recipe.cook_time_min or 0,
+                    'ingredients': []
+                })
+            print(f"   After relaxing: {len(recipes)} recipes available")
+
+        print("\n" + "="*80)
+        print(f"FINAL: Returning {len(recipes)} recipes to optimizer")
+        print("="*80 + "\n")
+
         return recipes
     
     # Keep all other methods unchanged...

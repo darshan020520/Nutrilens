@@ -159,7 +159,7 @@ class UserPreference(Base):
 # Nutrition Tables
 class Item(Base):
     __tablename__ = "items"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     canonical_name = Column(String(255), unique=True, index=True)
     aliases = Column(JSON, default=list)  # ["whole wheat flour", "atta", "ww flour"]
@@ -170,14 +170,20 @@ class Item(Base):
     nutrition_per_100g = Column(JSON)  # {"calories": 340, "protein_g": 13.2, ...}
     is_staple = Column(Boolean, default=False)
     density_g_per_ml = Column(Float, nullable=True)
-    
+
+    # Vector embeddings for semantic search
+    embedding = Column(Text, nullable=True)  # Stored as text, cast to vector(1536) in queries
+    embedding_model = Column(String(50), nullable=True)  # e.g., "text-embedding-3-small"
+    embedding_version = Column(Integer, nullable=True)  # For future model upgrades
+    source = Column(String(20), nullable=True)  # "manual", "usda_fdc", "llm_created"
+
     # Relationships
     inventory_items = relationship("UserInventory", back_populates="item")
     recipe_ingredients = relationship("RecipeIngredient", back_populates="item")
 
 class Recipe(Base):
     __tablename__ = "recipes"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), index=True)
     description = Column(Text)
@@ -194,21 +200,49 @@ class Recipe(Base):
     macros_per_serving = Column(JSON)  # {"calories": 450, "protein_g": 45, ...}
     meal_prep_notes = Column(Text, nullable=True)
     chef_tips = Column(Text, nullable=True)
-    
+
+    # Vector embeddings for semantic search
+    embedding = Column(Text, nullable=True)  # Stored as text, cast to vector(1536) in queries
+    source = Column(String(20), nullable=True)  # "manual", "spoonacular", "llm_generated"
+    external_id = Column(String(100), nullable=True)  # For API source tracking (e.g., Spoonacular ID)
+
     # Relationships
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
     meal_logs = relationship("MealLog", back_populates="recipe")
 
+    def to_dict(self) -> dict:
+        """
+        Convert Recipe to dict matching optimizer format.
+        Used for meal plan storage and API responses.
+        """
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'source': self.source,
+            'suitable_meal_times': self.suitable_meal_times or [],
+            'goals': self.goals or [],
+            'dietary_tags': self.dietary_tags or [],
+            'macros_per_serving': self.macros_per_serving,
+            'prep_time_min': self.prep_time_min or 0,
+            'cook_time_min': self.cook_time_min or 0,
+            'ingredients': []  # Empty for plan storage, populated when needed
+        }
+
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredients"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
     item_id = Column(Integer, ForeignKey("items.id"))
     quantity_grams = Column(Float)
     is_optional = Column(Boolean, default=False)
     preparation_notes = Column(String(255), nullable=True)  # "diced", "minced", etc.
-    
+
+    # Audit columns for tracking ingredient matching quality
+    normalized_confidence = Column(Float, nullable=True)  # Confidence score from normalizer
+    original_ingredient_text = Column(Text, nullable=True)  # Original text from recipe source
+
     # Relationships
     recipe = relationship("Recipe", back_populates="ingredients")
     item = relationship("Item", back_populates="recipe_ingredients")
@@ -228,10 +262,11 @@ class MealPlan(Base):
     is_active = Column(Boolean, default=True)
     
     user = relationship("User", back_populates="meal_plans")
+    meal_logs = relationship("MealLog", back_populates="meal_plan")
 
 class MealLog(Base):
     __tablename__ = "meal_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)
@@ -243,9 +278,14 @@ class MealLog(Base):
     portion_multiplier = Column(Float, default=1.0)
     notes = Column(Text, nullable=True)
     external_meal = Column(JSON, nullable=True)  # For eating out
-    
+
+    # Link to meal plan for tracking and swapping
+    meal_plan_id = Column(Integer, ForeignKey("meal_plans.id", ondelete="SET NULL"), nullable=True, index=True)
+    day_index = Column(Integer, nullable=True)  # 0-6 for day of week in plan
+
     user = relationship("User", back_populates="meal_logs")
     recipe = relationship("Recipe", back_populates="meal_logs")
+    meal_plan = relationship("MealPlan", back_populates="meal_logs")
 
 class UserInventory(Base):
     __tablename__ = "user_inventory"
@@ -399,6 +439,14 @@ class ReceiptPendingItem(Base):
     status = Column(String(20), default="pending", index=True)  # pending, confirmed, skipped
     created_at = Column(DateTime, default=datetime.utcnow)
     confirmed_at = Column(DateTime, nullable=True)
+
+    # Enrichment fields (from FDC + LLM pipeline)
+    canonical_name = Column(String(100), nullable=True)
+    category = Column(String(50), nullable=True)
+    fdc_id = Column(String(20), nullable=True)
+    nutrition_data = Column(JSON, nullable=True)
+    enrichment_confidence = Column(Float, nullable=True)
+    enrichment_reasoning = Column(Text, nullable=True)
 
     # Relationships
     receipt_scan = relationship("ReceiptScan", back_populates="pending_items")

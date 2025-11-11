@@ -1,0 +1,2386 @@
+{
+  "metadata": {
+    "generated_at": "2025-10-31T08:57:50.006185",
+    "total_items": 95,
+    "openai_model": "gpt-4o-2024-08-06",
+    "embedding_model": "text-embedding-3-small",
+    "existing_items_count": 0
+  },
+  "items": [
+    {
+      "canonical_name": "almonds",
+      "display_name": "Almonds",
+      "category": "nuts_seeds",
+      "aliases": [
+        "almond nuts",
+        "almond kernels",
+        "almond seeds"
+      ],
+      "nutrition_per_100g": {
+        "calories": 579,
+        "protein_g": 21.2,
+        "carbs_g": 21.6,
+        "fat_g": 49.9,
+        "fiber_g": 12.5,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "170567",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Nuts, almonds",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "asparagus",
+      "display_name": "Asparagus",
+      "category": "vegetables",
+      "aliases": [
+        "asparagus spears",
+        "asparagus stalks",
+        "garden asparagus"
+      ],
+      "nutrition_per_100g": {
+        "calories": 20.0,
+        "protein_g": 2.2,
+        "carbs_g": 3.88,
+        "fat_g": 0.12,
+        "fiber_g": 2.1,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "168389",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Asparagus, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "avocado",
+      "display_name": "Avocado",
+      "category": "fruits",
+      "aliases": [
+        "avocado pear",
+        "alligator pear",
+        "butter fruit"
+      ],
+      "nutrition_per_100g": {
+        "calories": 167,
+        "protein_g": 1.96,
+        "carbs_g": 8.64,
+        "fat_g": 15.4,
+        "fiber_g": 6.8,
+        "sodium_mg": 8.0
+      },
+      "fdc_id": "171706",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Avocados, raw, California",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "banana",
+      "display_name": "Banana",
+      "category": "fruits",
+      "aliases": [
+        "bananas",
+        "dessert banana",
+        "plantain"
+      ],
+      "nutrition_per_100g": {
+        "calories": 89.0,
+        "protein_g": 1.09,
+        "carbs_g": 22.8,
+        "fat_g": 0.33,
+        "fiber_g": 2.6,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "173944",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Bananas, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "barley",
+      "display_name": "Barley",
+      "category": "grains",
+      "aliases": [
+        "hulled barley",
+        "barley grain",
+        "barley seeds"
+      ],
+      "nutrition_per_100g": {
+        "calories": 354,
+        "protein_g": 12.5,
+        "carbs_g": 73.5,
+        "fat_g": 2.3,
+        "fiber_g": 17.3,
+        "sodium_mg": 12.0
+      },
+      "fdc_id": "170283",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Barley, hulled",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "beef_lean",
+      "display_name": "Beef Lean",
+      "category": "proteins",
+      "aliases": [
+        "lean beef",
+        "beef meat",
+        "beef chuck"
+      ],
+      "nutrition_per_100g": {
+        "calories": 124,
+        "protein_g": 21.9,
+        "carbs_g": 0.21,
+        "fat_g": 3.99,
+        "fiber_g": 0,
+        "sodium_mg": 81.0
+      },
+      "fdc_id": "170809",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Beef, chuck for stew, separable lean and fat, select, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "bell_pepper",
+      "display_name": "Bell Pepper",
+      "category": "vegetables",
+      "aliases": [
+        "capsicum",
+        "sweet pepper",
+        "green pepper"
+      ],
+      "nutrition_per_100g": {
+        "calories": 22.9,
+        "protein_g": 0.71,
+        "carbs_g": 4.78,
+        "fat_g": 0.11,
+        "fiber_g": 0.94,
+        "sodium_mg": 0
+      },
+      "fdc_id": "2258588",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Peppers, bell, green, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "black_beans",
+      "display_name": "Black Beans",
+      "category": "legumes",
+      "aliases": [
+        "black turtle beans",
+        "frijoles negros",
+        "black gram"
+      ],
+      "nutrition_per_100g": {
+        "calories": 341,
+        "protein_g": 21.6,
+        "carbs_g": 62.4,
+        "fat_g": 1.42,
+        "fiber_g": 15.5,
+        "sodium_mg": 5.0
+      },
+      "fdc_id": "173734",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Beans, black, mature seeds, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "black_lentils",
+      "display_name": "Black Lentils",
+      "category": "legumes",
+      "aliases": [
+        "beluga lentils",
+        "urad dal",
+        "black gram"
+      ],
+      "nutrition_per_100g": {
+        "calories": 352,
+        "protein_g": 24.6,
+        "carbs_g": 63.4,
+        "fat_g": 1.06,
+        "fiber_g": 10.7,
+        "sodium_mg": 6.0
+      },
+      "fdc_id": "172420",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Lentils, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "black_pepper",
+      "display_name": "Black Pepper",
+      "category": "spices",
+      "aliases": [
+        "peppercorn",
+        "pepper spice",
+        "ground pepper"
+      ],
+      "nutrition_per_100g": {
+        "calories": 251,
+        "protein_g": 10.4,
+        "carbs_g": 64.0,
+        "fat_g": 3.26,
+        "fiber_g": 25.3,
+        "sodium_mg": 20.0
+      },
+      "fdc_id": "170931",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spices, pepper, black",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "blueberry",
+      "display_name": "Blueberry",
+      "category": "fruits",
+      "aliases": [
+        "blueberries",
+        "wild blueberry",
+        "cultivated blueberry"
+      ],
+      "nutrition_per_100g": {
+        "calories": 57.0,
+        "protein_g": 0.74,
+        "carbs_g": 14.5,
+        "fat_g": 0.33,
+        "fiber_g": 2.4,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "171711",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Blueberries, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "bread_whole_wheat",
+      "display_name": "Bread Whole Wheat",
+      "category": "grains",
+      "aliases": [
+        "whole grain bread",
+        "wholemeal bread",
+        "whole wheat loaf"
+      ],
+      "nutrition_per_100g": {
+        "calories": 254,
+        "protein_g": 12.3,
+        "carbs_g": 43.1,
+        "fat_g": 3.55,
+        "fiber_g": 6.0,
+        "sodium_mg": 450
+      },
+      "fdc_id": "335240",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Bread, whole-wheat, commercially prepared",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "broccoli",
+      "display_name": "Broccoli",
+      "category": "vegetables",
+      "aliases": [
+        "broccoli florets",
+        "calabrese",
+        "broccoli heads"
+      ],
+      "nutrition_per_100g": {
+        "calories": 31.0,
+        "protein_g": 2.57,
+        "carbs_g": 6.27,
+        "fat_g": 0.34,
+        "fiber_g": 2.4,
+        "sodium_mg": 36.0
+      },
+      "fdc_id": "747447",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Broccoli, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "brown_rice",
+      "display_name": "Brown Rice",
+      "category": "grains",
+      "aliases": [
+        "whole grain rice",
+        "hulled rice",
+        "unpolished rice"
+      ],
+      "nutrition_per_100g": {
+        "calories": 363,
+        "protein_g": 7.23,
+        "carbs_g": 76.5,
+        "fat_g": 2.78,
+        "fiber_g": 4.6,
+        "sodium_mg": 8.0
+      },
+      "fdc_id": "168898",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Rice flour, brown",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "buckwheat",
+      "display_name": "Buckwheat",
+      "category": "grains",
+      "aliases": [
+        "buckwheat groats",
+        "kasha",
+        "fagopyrum"
+      ],
+      "nutrition_per_100g": {
+        "calories": 343,
+        "protein_g": 13.2,
+        "carbs_g": 71.5,
+        "fat_g": 3.4,
+        "fiber_g": 10.0,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "170286",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Buckwheat",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "butter",
+      "display_name": "Butter",
+      "category": "dairy",
+      "aliases": [
+        "salted butter",
+        "dairy butter",
+        "cream butter"
+      ],
+      "nutrition_per_100g": {
+        "calories": 717,
+        "protein_g": 0.85,
+        "carbs_g": 0.06,
+        "fat_g": 81.1,
+        "fiber_g": 0,
+        "sodium_mg": 643
+      },
+      "fdc_id": "173410",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Butter, salted",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "cardamom",
+      "display_name": "Cardamom",
+      "category": "spices",
+      "aliases": [
+        "green cardamom",
+        "elaichi",
+        "cardamon"
+      ],
+      "nutrition_per_100g": {
+        "calories": 311,
+        "protein_g": 10.8,
+        "carbs_g": 68.5,
+        "fat_g": 6.7,
+        "fiber_g": 28.0,
+        "sodium_mg": 18.0
+      },
+      "fdc_id": "170919",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spices, cardamom",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "carrot",
+      "display_name": "Carrot",
+      "category": "vegetables",
+      "aliases": [
+        "carrots",
+        "daucus carota",
+        "orange carrot"
+      ],
+      "nutrition_per_100g": {
+        "calories": 41.0,
+        "protein_g": 0.93,
+        "carbs_g": 9.58,
+        "fat_g": 0.24,
+        "fiber_g": 2.8,
+        "sodium_mg": 69.0
+      },
+      "fdc_id": "170393",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Carrots, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "cashews",
+      "display_name": "Cashews",
+      "category": "nuts_seeds",
+      "aliases": [
+        "cashew nuts",
+        "raw cashews",
+        "whole cashews"
+      ],
+      "nutrition_per_100g": {
+        "calories": 553,
+        "protein_g": 18.2,
+        "carbs_g": 30.2,
+        "fat_g": 43.8,
+        "fiber_g": 3.3,
+        "sodium_mg": 12.0
+      },
+      "fdc_id": "170162",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Nuts, cashew nuts, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "cauliflower",
+      "display_name": "Cauliflower",
+      "category": "vegetables",
+      "aliases": [
+        "cauliflower florets",
+        "cauliflower head",
+        "raw cauliflower"
+      ],
+      "nutrition_per_100g": {
+        "calories": 25.0,
+        "protein_g": 1.92,
+        "carbs_g": 4.97,
+        "fat_g": 0.28,
+        "fiber_g": 2.0,
+        "sodium_mg": 30.0
+      },
+      "fdc_id": "169986",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Cauliflower, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "blue_cheese",
+      "display_name": "Blue Cheese",
+      "category": "dairy",
+      "aliases": [
+        "blue vein cheese",
+        "bleu cheese",
+        "moldy cheese"
+      ],
+      "nutrition_per_100g": {
+        "calories": 353,
+        "protein_g": 21.4,
+        "carbs_g": 2.34,
+        "fat_g": 28.7,
+        "fiber_g": 0,
+        "sodium_mg": 1150.0
+      },
+      "fdc_id": "172175",
+      "source": "usda_fdc",
+      "confidence": 0.8,
+      "fdc_description": "Cheese, blue",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "chia_seeds",
+      "display_name": "Chia Seeds",
+      "category": "nuts_seeds",
+      "aliases": [
+        "salvia hispanica",
+        "chia",
+        "chia grain"
+      ],
+      "nutrition_per_100g": {
+        "calories": 486,
+        "protein_g": 16.5,
+        "carbs_g": 42.1,
+        "fat_g": 30.7,
+        "fiber_g": 34.4,
+        "sodium_mg": 16.0
+      },
+      "fdc_id": "170554",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Seeds, chia seeds, dried",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "chicken_breast",
+      "display_name": "Chicken Breast",
+      "category": "proteins",
+      "aliases": [
+        "boneless chicken breast",
+        "skinless chicken breast",
+        "raw chicken breast"
+      ],
+      "nutrition_per_100g": {
+        "calories": 106,
+        "protein_g": 22.5,
+        "carbs_g": 0,
+        "fat_g": 1.93,
+        "fiber_g": 0,
+        "sodium_mg": 65.8
+      },
+      "fdc_id": "2646170",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Chicken, breast, boneless, skinless, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "chicken_thigh",
+      "display_name": "Chicken Thigh",
+      "category": "proteins",
+      "aliases": [
+        "boneless chicken thigh",
+        "skinless chicken thigh",
+        "raw chicken thigh"
+      ],
+      "nutrition_per_100g": {
+        "calories": 144,
+        "protein_g": 18.6,
+        "carbs_g": 0,
+        "fat_g": 7.92,
+        "fiber_g": 0,
+        "sodium_mg": 62.3
+      },
+      "fdc_id": "2646171",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Chicken, thigh, boneless, skinless, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "chickpeas",
+      "display_name": "Chickpeas",
+      "category": "legumes",
+      "aliases": [
+        "garbanzo beans",
+        "bengal gram",
+        "ceci beans"
+      ],
+      "nutrition_per_100g": {
+        "calories": 378,
+        "protein_g": 20.5,
+        "carbs_g": 63.0,
+        "fat_g": 6.04,
+        "fiber_g": 12.2,
+        "sodium_mg": 24.0
+      },
+      "fdc_id": "173756",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Chickpeas (garbanzo beans, bengal gram), mature seeds, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "coconut_oil",
+      "display_name": "Coconut Oil",
+      "category": "oils",
+      "aliases": [
+        "virgin coconut oil",
+        "refined coconut oil",
+        "coconut fat"
+      ],
+      "nutrition_per_100g": {
+        "calories": 833,
+        "protein_g": 0,
+        "carbs_g": 0.84,
+        "fat_g": 99.1,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      },
+      "fdc_id": "330458",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Oil, coconut",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "coriander_seeds",
+      "display_name": "Coriander Seeds",
+      "category": "spices",
+      "aliases": [
+        "coriander",
+        "cilantro seeds",
+        "dhania"
+      ],
+      "nutrition_per_100g": {
+        "calories": 298,
+        "protein_g": 12.4,
+        "carbs_g": 55.0,
+        "fat_g": 17.8,
+        "fiber_g": 41.9,
+        "sodium_mg": 35.0
+      },
+      "fdc_id": "170922",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spices, coriander seed",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "corn",
+      "display_name": "Corn",
+      "category": "grains",
+      "aliases": [
+        "maize",
+        "sweet corn",
+        "corn kernels"
+      ],
+      "nutrition_per_100g": {
+        "calories": 365,
+        "protein_g": 9.42,
+        "carbs_g": 74.3,
+        "fat_g": 4.74,
+        "fiber_g": 7.3,
+        "sodium_mg": 35.0
+      },
+      "fdc_id": "170288",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Corn grain, yellow",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "cream",
+      "display_name": "Cream",
+      "category": "dairy",
+      "aliases": [
+        "light cream",
+        "coffee cream",
+        "table cream"
+      ],
+      "nutrition_per_100g": {
+        "calories": 195,
+        "protein_g": 2.96,
+        "carbs_g": 3.66,
+        "fat_g": 19.1,
+        "fiber_g": 0,
+        "sodium_mg": 72.0
+      },
+      "fdc_id": "170857",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Cream, fluid, light (coffee cream or table cream)",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "cucumber",
+      "display_name": "Cucumber",
+      "category": "vegetables",
+      "aliases": [
+        "cuke",
+        "cucumis sativus",
+        "garden cucumber"
+      ],
+      "nutrition_per_100g": {
+        "calories": 15.0,
+        "protein_g": 0.65,
+        "carbs_g": 3.63,
+        "fat_g": 0.11,
+        "fiber_g": 0.5,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "168409",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Cucumber, with peel, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "cumin",
+      "display_name": "Cumin",
+      "category": "spices",
+      "aliases": [
+        "cumin seeds",
+        "jeera",
+        "ground cumin"
+      ],
+      "nutrition_per_100g": {
+        "calories": 375,
+        "protein_g": 17.8,
+        "carbs_g": 44.2,
+        "fat_g": 22.3,
+        "fiber_g": 10.5,
+        "sodium_mg": 168
+      },
+      "fdc_id": "170923",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spices, cumin seed",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "dal_lentils",
+      "display_name": "Dal Lentils",
+      "category": "legumes",
+      "aliases": [
+        "lentils",
+        "masoor dal",
+        "red lentils"
+      ],
+      "nutrition_per_100g": {
+        "calories": 352,
+        "protein_g": 24.6,
+        "carbs_g": 63.4,
+        "fat_g": 1.06,
+        "fiber_g": 10.7,
+        "sodium_mg": 6.0
+      },
+      "fdc_id": "172420",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Lentils, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "dates",
+      "display_name": "Dates",
+      "category": "fruits",
+      "aliases": [
+        "deglet noor",
+        "date palm",
+        "dried dates"
+      ],
+      "nutrition_per_100g": {
+        "calories": 282,
+        "protein_g": 2.45,
+        "carbs_g": 75.0,
+        "fat_g": 0.39,
+        "fiber_g": 8.0,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "171726",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Dates, deglet noor",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "eggplant",
+      "display_name": "Eggplant",
+      "category": "vegetables",
+      "aliases": [
+        "aubergine",
+        "brinjal",
+        "garden egg"
+      ],
+      "nutrition_per_100g": {
+        "calories": 26.1,
+        "protein_g": 0.85,
+        "carbs_g": 5.4,
+        "fat_g": 0.12,
+        "fiber_g": 2.45,
+        "sodium_mg": 0.44
+      },
+      "fdc_id": "2685577",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Eggplant, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "eggs",
+      "display_name": "Eggs",
+      "category": "proteins",
+      "aliases": [
+        "whole eggs",
+        "hen eggs",
+        "chicken eggs"
+      ],
+      "nutrition_per_100g": {
+        "calories": 148,
+        "protein_g": 12.4,
+        "carbs_g": 0.96,
+        "fat_g": 9.96,
+        "fiber_g": 0,
+        "sodium_mg": 129
+      },
+      "fdc_id": "748967",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Eggs, Grade A, Large, egg whole",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "egg_whites",
+      "display_name": "Egg Whites",
+      "category": "proteins",
+      "aliases": [
+        "albumen",
+        "egg white protein",
+        "liquid egg whites"
+      ],
+      "nutrition_per_100g": {
+        "calories": 55.0,
+        "protein_g": 10.7,
+        "carbs_g": 2.36,
+        "fat_g": 0,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      },
+      "fdc_id": "747997",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Eggs, Grade A, Large, egg white",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "fish_salmon",
+      "display_name": "Fish Salmon",
+      "category": "proteins",
+      "aliases": [
+        "chinook salmon",
+        "raw salmon",
+        "salmon fillet"
+      ],
+      "nutrition_per_100g": {
+        "calories": 179,
+        "protein_g": 19.9,
+        "carbs_g": 0,
+        "fat_g": 10.4,
+        "fiber_g": 0,
+        "sodium_mg": 47.0
+      },
+      "fdc_id": "173688",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Fish, salmon, chinook, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "garlic",
+      "display_name": "Garlic",
+      "category": "spices",
+      "aliases": [
+        "garlic bulb",
+        "garlic clove",
+        "allium sativum"
+      ],
+      "nutrition_per_100g": {
+        "calories": 143,
+        "protein_g": 6.62,
+        "carbs_g": 28.2,
+        "fat_g": 0.38,
+        "fiber_g": 2.7,
+        "sodium_mg": 0
+      },
+      "fdc_id": "1104647",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Garlic, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "ghee",
+      "display_name": "Ghee",
+      "category": "oils",
+      "aliases": [
+        "clarified butter",
+        "desi ghee",
+        "butter oil"
+      ],
+      "nutrition_per_100g": {
+        "calories": 900,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 100,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      },
+      "fdc_id": "171314",
+      "source": "usda_fdc",
+      "confidence": 1.0,
+      "fdc_description": "Butter, Clarified butter (ghee)",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "ginger",
+      "display_name": "Ginger",
+      "category": "spices",
+      "aliases": [
+        "ginger root",
+        "zingiber officinale",
+        "fresh ginger"
+      ],
+      "nutrition_per_100g": {
+        "calories": 80.0,
+        "protein_g": 1.82,
+        "carbs_g": 17.8,
+        "fat_g": 0.75,
+        "fiber_g": 2.0,
+        "sodium_mg": 13.0
+      },
+      "fdc_id": "169231",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Ginger root, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "grapes",
+      "display_name": "Grapes",
+      "category": "fruits",
+      "aliases": [
+        "grape",
+        "table grape",
+        "wine grape"
+      ],
+      "nutrition_per_100g": {
+        "calories": 57.0,
+        "protein_g": 0.81,
+        "carbs_g": 13.9,
+        "fat_g": 0.47,
+        "fiber_g": 3.9,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "173040",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Grapes, muscadine, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "greek_yogurt",
+      "display_name": "Greek Yogurt",
+      "category": "dairy",
+      "aliases": [
+        "strained yogurt",
+        "yoghurt",
+        "greek style yogurt"
+      ],
+      "nutrition_per_100g": {
+        "calories": 61.0,
+        "protein_g": 10.3,
+        "carbs_g": 3.64,
+        "fat_g": 0.37,
+        "fiber_g": 0,
+        "sodium_mg": 36.0
+      },
+      "fdc_id": "330137",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Yogurt, Greek, plain, nonfat",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "green_beans",
+      "display_name": "Green Beans",
+      "category": "vegetables",
+      "aliases": [
+        "snap beans",
+        "string beans",
+        "french beans"
+      ],
+      "nutrition_per_100g": {
+        "calories": 40.0,
+        "protein_g": 1.97,
+        "carbs_g": 7.41,
+        "fat_g": 0.28,
+        "fiber_g": 3.01,
+        "sodium_mg": 0
+      },
+      "fdc_id": "2346400",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Beans, snap, green, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "green_chili",
+      "display_name": "Green Chili",
+      "category": "vegetables",
+      "aliases": [
+        "green pepper",
+        "chili pepper",
+        "hot pepper"
+      ],
+      "nutrition_per_100g": {
+        "calories": 40.0,
+        "protein_g": 2.0,
+        "carbs_g": 9.46,
+        "fat_g": 0.2,
+        "fiber_g": 1.5,
+        "sodium_mg": 7.0
+      },
+      "fdc_id": "170497",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Peppers, hot chili, green, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "green_lentils",
+      "display_name": "Green Lentils",
+      "category": "legumes",
+      "aliases": [
+        "lentils",
+        "green lentil",
+        "lentil seeds"
+      ],
+      "nutrition_per_100g": {
+        "calories": 352,
+        "protein_g": 24.6,
+        "carbs_g": 63.4,
+        "fat_g": 1.06,
+        "fiber_g": 10.7,
+        "sodium_mg": 6.0
+      },
+      "fdc_id": "172420",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Lentils, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "guava",
+      "display_name": "Guava",
+      "category": "fruits",
+      "aliases": [
+        "common guava",
+        "tropical guava",
+        "psidium guajava"
+      ],
+      "nutrition_per_100g": {
+        "calories": 68.0,
+        "protein_g": 2.55,
+        "carbs_g": 14.3,
+        "fat_g": 0.95,
+        "fiber_g": 5.4,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "173044",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Guavas, common, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "kale",
+      "display_name": "Kale",
+      "category": "vegetables",
+      "aliases": [
+        "leaf cabbage",
+        "borecole",
+        "curly kale"
+      ],
+      "nutrition_per_100g": {
+        "calories": 35.0,
+        "protein_g": 2.92,
+        "carbs_g": 4.42,
+        "fat_g": 1.49,
+        "fiber_g": 4.1,
+        "sodium_mg": 53.0
+      },
+      "fdc_id": "323505",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Kale, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "kidney_beans",
+      "display_name": "Kidney Beans",
+      "category": "legumes",
+      "aliases": [
+        "red kidney beans",
+        "rajma",
+        "common bean"
+      ],
+      "nutrition_per_100g": {
+        "calories": 337,
+        "protein_g": 22.5,
+        "carbs_g": 61.3,
+        "fat_g": 1.06,
+        "fiber_g": 15.2,
+        "sodium_mg": 12.0
+      },
+      "fdc_id": "173744",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Beans, kidney, red, mature seeds, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "kiwi",
+      "display_name": "Kiwi",
+      "category": "fruits",
+      "aliases": [
+        "kiwifruit",
+        "chinese gooseberry",
+        "actinidia deliciosa"
+      ],
+      "nutrition_per_100g": {
+        "calories": 65.1,
+        "protein_g": 1.01,
+        "carbs_g": 13.8,
+        "fat_g": 0.64,
+        "fiber_g": 2.13,
+        "sodium_mg": 2.28
+      },
+      "fdc_id": "2710831",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Kiwifruit (kiwi), green, peeled, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "lentils",
+      "display_name": "Lentils",
+      "category": "legumes",
+      "aliases": [
+        "lentil",
+        "lens culinaris",
+        "dal"
+      ],
+      "nutrition_per_100g": {
+        "calories": 352,
+        "protein_g": 24.6,
+        "carbs_g": 63.4,
+        "fat_g": 1.06,
+        "fiber_g": 10.7,
+        "sodium_mg": 6.0
+      },
+      "fdc_id": "172420",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Lentils, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "lettuce",
+      "display_name": "Lettuce",
+      "category": "vegetables",
+      "aliases": [
+        "romaine lettuce",
+        "cos lettuce",
+        "leaf lettuce"
+      ],
+      "nutrition_per_100g": {
+        "calories": 17.0,
+        "protein_g": 1.24,
+        "carbs_g": 3.24,
+        "fat_g": 0.26,
+        "fiber_g": 1.8,
+        "sodium_mg": 0
+      },
+      "fdc_id": "746769",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Lettuce, cos or romaine, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "mango",
+      "display_name": "Mango",
+      "category": "fruits",
+      "aliases": [
+        "mangos",
+        "mangifera indica",
+        "tropical mango"
+      ],
+      "nutrition_per_100g": {
+        "calories": 60.0,
+        "protein_g": 0.82,
+        "carbs_g": 15.0,
+        "fat_g": 0.38,
+        "fiber_g": 1.6,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "169910",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Mangos, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "millet",
+      "display_name": "Millet",
+      "category": "grains",
+      "aliases": [
+        "pearl millet",
+        "foxtail millet",
+        "proso millet"
+      ],
+      "nutrition_per_100g": {
+        "calories": 119,
+        "protein_g": 3.51,
+        "carbs_g": 23.7,
+        "fat_g": 1.0,
+        "fiber_g": 1.3,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "168871",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Millet, cooked",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "mushroom",
+      "display_name": "Mushroom",
+      "category": "vegetables",
+      "aliases": [
+        "crimini mushroom",
+        "button mushroom",
+        "portobello mushroom"
+      ],
+      "nutrition_per_100g": {
+        "calories": 30.2,
+        "protein_g": 3.09,
+        "carbs_g": 4.01,
+        "fat_g": 0.2,
+        "fiber_g": 1.78,
+        "sodium_mg": 4.57
+      },
+      "fdc_id": "2003601",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Mushroom, crimini",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "mustard_oil",
+      "display_name": "Mustard Oil",
+      "category": "oils",
+      "aliases": [
+        "sarson ka tel",
+        "rai oil",
+        "brassica oil"
+      ],
+      "nutrition_per_100g": {
+        "calories": 884,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 100,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      },
+      "fdc_id": "172337",
+      "source": "usda_fdc",
+      "confidence": 1.0,
+      "fdc_description": "Oil, mustard",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "oat_bread",
+      "display_name": "Oat Bread",
+      "category": "grains",
+      "aliases": [
+        "oat bran bread",
+        "oatmeal bread",
+        "oat loaf"
+      ],
+      "nutrition_per_100g": {
+        "calories": 236,
+        "protein_g": 10.4,
+        "carbs_g": 39.8,
+        "fat_g": 4.4,
+        "fiber_g": 4.5,
+        "sodium_mg": 353
+      },
+      "fdc_id": "172676",
+      "source": "usda_fdc",
+      "confidence": 0.85,
+      "fdc_description": "Bread, oat bran",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "okra",
+      "display_name": "Okra",
+      "category": "vegetables",
+      "aliases": [
+        "lady's finger",
+        "bhindi",
+        "gumbo"
+      ],
+      "nutrition_per_100g": {
+        "calories": 33.0,
+        "protein_g": 1.93,
+        "carbs_g": 7.45,
+        "fat_g": 0.19,
+        "fiber_g": 3.2,
+        "sodium_mg": 7.0
+      },
+      "fdc_id": "169260",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Okra, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "olive_oil",
+      "display_name": "Olive Oil",
+      "category": "oils",
+      "aliases": [
+        "extra virgin olive oil",
+        "EVOO",
+        "virgin olive oil"
+      ],
+      "nutrition_per_100g": {
+        "calories": 0,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 0,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      },
+      "fdc_id": "748608",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Oil, olive, extra virgin",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "onion",
+      "display_name": "Onion",
+      "category": "vegetables",
+      "aliases": [
+        "bulb onion",
+        "common onion",
+        "garden onion"
+      ],
+      "nutrition_per_100g": {
+        "calories": 40.0,
+        "protein_g": 1.1,
+        "carbs_g": 9.34,
+        "fat_g": 0.1,
+        "fiber_g": 1.7,
+        "sodium_mg": 4.0
+      },
+      "fdc_id": "170000",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Onions, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "orange_juice",
+      "display_name": "Orange Juice",
+      "category": "beverages",
+      "aliases": [
+        "orange drink",
+        "citrus juice",
+        "OJ"
+      ],
+      "nutrition_per_100g": {
+        "calories": 45.0,
+        "protein_g": 0.6,
+        "carbs_g": 10.2,
+        "fat_g": 0.3,
+        "fiber_g": 0.1,
+        "sodium_mg": 0
+      },
+      "fdc_id": "171354",
+      "source": "usda_fdc",
+      "confidence": 0.8,
+      "fdc_description": "Babyfood, juice, orange",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "papaya",
+      "display_name": "Papaya",
+      "category": "fruits",
+      "aliases": [
+        "pawpaw",
+        "papaw",
+        "tree melon"
+      ],
+      "nutrition_per_100g": {
+        "calories": 43.0,
+        "protein_g": 0.47,
+        "carbs_g": 10.8,
+        "fat_g": 0.26,
+        "fiber_g": 1.7,
+        "sodium_mg": 8.0
+      },
+      "fdc_id": "169926",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Papayas, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "pasta",
+      "display_name": "Pasta",
+      "category": "grains",
+      "aliases": [
+        "macaroni",
+        "spaghetti",
+        "noodles"
+      ],
+      "nutrition_per_100g": {
+        "calories": 371,
+        "protein_g": 13.0,
+        "carbs_g": 74.7,
+        "fat_g": 1.51,
+        "fiber_g": 3.2,
+        "sodium_mg": 6.0
+      },
+      "fdc_id": "169736",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Pasta, dry, enriched",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "peanuts",
+      "display_name": "Peanuts",
+      "category": "nuts_seeds",
+      "aliases": [
+        "groundnuts",
+        "monkey nuts",
+        "goober"
+      ],
+      "nutrition_per_100g": {
+        "calories": 588,
+        "protein_g": 23.2,
+        "carbs_g": 26.5,
+        "fat_g": 43.3,
+        "fiber_g": 8.01,
+        "sodium_mg": 1.49
+      },
+      "fdc_id": "2515376",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Peanuts, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "green_peas",
+      "display_name": "Green Peas",
+      "category": "vegetables",
+      "aliases": [
+        "garden peas",
+        "sweet peas",
+        "English peas"
+      ],
+      "nutrition_per_100g": {
+        "calories": 81.0,
+        "protein_g": 5.42,
+        "carbs_g": 14.4,
+        "fat_g": 0.4,
+        "fiber_g": 5.7,
+        "sodium_mg": 5.0
+      },
+      "fdc_id": "170419",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Peas, green, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "pineapple",
+      "display_name": "Pineapple",
+      "category": "fruits",
+      "aliases": [
+        "ananas",
+        "pineapple fruit",
+        "tropical pineapple"
+      ],
+      "nutrition_per_100g": {
+        "calories": 60.1,
+        "protein_g": 0.46,
+        "carbs_g": 14.1,
+        "fat_g": 0.21,
+        "fiber_g": 0.94,
+        "sodium_mg": 0
+      },
+      "fdc_id": "2346398",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Pineapple, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "pistachios",
+      "display_name": "Pistachios",
+      "category": "nuts_seeds",
+      "aliases": [
+        "pistachio nuts",
+        "green almonds",
+        "pista"
+      ],
+      "nutrition_per_100g": {
+        "calories": 598,
+        "protein_g": 20.5,
+        "carbs_g": 27.7,
+        "fat_g": 45.0,
+        "fiber_g": 6.97,
+        "sodium_mg": 0
+      },
+      "fdc_id": "2515379",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Nuts, pistachio nuts, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "pomegranate",
+      "display_name": "Pomegranate",
+      "category": "fruits",
+      "aliases": [
+        "anar",
+        "granada",
+        "punica"
+      ],
+      "nutrition_per_100g": {
+        "calories": 83.0,
+        "protein_g": 1.67,
+        "carbs_g": 18.7,
+        "fat_g": 1.17,
+        "fiber_g": 4.0,
+        "sodium_mg": 3.0
+      },
+      "fdc_id": "169134",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Pomegranates, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "potato_flour",
+      "display_name": "Potato Flour",
+      "category": "grains",
+      "aliases": [
+        "potato starch",
+        "potato powder",
+        "potato meal"
+      ],
+      "nutrition_per_100g": {
+        "calories": 361,
+        "protein_g": 8.11,
+        "carbs_g": 79.9,
+        "fat_g": 0.95,
+        "fiber_g": 5.4,
+        "sodium_mg": 47.7
+      },
+      "fdc_id": "2261422",
+      "source": "usda_fdc",
+      "confidence": 0.85,
+      "fdc_description": "Flour, potato",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "pumpkin_seeds",
+      "display_name": "Pumpkin Seeds",
+      "category": "nuts_seeds",
+      "aliases": [
+        "pepitas",
+        "squash seeds",
+        "pumpkin kernels"
+      ],
+      "nutrition_per_100g": {
+        "calories": 555,
+        "protein_g": 29.9,
+        "carbs_g": 18.7,
+        "fat_g": 40.0,
+        "fiber_g": 5.08,
+        "sodium_mg": 0
+      },
+      "fdc_id": "2515380",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Seeds, pumpkin seeds (pepitas), raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "quinoa",
+      "display_name": "Quinoa",
+      "category": "grains",
+      "aliases": [
+        "keen-wah",
+        "quinoa grain",
+        "quinoa seeds"
+      ],
+      "nutrition_per_100g": {
+        "calories": 368,
+        "protein_g": 14.1,
+        "carbs_g": 64.2,
+        "fat_g": 6.07,
+        "fiber_g": 7.0,
+        "sodium_mg": 5.0
+      },
+      "fdc_id": "168874",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Quinoa, uncooked",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "red_lentils",
+      "display_name": "Red Lentils",
+      "category": "legumes",
+      "aliases": [
+        "masoor dal",
+        "pink lentils",
+        "split red lentils"
+      ],
+      "nutrition_per_100g": {
+        "calories": 358,
+        "protein_g": 23.9,
+        "carbs_g": 63.1,
+        "fat_g": 2.17,
+        "fiber_g": 10.8,
+        "sodium_mg": 7.0
+      },
+      "fdc_id": "174284",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Lentils, pink or red, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "rice_cakes",
+      "display_name": "Rice Cakes",
+      "category": "snacks",
+      "aliases": [
+        "puffed rice cakes",
+        "rice crackers",
+        "rice wafers"
+      ],
+      "nutrition_per_100g": {
+        "calories": 380,
+        "protein_g": 9.0,
+        "carbs_g": 80.1,
+        "fat_g": 3.5,
+        "fiber_g": 3.8,
+        "sodium_mg": 116
+      },
+      "fdc_id": "167967",
+      "source": "usda_fdc",
+      "confidence": 0.85,
+      "fdc_description": "Snacks, rice cakes, brown rice, buckwheat",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "roti",
+      "display_name": "Roti",
+      "category": "grains",
+      "aliases": [
+        "chapati",
+        "flatbread",
+        "Indian bread"
+      ],
+      "nutrition_per_100g": {
+        "calories": 297,
+        "protein_g": 11.2,
+        "carbs_g": 46.4,
+        "fat_g": 7.45,
+        "fiber_g": 4.9,
+        "sodium_mg": 409
+      },
+      "fdc_id": "171844",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Bread, chapati or roti, plain, commercially prepared",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "salmon",
+      "display_name": "Salmon",
+      "category": "proteins",
+      "aliases": [
+        "chinook salmon",
+        "king salmon",
+        "raw salmon"
+      ],
+      "nutrition_per_100g": {
+        "calories": 179,
+        "protein_g": 19.9,
+        "carbs_g": 0,
+        "fat_g": 10.4,
+        "fiber_g": 0,
+        "sodium_mg": 47.0
+      },
+      "fdc_id": "173688",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Fish, salmon, chinook, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "shrimp",
+      "display_name": "Shrimp",
+      "category": "proteins",
+      "aliases": [
+        "prawn",
+        "raw shrimp",
+        "sea shrimp"
+      ],
+      "nutrition_per_100g": {
+        "calories": 85.0,
+        "protein_g": 20.1,
+        "carbs_g": 0,
+        "fat_g": 0.51,
+        "fiber_g": 0,
+        "sodium_mg": 119
+      },
+      "fdc_id": "175179",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Crustaceans, shrimp, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "soy_chunks",
+      "display_name": "Soy Chunks",
+      "category": "legumes",
+      "aliases": [
+        "soy protein",
+        "textured soy",
+        "soy meat"
+      ],
+      "nutrition_per_100g": {
+        "calories": 366,
+        "protein_g": 51.1,
+        "carbs_g": 32.9,
+        "fat_g": 3.33,
+        "fiber_g": 0,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "1104705",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Flour, soy, defatted",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "spinach",
+      "display_name": "Spinach",
+      "category": "vegetables",
+      "aliases": [
+        "baby spinach",
+        "raw spinach",
+        "spinacia oleracea"
+      ],
+      "nutrition_per_100g": {
+        "calories": 26.6,
+        "protein_g": 2.85,
+        "carbs_g": 2.41,
+        "fat_g": 0.62,
+        "fiber_g": 1.56,
+        "sodium_mg": 111
+      },
+      "fdc_id": "1999632",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spinach, baby",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "strawberry",
+      "display_name": "Strawberry",
+      "category": "fruits",
+      "aliases": [
+        "strawberries",
+        "garden strawberry",
+        "wild strawberry"
+      ],
+      "nutrition_per_100g": {
+        "calories": 32.0,
+        "protein_g": 0.67,
+        "carbs_g": 7.68,
+        "fat_g": 0.3,
+        "fiber_g": 2.0,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "167762",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Strawberries, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "sunflower_seeds",
+      "display_name": "Sunflower Seeds",
+      "category": "nuts_seeds",
+      "aliases": [
+        "sunflower kernels",
+        "raw sunflower seeds",
+        "sunflower nuts"
+      ],
+      "nutrition_per_100g": {
+        "calories": 609,
+        "protein_g": 18.9,
+        "carbs_g": 24.5,
+        "fat_g": 48.4,
+        "fiber_g": 7.22,
+        "sodium_mg": 0
+      },
+      "fdc_id": "2515381",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Seeds, sunflower seed, kernel, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "sweet_potato",
+      "display_name": "Sweet Potato",
+      "category": "vegetables",
+      "aliases": [
+        "yam",
+        "orange sweet potato",
+        "canned sweet potato"
+      ],
+      "nutrition_per_100g": {
+        "calories": 101,
+        "protein_g": 1.98,
+        "carbs_g": 23.2,
+        "fat_g": 0.2,
+        "fiber_g": 1.7,
+        "sodium_mg": 75.0
+      },
+      "fdc_id": "169305",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Sweet potato, canned, mashed",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "tofu",
+      "display_name": "Tofu",
+      "category": "proteins",
+      "aliases": [
+        "bean curd",
+        "soybean curd",
+        "fried tofu"
+      ],
+      "nutrition_per_100g": {
+        "calories": 270,
+        "protein_g": 18.8,
+        "carbs_g": 8.86,
+        "fat_g": 20.2,
+        "fiber_g": 3.9,
+        "sodium_mg": 16.0
+      },
+      "fdc_id": "172451",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Tofu, fried",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "tomato",
+      "display_name": "Tomato",
+      "category": "vegetables",
+      "aliases": [
+        "roma tomato",
+        "plum tomato",
+        "raw tomato"
+      ],
+      "nutrition_per_100g": {
+        "calories": 22.0,
+        "protein_g": 0.7,
+        "carbs_g": 3.84,
+        "fat_g": 0.42,
+        "fiber_g": 0.97,
+        "sodium_mg": 0
+      },
+      "fdc_id": "1999634",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Tomato, roma",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "tuna",
+      "display_name": "Tuna",
+      "category": "proteins",
+      "aliases": [
+        "skipjack tuna",
+        "raw tuna",
+        "fresh tuna"
+      ],
+      "nutrition_per_100g": {
+        "calories": 103,
+        "protein_g": 22.0,
+        "carbs_g": 0,
+        "fat_g": 1.01,
+        "fiber_g": 0,
+        "sodium_mg": 37.0
+      },
+      "fdc_id": "175156",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Fish, tuna, fresh, skipjack, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "turkey_breast",
+      "display_name": "Turkey Breast",
+      "category": "proteins",
+      "aliases": [
+        "turkey meat",
+        "raw turkey breast",
+        "whole turkey breast"
+      ],
+      "nutrition_per_100g": {
+        "calories": 114,
+        "protein_g": 23.7,
+        "carbs_g": 0.14,
+        "fat_g": 1.48,
+        "fiber_g": 0,
+        "sodium_mg": 113
+      },
+      "fdc_id": "171098",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Turkey, whole, breast, meat only, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "turmeric",
+      "display_name": "Turmeric",
+      "category": "spices",
+      "aliases": [
+        "curcuma",
+        "turmeric spice",
+        "ground turmeric"
+      ],
+      "nutrition_per_100g": {
+        "calories": 312,
+        "protein_g": 9.68,
+        "carbs_g": 67.1,
+        "fat_g": 3.25,
+        "fiber_g": 22.7,
+        "sodium_mg": 27.0
+      },
+      "fdc_id": "172231",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spices, turmeric, ground",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "turmeric_powder",
+      "display_name": "Turmeric Powder",
+      "category": "spices",
+      "aliases": [
+        "ground turmeric",
+        "curcuma powder",
+        "turmeric spice"
+      ],
+      "nutrition_per_100g": {
+        "calories": 312,
+        "protein_g": 9.68,
+        "carbs_g": 67.1,
+        "fat_g": 3.25,
+        "fiber_g": 22.7,
+        "sodium_mg": 27.0
+      },
+      "fdc_id": "172231",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Spices, turmeric, ground",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "vegetable_oil",
+      "display_name": "Vegetable Oil",
+      "category": "oils",
+      "aliases": [
+        "soybean oil",
+        "cooking oil",
+        "refined vegetable oil"
+      ],
+      "nutrition_per_100g": {
+        "calories": 884,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 100,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      },
+      "fdc_id": "172370",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Oil, vegetable, soybean, refined",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "walnuts",
+      "display_name": "Walnuts",
+      "category": "nuts_seeds",
+      "aliases": [
+        "english walnuts",
+        "raw walnuts",
+        "walnut kernels"
+      ],
+      "nutrition_per_100g": {
+        "calories": 654,
+        "protein_g": 15.2,
+        "carbs_g": 13.7,
+        "fat_g": 65.2,
+        "fiber_g": 6.7,
+        "sodium_mg": 2.0
+      },
+      "fdc_id": "170187",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Nuts, walnuts, english",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "watermelon",
+      "display_name": "Watermelon",
+      "category": "fruits",
+      "aliases": [
+        "citrullus lanatus",
+        "watermelon fruit",
+        "fresh watermelon"
+      ],
+      "nutrition_per_100g": {
+        "calories": 30.0,
+        "protein_g": 0.61,
+        "carbs_g": 7.55,
+        "fat_g": 0.15,
+        "fiber_g": 0.4,
+        "sodium_mg": 1.0
+      },
+      "fdc_id": "167765",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Watermelon, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "wheat_flour",
+      "display_name": "Wheat Flour",
+      "category": "grains",
+      "aliases": [
+        "whole wheat flour",
+        "unbleached flour",
+        "whole grain flour"
+      ],
+      "nutrition_per_100g": {
+        "calories": 370,
+        "protein_g": 15.1,
+        "carbs_g": 71.2,
+        "fat_g": 2.73,
+        "fiber_g": 10.6,
+        "sodium_mg": 3.0
+      },
+      "fdc_id": "790085",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Flour, whole wheat, unenriched",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "whey_protein",
+      "display_name": "Whey Protein",
+      "category": "proteins",
+      "aliases": [
+        "whey powder",
+        "protein powder",
+        "whey isolate"
+      ],
+      "nutrition_per_100g": {
+        "calories": 352,
+        "protein_g": 78.1,
+        "carbs_g": 6.25,
+        "fat_g": 1.56,
+        "fiber_g": 3.1,
+        "sodium_mg": 156
+      },
+      "fdc_id": "173180",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Beverages, Protein powder whey based",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "white_rice",
+      "display_name": "White Rice",
+      "category": "grains",
+      "aliases": [
+        "glutinous rice",
+        "sticky rice",
+        "cooked white rice"
+      ],
+      "nutrition_per_100g": {
+        "calories": 97.0,
+        "protein_g": 2.02,
+        "carbs_g": 21.1,
+        "fat_g": 0.19,
+        "fiber_g": 1.0,
+        "sodium_mg": 5.0
+      },
+      "fdc_id": "169711",
+      "source": "usda_fdc",
+      "confidence": 0.9,
+      "fdc_description": "Rice, white, glutinous, unenriched, cooked",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "whole_wheat_bread",
+      "display_name": "Whole Wheat Bread",
+      "category": "grains",
+      "aliases": [
+        "whole grain bread",
+        "brown bread",
+        "wheat bread"
+      ],
+      "nutrition_per_100g": {
+        "calories": 254,
+        "protein_g": 12.3,
+        "carbs_g": 43.1,
+        "fat_g": 3.55,
+        "fiber_g": 6.0,
+        "sodium_mg": 450
+      },
+      "fdc_id": "335240",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Bread, whole-wheat, commercially prepared",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "whole_wheat_flour",
+      "display_name": "Whole Wheat Flour",
+      "category": "grains",
+      "aliases": [
+        "wholemeal flour",
+        "graham flour",
+        "whole grain flour"
+      ],
+      "nutrition_per_100g": {
+        "calories": 370,
+        "protein_g": 15.1,
+        "carbs_g": 71.2,
+        "fat_g": 2.73,
+        "fiber_g": 10.6,
+        "sodium_mg": 3.0
+      },
+      "fdc_id": "790085",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Flour, whole wheat, unenriched",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    },
+    {
+      "canonical_name": "zucchini",
+      "display_name": "Zucchini",
+      "category": "vegetables",
+      "aliases": [
+        "courgette",
+        "summer squash",
+        "green squash"
+      ],
+      "nutrition_per_100g": {
+        "calories": 17.0,
+        "protein_g": 1.21,
+        "carbs_g": 3.11,
+        "fat_g": 0.32,
+        "fiber_g": 1.0,
+        "sodium_mg": 8.0
+      },
+      "fdc_id": "169291",
+      "source": "usda_fdc",
+      "confidence": 0.95,
+      "fdc_description": "Squash, summer, zucchini, includes skin, raw",
+      "embedding": "[1536 dimensions]",
+      "embedding_model": "text-embedding-3-small",
+      "embedding_version": 1
+    }
+  ]
+}

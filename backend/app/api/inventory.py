@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_
 from typing import List, Dict, Optional
 from app.models.database import get_db, UserInventory, Item, User
 from app.services.inventory_service import IntelligentInventoryService
 from app.services.auth import get_current_user_dependency as get_current_user
 from pydantic import BaseModel
+from datetime import datetime, timedelta
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
 # Request/Response models
@@ -15,8 +19,7 @@ class AddItemsRequest(BaseModel):
 class ConfirmItemRequest(BaseModel):
     original_text: str
     item_id: int
-    quantity: float
-    unit: str
+    quantity_grams: float
 
 class DeductMealRequest(BaseModel):
     recipe_id: int
@@ -44,14 +47,39 @@ def add_items_from_text(
     Add items to inventory from text input (receipt or list)
     Uses AI normalization to understand various formats
     """
-    service = IntelligentInventoryService(db)
-    results = service.add_items_from_text(current_user.id, request.text_input)
-    
-    return {
-        "status": "processed",
-        "results": results,
-        "message": f"Successfully added {results['summary']['successful']} items"
-    }
+    logger.info("=" * 80)
+    logger.info("🔵 ADD ITEMS API ENDPOINT CALLED")
+    logger.info(f"User ID: {current_user.id}")
+    logger.info(f"Input text:\n{request.text_input}")
+    logger.info("=" * 80)
+
+    try:
+        service = IntelligentInventoryService(db)
+        logger.info("✅ IntelligentInventoryService initialized")
+
+        results = service.add_items_from_text(current_user.id, request.text_input)
+
+        logger.info("=" * 80)
+        logger.info("🟢 ADD ITEMS PROCESSING COMPLETE")
+        logger.info(f"Summary: {results['summary']}")
+        logger.info(f"Successful: {len(results.get('successful', []))}")
+        logger.info(f"Needs confirmation: {len(results.get('needs_confirmation', []))}")
+        logger.info(f"Failed: {len(results.get('failed', []))}")
+        logger.info("=" * 80)
+
+        return {
+            "status": "processed",
+            "results": results,
+            "message": f"Successfully added {results['summary']['successful']} items"
+        }
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error("🔴 ERROR IN ADD ITEMS ENDPOINT")
+        logger.error(f"Error: {str(e)}")
+        logger.error("=" * 80)
+        import traceback
+        traceback.print_exc()
+        raise
 
 @router.post("/confirm-item")
 def confirm_item(
@@ -60,33 +88,63 @@ def confirm_item(
     db: Session = Depends(get_db)
 ):
     """Confirm and add an item that had medium confidence"""
-    service = IntelligentInventoryService(db)
-    
-    # Get the item
-    item = db.query(Item).filter(Item.id == request.item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    
-    # Add to inventory
-    inventory_item = service._add_to_inventory(
-        current_user.id,
-        item,
-        request.quantity,
-        request.unit
-    )
-    
-    # Learn from confirmation (improves future matching)
-    service.normalizer.learn_from_confirmation(
-        request.original_text,
-        item,
-        was_correct=True
-    )
-    
-    return {
-        "status": "added",
-        "item": item.canonical_name,
-        "quantity": f"{inventory_item.quantity_grams}g"
-    }
+    logger.info("=" * 80)
+    logger.info("🔵 CONFIRM ITEM API ENDPOINT CALLED")
+    logger.info(f"User ID: {current_user.id}")
+    logger.info(f"Original text: {request.original_text}")
+    logger.info(f"Item ID to confirm: {request.item_id}")
+    logger.info(f"Quantity: {request.quantity_grams}g")
+    logger.info("=" * 80)
+
+    try:
+        service = IntelligentInventoryService(db)
+
+        # Get the item
+        item = db.query(Item).filter(Item.id == request.item_id).first()
+        if not item:
+            logger.error(f"❌ Item with ID {request.item_id} not found in database")
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        logger.info(f"✅ Found item: {item.canonical_name} (ID: {item.id})")
+
+        # Add to inventory
+        logger.info(f"📦 Adding to inventory: {item.canonical_name}, {request.quantity_grams}g")
+        inventory_item = service._add_to_inventory(
+            current_user.id,
+            item.id,
+            request.quantity_grams
+        )
+
+        logger.info(f"✅ Added to inventory successfully: {inventory_item.quantity_grams}g")
+
+        # Learn from confirmation (improves future matching)
+        logger.info(f"🎓 Learning from confirmation: '{request.original_text}' → '{item.canonical_name}'")
+        service.normalizer.learn_from_confirmation(
+            request.original_text,
+            item,
+            was_correct=True
+        )
+
+        logger.info("=" * 80)
+        logger.info("🟢 CONFIRM ITEM COMPLETE")
+        logger.info(f"Item added: {item.canonical_name} ({inventory_item.quantity_grams}g)")
+        logger.info("=" * 80)
+
+        return {
+            "status": "added",
+            "item": item.canonical_name,
+            "quantity": f"{inventory_item.quantity_grams}g"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error("🔴 ERROR IN CONFIRM ITEM ENDPOINT")
+        logger.error(f"Error: {str(e)}")
+        logger.error("=" * 80)
+        import traceback
+        traceback.print_exc()
+        raise
 
 @router.get("/status")
 def get_inventory_status(
@@ -117,30 +175,38 @@ def get_inventory_items(
     db: Session = Depends(get_db)
 ):
     """Get user's inventory items with filters"""
-    query = db.query(UserInventory).filter(UserInventory.user_id == current_user.id)
-    
+    # OPTIMIZATION: Eager load Item to avoid N+1 query problem
+    query = db.query(UserInventory).options(
+        joinedload(UserInventory.item)
+    ).filter(UserInventory.user_id == current_user.id)
+
     if low_stock_only:
         query = query.filter(UserInventory.quantity_grams < 100)
-    
+
     if expiring_soon:
-        from datetime import datetime, timedelta
         three_days_later = datetime.now() + timedelta(days=3)
         query = query.filter(UserInventory.expiry_date <= three_days_later)
-    
+
     inventory_items = query.all()
-    
+
     # Format response
     items = []
+
     for inv in inventory_items:
-        item = db.query(Item).filter(Item.id == inv.item_id).first()
-        
+        # Use eager-loaded relationship instead of querying
+        item = inv.item
+
+        # Skip if item not found or doesn't match category filter
+        if not item:
+            continue
+
         if category and item.category != category:
             continue
-        
+
         days_until_expiry = None
         if inv.expiry_date:
             days_until_expiry = (inv.expiry_date - datetime.now()).days
-        
+
         items.append({
             "id": inv.id,
             "item_id": item.id,
@@ -148,9 +214,10 @@ def get_inventory_items(
             "category": item.category,
             "quantity_grams": inv.quantity_grams,
             "expiry_date": inv.expiry_date.isoformat() if inv.expiry_date else None,
-            "days_until_expiry": days_until_expiry
+            "days_until_expiry": days_until_expiry,
+            "is_depleted": (inv.quantity_grams or 0) <= 0  # Flag for fully consumed items
         })
-    
+
     return {
         "count": len(items),
         "items": items
@@ -178,14 +245,22 @@ def get_makeable_recipes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get recipes user can make with current inventory"""
+    """
+    Get recipes user can make with current inventory
+
+    Returns categorized results:
+    - fully_makeable: Recipes with 100% ingredient match
+    - partially_makeable: Recipes with 80-99% ingredient match
+    """
     service = IntelligentInventoryService(db)
-    recipes = service.get_makeable_recipes(current_user.id, limit)
-    
+    result = service.get_makeable_recipes(current_user.id, limit)
+
+    total_count = len(result['fully_makeable']) + len(result['partially_makeable'])
+
     return {
-        "count": len(recipes),
-        "recipes": recipes,
-        "message": f"You can make {len(recipes)} recipes with your current inventory"
+        "count": total_count,
+        "fully_makeable": result['fully_makeable'],
+        "partially_makeable": result['partially_makeable']
     }
 
 @router.get("/check-recipe/{recipe_id}")

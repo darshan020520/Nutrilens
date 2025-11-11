@@ -71,7 +71,11 @@ class TrackingAgent:
         self.inventory_service = IntelligentInventoryService(db)
         self.consumption_service = ConsumptionService(db)  # FIX: Added missing service
         self.notification_service = NotificationService(db)  # FIX: Added notification service
-        self.normalizer = IntelligentItemNormalizer(db)
+        # Updated to new normalizer pattern
+        from app.models.database import Item
+        from app.core.config import settings
+        items_list = self.db.query(Item).all()
+        self.normalizer = IntelligentItemNormalizer(items_list, settings.openai_api_key)
         self.memory = ConversationBufferMemory()
         self.state = self._initialize_state()
         self.tools = self._create_tools()
@@ -141,7 +145,7 @@ class TrackingAgent:
                     continue
             
             # Check low stock with intelligent thresholds
-            quantity = item.get("quantity_grams", 0)
+            quantity = item.get("quantity_grams") or 0
             if quantity < 100:  # Smart threshold
                 alerts.append({
                     "type": TrackingEventType.LOW_STOCK_ALERT,
@@ -475,27 +479,41 @@ class TrackingAgent:
                 })
 
                 # FIX: CHECK FOR ACHIEVEMENTS AND SEND NOTIFICATIONS
+                print("\n[MEAL LOG] Calling _check_meal_achievements...")
+                print(f"[MEAL LOG] Result data structure: {result}")
+                print(f"[MEAL LOG] Result keys: {list(result.keys())}")
+                print(f"[MEAL LOG] updated_totals value: {result.get('updated_totals')}")
+                print(f"[MEAL LOG] remaining_targets value: {result.get('remaining_targets')}")
                 achievements = self._check_meal_achievements(result)
 
+                print(f"\n[MEAL LOG] Returned achievements: {achievements}")
+                print(f"[MEAL LOG] Number of achievements to send: {len(achievements)}\n")
 
-                print("achievements", achievements)
-                for achievement in achievements:
+                for idx, achievement in enumerate(achievements, 1):
+                    print(f"\n{'='*80}")
+                    print(f"[NOTIFICATION SEND] Processing achievement {idx}/{len(achievements)}")
+                    print(f"[NOTIFICATION SEND] Achievement type: {achievement['type']}")
+                    print(f"[NOTIFICATION SEND] Achievement message: {achievement['message']}")
+                    print(f"[NOTIFICATION SEND] User ID: {self.user_id}")
+                    print(f"[NOTIFICATION SEND] Priority: NORMAL")
+                    print(f"{'='*80}\n")
+
                     try:
+                        print(f"[NOTIFICATION SEND] Calling notification_service.send_achievement()...")
                         await self.notification_service.send_achievement(
                             user_id=self.user_id,
                             achievement_type=achievement["type"],
                             message=achievement["message"],
                             priority=NotificationPriority.NORMAL
                         )
+                        print(f"[NOTIFICATION SEND] ✅ Achievement notification sent successfully!")
                         logger.info(f"Achievement notification sent: {achievement['message']}")
                     except Exception as e:
+                        print(f"[NOTIFICATION SEND] ❌ Failed to send achievement notification: {str(e)}")
                         logger.error(f"Failed to send achievement notification: {str(e)}")
-                    
+
                     try:
-                        # Existing notification code
-                        await self.notification_service.send_achievement(...)
-                        
-                        # NEW: WebSocket broadcast for achievement
+                        # WebSocket broadcast for achievement
                         await websocket_manager.broadcast_to_user(
                             user_id=self.user_id,
                             message={
@@ -564,14 +582,13 @@ class TrackingAgent:
                             "data": {
                                 "meal_type": result["logged_meal"]["meal_type"],
                                 "recipe_name": result["logged_meal"]["recipe"],
-                                "calories_consumed": result["updated_totals"]["calories"],
-                                "macros_consumed": result["updated_totals"]["macros"],
+                                "calories_consumed": result["updated_totals"].get("calories", 0),
                                 "portion_multiplier": portion_multiplier,
                                 "daily_totals": {
-                                    "calories": result["updated_totals"]["calories"],
-                                    "protein_g": result["updated_totals"]["macros"]["protein_g"],
-                                    "carbs_g": result["updated_totals"]["macros"]["carbs_g"],
-                                    "fat_g": result["updated_totals"]["macros"]["fat_g"],
+                                    "calories": result["updated_totals"].get("calories", 0),
+                                    "protein_g": result["updated_totals"].get("protein_g", 0),
+                                    "carbs_g": result["updated_totals"].get("carbs_g", 0),
+                                    "fat_g": result["updated_totals"].get("fat_g", 0),
                                 },
                                 "remaining_targets": result.get("remaining_targets", {}),
                                 "deducted_items": result.get("inventory_changes", [])
@@ -662,86 +679,126 @@ class TrackingAgent:
             logger.error(f"Error in track_skipped_meals: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    async def check_expiring_items(self) -> Dict[str, Any]:
-        """Check for items nearing expiry with comprehensive validation"""
+    async def check_expiring_items(self, filter_mode: str = "both", days_threshold: int = 3) -> Dict[str, Any]:
+        """
+        Check for items nearing expiry with comprehensive validation
+
+        Args:
+            filter_mode: 'date_only', 'consumption_only', or 'both'
+            days_threshold: Number of days ahead to check for expiry (default: 3)
+        """
         try:
-            expiry_threshold = datetime.utcnow() + timedelta(days=3)
-            
-            # Optimized query with joins
-            inventory_items = self.db.query(UserInventory).options(
+            expiry_threshold = datetime.utcnow() + timedelta(days=days_threshold)
+
+            # Base query for all inventory items with expiry dates
+            base_query = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
             ).filter(
                 and_(
                     UserInventory.user_id == self.user_id,
                     UserInventory.quantity_grams > 0,
-                    UserInventory.expiry_date <= expiry_threshold,
                     UserInventory.expiry_date.isnot(None)
                 )
-            ).all()
-            
+            )
+
+            # Apply date filter based on mode
+            if filter_mode in ["date_only", "both"]:
+                inventory_items = base_query.filter(
+                    UserInventory.expiry_date <= expiry_threshold
+                ).all()
+            else:
+                # For consumption_only, get all items to check consumption patterns
+                inventory_items = base_query.all()
+
+
+            # Get upcoming meal plans if consumption filtering is needed
+            upcoming_meals_by_item = {}
+            if filter_mode in ["consumption_only", "both"]:
+                upcoming_meals_by_item = self._get_upcoming_consumption_patterns(expiry_threshold)
+
             expiring_items = []
-            
+
             for inv_item in inventory_items:
                 try:
                     if not inv_item.item:
                         logger.warning(f"Inventory item {inv_item.id} missing item reference")
                         continue
-                    
+
                     if not inv_item.expiry_date:
                         continue
-                    
+
                     days_until_expiry = (inv_item.expiry_date - datetime.utcnow()).days
-                    
-                    # Validate days calculation
-                    if days_until_expiry < -7:  # Skip items expired more than a week ago
-                        continue
-                    
+
+                    # Show items expiring soon OR already expired within last 30 days
+                    # Users can manually remove items via All Items tab when thrown away
+                    expired_lookback_days = 30
+                    if days_until_expiry < -expired_lookback_days:
+                        continue  # Skip items expired more than 30 days ago
+
+                    # Apply consumption pattern filter
+                    if filter_mode == "consumption_only":
+                        # Only include if item WON'T be consumed before expiry
+                        item_id = inv_item.item.id
+                        will_be_consumed = self._will_be_consumed_before_expiry(
+                            item_id,
+                            inv_item.expiry_date,
+                            inv_item.quantity_grams,
+                            upcoming_meals_by_item
+                        )
+                        if will_be_consumed:
+                            continue  # Skip items that will be consumed
+
+                    elif filter_mode == "both":
+                        # Include if expires soon AND won't be consumed
+                        item_id = inv_item.item.id
+                        will_be_consumed = self._will_be_consumed_before_expiry(
+                            item_id,
+                            inv_item.expiry_date,
+                            inv_item.quantity_grams,
+                            upcoming_meals_by_item
+                        )
+                        # Only flag as expiring if it won't be used
+                        if will_be_consumed:
+                            continue
+
                     expiring_items.append({
+                        "inventory_id": inv_item.id,
                         "item_id": inv_item.item.id,
-                        "item": inv_item.item.canonical_name,
-                        "quantity": float(inv_item.quantity_grams),
+                        "item_name": inv_item.item.canonical_name,
+                        "quantity_grams": float(inv_item.quantity_grams),
                         "expiry_date": inv_item.expiry_date.isoformat(),
-                        "days_until_expiry": days_until_expiry,
+                        "days_remaining": days_until_expiry,
                         "priority": "urgent" if days_until_expiry <= 1 else "high" if days_until_expiry <= 2 else "medium",
-                        "category": inv_item.item.category or "other"
+                        "category": inv_item.item.category or "other",
+                        "recipe_suggestions": []  # To be populated by LLM-based recipe suggester
                     })
-                    
+
                 except Exception as e:
                     logger.warning(f"Error processing inventory item {inv_item.id}: {str(e)}")
                     continue
             
             # Sort by urgency (expired first, then by days)
-            expiring_items.sort(key=lambda x: (x["days_until_expiry"], x["item"]))
+            expiring_items.sort(key=lambda x: (x["days_remaining"], x["item_name"]))
 
-            print("expiring items", expiring_items)
-
-            # FIX: SEND NOTIFICATION FOR URGENT EXPIRING ITEMS
+            # Notification removed - now handled by scheduled worker at 8 AM daily
+            # This method returns data only for UI display
             urgent_items = [item for item in expiring_items if item["priority"] == "urgent"]
             if urgent_items:
-                try:
-                    await self.notification_service.send_inventory_alert(
-                        user_id=self.user_id,
-                        alert_type="expiring",
-                        items=[item["item"] for item in urgent_items],
-                        priority=NotificationPriority.HIGH
-                    )
-                    logger.info(f"Expiry alert sent for {len(urgent_items)} urgent items")
-                except Exception as e:
-                    logger.error(f"Failed to send expiry notification: {str(e)}")
-            
+                logger.info(f"Found {len(urgent_items)} urgent expiring items for user {self.user_id}")
+
             # Update alerts in state
             new_alerts = []
             for item in expiring_items:
                 alert = {
                     "type": TrackingEventType.EXPIRY_ALERT,
-                    "item": item["item"],
+                    "item": item["item_name"],
                     "expiry_date": item["expiry_date"],
                     "priority": item["priority"],
-                    "days_until_expiry": item["days_until_expiry"],
-                    "message": f"{item['item']} expires in {item['days_until_expiry']} days" if item['days_until_expiry'] > 0 else f"{item['item']} expired {abs(item['days_until_expiry'])} days ago"
+                    "days_until_expiry": item["days_remaining"],
+                    "message": f"{item['item_name']} expires in {item['days_remaining']} days" if item['days_remaining'] > 0 else f"{item['item_name']} expired {abs(item['days_remaining'])} days ago"
                 }
                 new_alerts.append(alert)
-            
+
             # Update state alerts (replace expiry alerts)
             self.state.alerts = [alert for alert in self.state.alerts if alert.get("type") != TrackingEventType.EXPIRY_ALERT]
             self.state.alerts.extend(new_alerts)
@@ -762,7 +819,101 @@ class TrackingAgent:
         except Exception as e:
             logger.error(f"Error checking expiring items: {str(e)}")
             return {"success": False, "error": f"Failed to check expiring items: {str(e)}"}
-    
+
+    def _get_upcoming_consumption_patterns(self, until_date: datetime) -> Dict[int, List[Dict]]:
+        """
+        Get upcoming meal plans and aggregate by item_id
+        Returns: {item_id: [{"planned_date": datetime, "quantity_needed": float}, ...]}
+        """
+        try:
+            # Query upcoming planned meals
+            upcoming_meals = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe).joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
+            ).filter(
+                and_(
+                    MealLog.user_id == self.user_id,
+                    MealLog.planned_datetime.isnot(None),
+                    MealLog.planned_datetime >= datetime.utcnow(),
+                    MealLog.planned_datetime <= until_date,
+                    MealLog.was_skipped == False,
+                    MealLog.consumed_datetime.is_(None)  # Not yet consumed
+                )
+            ).all()
+
+            # Aggregate by item_id
+            consumption_by_item = {}
+
+            for meal in upcoming_meals:
+                if not meal.recipe or not meal.recipe.ingredients:
+                    continue
+
+                for ingredient in meal.recipe.ingredients:
+                    if not ingredient.item:
+                        continue
+
+                    item_id = ingredient.item_id
+                    quantity_needed = ingredient.quantity_grams * meal.portion_multiplier
+
+                    if item_id not in consumption_by_item:
+                        consumption_by_item[item_id] = []
+
+                    consumption_by_item[item_id].append({
+                        "planned_date": meal.planned_datetime,
+                        "quantity_needed": quantity_needed,
+                        "meal_type": meal.meal_type,
+                        "recipe_name": meal.recipe.name
+                    })
+
+            logger.info(f"Found {len(consumption_by_item)} unique items in upcoming meals")
+            return consumption_by_item
+
+        except Exception as e:
+            logger.error(f"Error getting consumption patterns: {str(e)}")
+            return {}
+
+    def _will_be_consumed_before_expiry(
+        self,
+        item_id: int,
+        expiry_date: datetime,
+        available_quantity: float,
+        consumption_patterns: Dict[int, List[Dict]]
+    ) -> bool:
+        """
+        Determine if an item will be fully consumed before expiry
+
+        Returns:
+            True if item will be consumed, False if it will expire unused
+        """
+        if item_id not in consumption_patterns:
+            # No upcoming meals planned with this item
+            return False
+
+        planned_uses = consumption_patterns[item_id]
+
+        # Filter only uses before expiry
+        uses_before_expiry = [
+            use for use in planned_uses
+            if use["planned_date"] <= expiry_date
+        ]
+
+        if not uses_before_expiry:
+            return False
+
+        # Calculate total quantity needed before expiry
+        total_needed = sum(use["quantity_needed"] for use in uses_before_expiry)
+
+        # Item will be consumed if planned usage >= 80% of available quantity
+        # (80% threshold accounts for typical cooking variations)
+        consumption_threshold = 0.8
+        will_consume = total_needed >= (available_quantity * consumption_threshold)
+
+        logger.debug(
+            f"Item {item_id}: {total_needed}g needed vs {available_quantity}g available "
+            f"before expiry - will_consume: {will_consume}"
+        )
+
+        return will_consume
+
     async def calculate_inventory_status(self) -> Dict[str, Any]:
         """Calculate comprehensive inventory status with optimization"""
         try:
@@ -837,8 +988,6 @@ class TrackingAgent:
             for inv_item in inventory_items:
                 if inv_item.item:
                     current_inventory[inv_item.item_id] = inv_item.quantity_grams
-                    print("current_inventory[inv_item.item_id]", current_inventory[inv_item.item_id])
-                    print("inv_item.quantity_grams", inv_item.quantity_grams)
             
 
             
@@ -855,15 +1004,13 @@ class TrackingAgent:
             
             if not required_items:
                 inventory_status["recommendations"].append("No consumption data available for analysis")
+                print("Inventory status", inventory_status)
                 return {"success": True, **inventory_status}
             
             total_score = 0
             item_count = 0
             category_stats = {}
 
-            print("user current inv", current_inventory)
-
-            print("user required inv", required_items)
             
             for item_id, required_qty in required_items.items():
                 try:
@@ -884,7 +1031,6 @@ class TrackingAgent:
                         "usage_frequency": consumption_frequency.get(item_id, 0),
                         "days_supply": round((current_qty / (required_qty / 7)), 1) if required_qty > 0 else 999
                     }
-                    print("item_info", item_info)
                     
                     # Categorize items
                     if percentage < 20:
@@ -923,20 +1069,11 @@ class TrackingAgent:
                         "status": "critical" if stats["critical"] > stats["items"] * 0.5 else "low" if sum(stats["scores"]) / len(stats["scores"]) < 50 else "good"
                     }
 
-            # FIX: SEND NOTIFICATION FOR CRITICAL ITEMS
-            
+            # Notification removed - now handled by scheduled worker at 8 AM daily
+            # This method returns data only for UI display
             critical_item_names = [item["name"] for item in inventory_status["critical_items"]]
             if critical_item_names:
-                try:
-                    await self.notification_service.send_inventory_alert(
-                        user_id=self.user_id,
-                        alert_type="low_stock",
-                        items=critical_item_names,
-                        priority=NotificationPriority.HIGH
-                    )
-                    logger.info(f"Low stock alert sent for {len(critical_item_names)} critical items")
-                except Exception as e:
-                    logger.error(f"Failed to send low stock notification: {str(e)}")
+                logger.info(f"Found {len(critical_item_names)} critical items for user {self.user_id}")
             
             # Generate recommendations
             overall_pct = inventory_status["overall_percentage"]
@@ -954,7 +1091,6 @@ class TrackingAgent:
             for category, data in inventory_status["category_breakdown"].items():
                 if data["critical_items"] > 0:
                     inventory_status["recommendations"].append(f"Urgent: Restock {category} items ({data['critical_items']} critical)")
-            print("user inventory status", inventory_status)
             return {"success": True, **inventory_status}
             
         except Exception as e:
@@ -962,13 +1098,17 @@ class TrackingAgent:
             return {"success": False, "error": f"Failed to calculate inventory status: {str(e)}"}
     
     def generate_restock_list(self) -> Dict[str, Any]:
-        """Generate intelligent restock list with comprehensive analysis"""
+        """Generate intelligent restock list combining upcoming meal needs and historical patterns"""
         try:
-            # Get consumption data from last 14 days
-            two_weeks_ago = datetime.utcnow() - timedelta(days=14)
-            
+            # STEP 1: Get upcoming planned meals (next 7 days) - PRIORITY DATA
+            seven_days_from_now = datetime.utcnow() + timedelta(days=7)
+            upcoming_items = self._get_upcoming_consumption_patterns(seven_days_from_now)
+
+            # STEP 2: Get historical consumption data (last 14 days) - TREND DATA
+            two_weeks_ago = datetime.utcnow() - timedelta(days=30)
+
             recent_logs = self.db.query(MealLog).options(
-                joinedload(MealLog.recipe)
+                joinedload(MealLog.recipe).joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
             ).filter(
                 and_(
                     MealLog.user_id == self.user_id,
@@ -976,33 +1116,28 @@ class TrackingAgent:
                     MealLog.recipe_id.isnot(None)
                 )
             ).all()
-            
-            # Calculate item usage patterns
+
+            # Calculate historical item usage patterns
             item_usage = {}
             recipe_count = {}
-            
+
             for log in recent_logs:
                 if not log.recipe:
                     continue
-                
+
                 recipe_count[log.recipe_id] = recipe_count.get(log.recipe_id, 0) + 1
-                
+
                 try:
-                    ingredients = self.db.query(RecipeIngredient).options(
-                        joinedload(RecipeIngredient.item)
-                    ).filter(
-                        RecipeIngredient.recipe_id == log.recipe_id
-                    ).all()
-                    
+                    ingredients = log.recipe.ingredients
                     portion_multiplier = log.portion_multiplier or 1.0
-                    
+
                     for ingredient in ingredients:
                         if not ingredient.item:
                             continue
-                        
+
                         item_id = ingredient.item_id
                         quantity = ingredient.quantity_grams * portion_multiplier
-                        
+
                         if item_id not in item_usage:
                             item_usage[item_id] = {
                                 "total_used": 0,
@@ -1010,89 +1145,96 @@ class TrackingAgent:
                                 "recipes": set(),
                                 "avg_per_use": 0
                             }
-                        
+
                         item_usage[item_id]["total_used"] += quantity
                         item_usage[item_id]["usage_count"] += 1
                         item_usage[item_id]["recipes"].add(log.recipe_id)
-                        
+
                 except Exception as e:
                     logger.warning(f"Error processing recipe ingredients for restock: {str(e)}")
                     continue
-            
+
             # Calculate averages
             for item_id, usage_data in item_usage.items():
                 if usage_data["usage_count"] > 0:
                     usage_data["avg_per_use"] = usage_data["total_used"] / usage_data["usage_count"]
-            
-            # Get current inventory
+
+            # STEP 3: Get current inventory
             current_inventory = {}
             inventory_items = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
             ).filter(
-                and_(
-                    UserInventory.user_id == self.user_id,
-                    UserInventory.quantity_grams > 0
-                )
+                UserInventory.user_id == self.user_id
             ).all()
-            
+
             for inv_item in inventory_items:
                 if inv_item.item:
                     current_inventory[inv_item.item_id] = {
                         "quantity": inv_item.quantity_grams,
                         "expiry": inv_item.expiry_date
                     }
-            
+
             # Generate restock list
             restock_list = {
-                "urgent": [],     # < 20% stock or critical usage
-                "soon": [],       # < 50% stock
-                "optional": [],   # < 70% stock for frequently used items
-                "bulk_opportunities": []  # Items good for bulk buying
+                "urgent": [],     # Can't cook planned meals OR critically low stock
+                "soon": [],       # < 50% of recommended stock
+                "routine": [],    # < 70% stock for frequently used items
+                "bulk_opportunities": []
             }
-            
+
+            # Calculate weekly multiplier from historical data
             days_of_data = len(set(log.consumed_datetime.date() for log in recent_logs if log.consumed_datetime))
-            if days_of_data == 0:
-                return {
-                    "success": True,
-                    "message": "No consumption data available for restock analysis",
-                    "restock_list": restock_list,
-                    "total_items": 0
-                }
-            
-            # Calculate weekly requirements
-            weekly_multiplier = 7 / days_of_data
-            
-            for item_id, usage_data in item_usage.items():
+            weekly_multiplier = (7 / days_of_data) if days_of_data > 0 else 0
+
+            # STEP 4: Combine all items from both upcoming meals and historical usage
+            all_items = set(upcoming_items.keys()) | set(item_usage.keys())
+
+            for item_id in all_items:
                 try:
                     item = self.db.query(Item).filter(Item.id == item_id).first()
                     if not item:
                         continue
-                    
-                    # Calculate weekly requirement
-                    weekly_requirement = usage_data["total_used"] * weekly_multiplier * 1.2  # 20% buffer
+
                     current_stock = current_inventory.get(item_id, {}).get("quantity", 0)
-                    
-                    # Calculate stock percentage and days supply
-                    stock_percentage = (current_stock / weekly_requirement * 100) if weekly_requirement > 0 else 100
-                    days_supply = (current_stock / (weekly_requirement / 7)) if weekly_requirement > 0 else 999
-                    
-                    # Calculate suggested quantity (2 weeks supply minus current stock)
-                    suggested_quantity = max(weekly_requirement * 2 - current_stock, 0)
-                    
+
+                    # Calculate upcoming requirement (next 7 days planned meals)
+                    upcoming_requirement = sum(
+                        use["quantity_needed"] for use in upcoming_items.get(item_id, [])
+                    )
+
+                    # Calculate historical weekly requirement (with 20% buffer)
+                    historical_weekly = 0
+                    usage_data = item_usage.get(item_id, {})
+                    usage_count = usage_data.get("usage_count", 0)
+
+                    if usage_data and weekly_multiplier > 0:
+                        historical_weekly = usage_data["total_used"] * weekly_multiplier * 1.2
+
+                    # Smart recommendation: prioritize upcoming needs, but consider historical patterns
+                    recommended_stock = max(upcoming_requirement, historical_weekly)
+
+                    # Calculate shortage
+                    shortage = max(recommended_stock - current_stock, 0)
+
+                    # Skip if no shortage and not needed for upcoming meals
+                    if shortage == 0 and upcoming_requirement == 0:
+                        continue
+
+                    # Calculate stock metrics
+                    stock_percentage = (current_stock / recommended_stock * 100) if recommended_stock > 0 else 100
+                    days_supply = (current_stock / (recommended_stock / 7)) if recommended_stock > 0 else 0
+
                     restock_info = {
                         "item_id": item_id,
-                        "item": item.canonical_name,
+                        "item_name": item.canonical_name,
                         "category": item.category or "other",
-                        "current_stock": round(current_stock, 1),
-                        "weekly_requirement": round(weekly_requirement, 1),
-                        "suggested_quantity": round(suggested_quantity, 1),
-                        "usage_frequency": usage_data["usage_count"],
-                        "recipes_used_in": len(usage_data["recipes"]),
-                        "stock_percentage": round(stock_percentage, 1),
-                        "days_supply": round(days_supply, 1),
-                        "avg_per_use": round(usage_data["avg_per_use"], 1)
+                        "current_quantity": round(current_stock, 1),
+                        "recommended_quantity": round(shortage, 1),
+                        "priority": "",  # Will be set below
+                        "usage_frequency": usage_count,
+                        "days_until_depleted": int(days_supply) if days_supply > 0 else 0
                     }
-                    
+
                     # Check for expiry urgency
                     inventory_item = current_inventory.get(item_id, {})
                     if inventory_item.get("expiry"):
@@ -1102,43 +1244,52 @@ class TrackingAgent:
                                 expiry_date = datetime.fromisoformat(expiry_date)
                             days_to_expiry = (expiry_date - datetime.utcnow()).days
                             restock_info["days_to_expiry"] = days_to_expiry
-                            
+
                             if days_to_expiry <= 3:
                                 restock_info["expiry_urgency"] = "urgent"
                             elif days_to_expiry <= 7:
                                 restock_info["expiry_urgency"] = "soon"
                         except Exception as e:
                             logger.warning(f"Error processing expiry for item {item_id}: {str(e)}")
-                    
-                    # Categorize based on stock level and usage
-                    if stock_percentage < 20 or restock_info.get("expiry_urgency") == "urgent":
+
+                    # PRIORITY LOGIC: Prioritize upcoming meal needs
+                    if current_stock < upcoming_requirement:
+                        # Can't cook planned meals - URGENT
+                        restock_info["priority"] = "urgent"
+                        restock_list["urgent"].append(restock_info)
+                    elif stock_percentage < 20 or restock_info.get("expiry_urgency") == "urgent":
+                        # Critically low stock - URGENT
+                        restock_info["priority"] = "urgent"
                         restock_list["urgent"].append(restock_info)
                     elif stock_percentage < 50 or restock_info.get("expiry_urgency") == "soon":
+                        # Low stock - SOON
+                        restock_info["priority"] = "soon"
                         restock_list["soon"].append(restock_info)
-                    elif stock_percentage < 70 and usage_data["usage_count"] >= 3:  # Frequently used
-                        restock_list["optional"].append(restock_info)
-                    
+                    elif stock_percentage < 70 and usage_count >= 3:
+                        # Frequently used, medium stock - ROUTINE
+                        restock_info["priority"] = "routine"
+                        restock_list["routine"].append(restock_info)
+
                     # Check for bulk buying opportunities
-                    if (usage_data["usage_count"] >= 5 and 
-                        len(usage_data["recipes"]) >= 3 and 
-                        item.category in ["grains", "protein", "spices"]):
-                        restock_list["bulk_opportunities"].append({
-                            **restock_info,
-                            "bulk_suggestion": f"Buy {round(weekly_requirement * 4, 1)}g (1 month supply)",
-                            "bulk_reason": f"Used in {len(usage_data['recipes'])} recipes, {usage_data['usage_count']} times"
-                        })
-                    
+                    if usage_data and usage_count >= 5 and len(usage_data.get("recipes", [])) >= 3:
+                        if item.category in ["grains", "protein", "spices"]:
+                            restock_list["bulk_opportunities"].append({
+                                **restock_info,
+                                "bulk_suggestion": f"Buy {round(recommended_stock * 4, 1)}g (1 month supply)",
+                                "bulk_reason": f"Used in {len(usage_data['recipes'])} recipes, {usage_count} times"
+                            })
+
                 except Exception as e:
                     logger.warning(f"Error processing item {item_id} for restock list: {str(e)}")
                     continue
             
             # Sort each category by priority
-            restock_list["urgent"].sort(key=lambda x: (x["days_supply"], -x["usage_frequency"]))
-            restock_list["soon"].sort(key=lambda x: (x["stock_percentage"], -x["usage_frequency"]))
-            restock_list["optional"].sort(key=lambda x: (-x["usage_frequency"], x["stock_percentage"]))
-            
+            restock_list["urgent"].sort(key=lambda x: (x["days_until_depleted"], -x["usage_frequency"]))
+            restock_list["soon"].sort(key=lambda x: (x["days_until_depleted"], -x["usage_frequency"]))
+            restock_list["routine"].sort(key=lambda x: (-x["usage_frequency"], x["days_until_depleted"]))
+
             # Calculate summary
-            total_items = sum(len(restock_list[category]) for category in ["urgent", "soon", "optional"])
+            total_items = sum(len(restock_list[category]) for category in ["urgent", "soon", "routine"])
             estimated_cost = self._estimate_cost(restock_list)
             shopping_strategy = self._generate_shopping_strategy(restock_list)
             
@@ -1147,7 +1298,7 @@ class TrackingAgent:
                 "total_items": total_items,
                 "urgent_count": len(restock_list["urgent"]),
                 "soon_count": len(restock_list["soon"]),
-                "optional_count": len(restock_list["optional"]),
+                "routine_count": len(restock_list["routine"]),
                 "bulk_opportunities": len(restock_list["bulk_opportunities"]),
                 "restock_list": restock_list,
                 "estimated_cost": estimated_cost,
@@ -1158,14 +1309,115 @@ class TrackingAgent:
         except Exception as e:
             logger.error(f"Error generating restock list: {str(e)}")
             return {"success": False, "error": f"Failed to generate restock list: {str(e)}"}
-        
-    
+
+
+    async def check_and_send_inventory_alert(self) -> Dict:
+        """
+        Dedicated function for sending inventory alerts - called by notification worker
+        Sends TWO types of alerts:
+        1. Expiring items - "Use these before they expire"
+        2. Restock items - "Buy these items"
+        Called once per day at 8 AM by notification_worker
+        """
+        try:
+            from app.core.config import settings
+            import redis
+
+            redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+
+            alerts_sent = []
+
+            # ALERT 1: Expiring Items (items that will expire UNUSED)
+            expiring_result = await self.check_expiring_items(filter_mode="both", days_threshold=3)
+
+            if expiring_result.get("success"):
+                urgent_expiring = [item for item in expiring_result.get("expiring_items", [])
+                                  if item.get("priority") == "urgent"]
+
+                if len(urgent_expiring) > 0:
+                    # Check deduplication
+                    expiring_key = f"inventory_alert:{self.user_id}:expiring:{today}"
+
+                    if not redis_client.exists(expiring_key):
+                        item_names = [item["item_name"] for item in urgent_expiring]
+
+                        await self.notification_service.send_inventory_alert(
+                            user_id=self.user_id,
+                            alert_type="expiring",
+                            items=item_names,
+                            priority=NotificationPriority.HIGH
+                        )
+
+                        redis_client.setex(expiring_key, 86400, "1")
+                        alerts_sent.append(f"expiring: {len(urgent_expiring)} items")
+                        logger.info(f"✅ Expiring items alert sent for user {self.user_id}: {len(urgent_expiring)} items")
+
+            # ALERT 2: Restock Items (items needed to buy)
+            restock_data = self.generate_restock_list()
+
+            if restock_data.get("success"):
+                urgent_count = restock_data.get("urgent_count", 0)
+
+                if urgent_count > 0:
+                    # Check deduplication
+                    restock_key = f"inventory_alert:{self.user_id}:restock:{today}"
+
+                    if not redis_client.exists(restock_key):
+                        urgent_items = restock_data["restock_list"]["urgent"]
+                        item_names = [item["item_name"] for item in urgent_items]
+
+                        await self.notification_service.send_inventory_alert(
+                            user_id=self.user_id,
+                            alert_type="low_stock",
+                            items=item_names,
+                            priority=NotificationPriority.HIGH
+                        )
+
+                        redis_client.setex(restock_key, 86400, "1")
+                        alerts_sent.append(f"restock: {urgent_count} items")
+                        logger.info(f"✅ Restock alert sent for user {self.user_id}: {urgent_count} items")
+
+            if len(alerts_sent) > 0:
+                return {
+                    "success": True,
+                    "sent": True,
+                    "alerts": alerts_sent
+                }
+            else:
+                logger.info(f"⏭️  No inventory alerts needed for user {self.user_id}")
+                return {"success": True, "skipped": True, "reason": "no_urgent_items"}
+
+        except Exception as e:
+            logger.error(f"Error in check_and_send_inventory_alert for user {self.user_id}: {str(e)}")
+            return {"success": False, "error": str(e)}
 
     # NEW HELPER METHOD: Check for meal achievements
     def _check_meal_achievements(self, meal_result: Dict) -> List[Dict]:
-        """Check for achievements after meal logging"""
+        """Check for achievements after meal logging with Redis deduplication"""
+        print("\n" + "="*80)
+        print("[ACHIEVEMENT CHECK] Starting achievement check")
+        print(f"[ACHIEVEMENT CHECK] User ID: {self.user_id}")
+        print(f"[ACHIEVEMENT CHECK] Meal result keys: {list(meal_result.keys())}")
+        print("="*80 + "\n")
+
         achievements = []
-        
+
+        # Initialize Redis client for deduplication
+        from app.core.config import settings
+        import redis
+
+        try:
+            redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            print(f"[ACHIEVEMENT CHECK] Today's date: {today}")
+            print(f"[ACHIEVEMENT CHECK] Redis deduplication enabled\n")
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis for deduplication: {str(e)}")
+            redis_client = None
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            print(f"[ACHIEVEMENT CHECK] ⚠️ Redis unavailable - deduplication disabled\n")
+
         try:
             # Check for streak achievements
             recent_logs = self.db.query(MealLog).filter(
@@ -1175,26 +1427,47 @@ class TrackingAgent:
                     MealLog.consumed_datetime.isnot(None)
                 )
             ).count()
-            
+
+            print(f"[ACHIEVEMENT CHECK - STREAK] Recent logs (last 7 days): {recent_logs}")
+
             # 7-day streak achievement
             if recent_logs >= 21:  # 3 meals per day for 7 days
                 streak_days = recent_logs // 3
+                print(f"[ACHIEVEMENT CHECK - STREAK] Calculated streak days: {streak_days}")
+
+                streak_type = None
+                streak_message = None
+
                 if streak_days == 7:
-                    achievements.append({
-                        "type": "streak",
-                        "message": "7-day meal logging streak! You're building lasting habits!"
-                    })
+                    streak_type = "streak_7day"
+                    streak_message = "7-day meal logging streak! You're building lasting habits!"
                 elif streak_days == 14:
-                    achievements.append({
-                        "type": "streak",
-                        "message": "Amazing! 14-day meal streak - you're on fire!"
-                    })
+                    streak_type = "streak_14day"
+                    streak_message = "Amazing! 14-day meal streak - you're on fire!"
                 elif streak_days == 30:
-                    achievements.append({
-                        "type": "streak",
-                        "message": "Incredible! 30-day meal streak - habit mastery achieved!"
-                    })
-            
+                    streak_type = "streak_30day"
+                    streak_message = "Incredible! 30-day meal streak - habit mastery achieved!"
+
+                if streak_type:
+                    # Check Redis deduplication
+                    achievement_key = f"achievement_sent:{self.user_id}:{streak_type}:{today}"
+
+                    if redis_client and redis_client.exists(achievement_key):
+                        print(f"[ACHIEVEMENT CHECK - STREAK] ⏭️  SKIPPED - {streak_type} already sent today")
+                    else:
+                        print(f"[ACHIEVEMENT CHECK - STREAK] ✅ {streak_type} achieved!")
+                        achievements.append({
+                            "type": "streak",
+                            "message": streak_message
+                        })
+
+                        # Mark as sent with 24-hour TTL
+                        if redis_client:
+                            redis_client.setex(achievement_key, 86400, "1")
+                            print(f"[ACHIEVEMENT CHECK - STREAK] 🔑 Set dedup flag: {achievement_key}")
+            else:
+                print(f"[ACHIEVEMENT CHECK - STREAK] ❌ No streak achievement (need 21+ logs, have {recent_logs})")
+
             # Daily completion achievement
             today_logs = self.db.query(MealLog).filter(
                 and_(
@@ -1203,24 +1476,68 @@ class TrackingAgent:
                     MealLog.consumed_datetime.isnot(None)
                 )
             ).count()
-            
+
+            print(f"[ACHIEVEMENT CHECK - DAILY] Today's logs count: {today_logs}")
+
             if today_logs >= 3:
-                achievements.append({
-                    "type": "daily_completion",
-                    "message": "Perfect day! All meals logged - you're crushing your goals!"
-                })
-            
+                # Check Redis deduplication
+                achievement_key = f"achievement_sent:{self.user_id}:daily_completion:{today}"
+
+                if redis_client and redis_client.exists(achievement_key):
+                    print("[ACHIEVEMENT CHECK - DAILY] ⏭️  SKIPPED - daily_completion already sent today")
+                else:
+                    print("[ACHIEVEMENT CHECK - DAILY] ✅ Daily completion achieved! (3+ meals logged)")
+                    achievements.append({
+                        "type": "daily_completion",
+                        "message": "Perfect day! All meals logged - you're crushing your goals!"
+                    })
+
+                    # Mark as sent with 24-hour TTL
+                    if redis_client:
+                        redis_client.setex(achievement_key, 86400, "1")
+                        print(f"[ACHIEVEMENT CHECK - DAILY] 🔑 Set dedup flag: {achievement_key}")
+            else:
+                print(f"[ACHIEVEMENT CHECK - DAILY] ❌ No daily completion (need 3+ logs, have {today_logs})")
+
             # Nutrition target achievement
             daily_totals = meal_result.get("updated_totals", {})
-            if daily_totals.get("protein_g", 0) >= 50 :  # Example protein target need to change with actual target
-                achievements.append({
-                    "type": "nutrition_target",
-                    "message": "Protein goal achieved! Great job hitting your nutrition targets!"
-                })
-            
+            print(f"[ACHIEVEMENT CHECK - NUTRITION] Daily totals: {daily_totals}")
+
+            protein_consumed = daily_totals.get("protein_g", 0)
+            protein_target = 50  # Example protein target need to change with actual target
+
+            print(f"[ACHIEVEMENT CHECK - NUTRITION] Protein consumed: {protein_consumed}g")
+            print(f"[ACHIEVEMENT CHECK - NUTRITION] Protein target: {protein_target}g")
+
+            if protein_consumed >= protein_target:
+                # Check Redis deduplication
+                achievement_key = f"achievement_sent:{self.user_id}:nutrition_target:{today}"
+
+                if redis_client and redis_client.exists(achievement_key):
+                    print(f"[ACHIEVEMENT CHECK - NUTRITION] ⏭️  SKIPPED - nutrition_target already sent today")
+                else:
+                    print(f"[ACHIEVEMENT CHECK - NUTRITION] ✅ Protein goal achieved! ({protein_consumed}g >= {protein_target}g)")
+                    achievements.append({
+                        "type": "nutrition_target",
+                        "message": "Protein goal achieved! Great job hitting your nutrition targets!"
+                    })
+
+                    # Mark as sent with 24-hour TTL
+                    if redis_client:
+                        redis_client.setex(achievement_key, 86400, "1")
+                        print(f"[ACHIEVEMENT CHECK - NUTRITION] 🔑 Set dedup flag: {achievement_key}")
+            else:
+                print(f"[ACHIEVEMENT CHECK - NUTRITION] ❌ Protein goal not met ({protein_consumed}g < {protein_target}g)")
+
+            print(f"\n[ACHIEVEMENT CHECK] Total achievements found: {len(achievements)}")
+            for i, ach in enumerate(achievements, 1):
+                print(f"[ACHIEVEMENT CHECK]   {i}. Type: {ach['type']}, Message: {ach['message']}")
+            print("="*80 + "\n")
+
         except Exception as e:
             logger.warning(f"Error checking achievements: {str(e)}")
-        
+            print(f"[ACHIEVEMENT CHECK] ❌ ERROR: {str(e)}")
+
         return achievements
     
     # Helper methods
@@ -1436,26 +1753,44 @@ class TrackingAgent:
     def _generate_expiry_recommendations(self, expiring_items: List[Dict]) -> List[str]:
         """Generate recommendations for expiring items"""
         recommendations = []
-        
+
+        expired_items = []
+        expiring_soon_items = []
+
         for item in expiring_items:
-            if item["priority"] == "urgent":
-                recommendations.append(f"Use {item['item']} today - expires very soon!")
-            elif item["days_until_expiry"] <= 2:
-                recommendations.append(f"Plan meals with {item['item']} in next 2 days")
-        
+            days = item["days_remaining"]
+
+            if days < 0:
+                # Item already expired
+                expired_items.append(item)
+            elif days <= 1:
+                # Expires today or tomorrow
+                recommendations.append(f"Use {item['item_name']} today - expires very soon!")
+            elif days <= 2:
+                recommendations.append(f"Plan meals with {item['item_name']} in next 2 days")
+            else:
+                expiring_soon_items.append(item)
+
+        # Add recommendations for expired items
+        if expired_items:
+            if len(expired_items) == 1:
+                recommendations.append(f"Check {expired_items[0]['item_name']} - already expired, discard if spoiled")
+            else:
+                recommendations.append(f"Review {len(expired_items)} expired items - discard if spoiled or remove from inventory")
+
         if len(expiring_items) > 3:
             recommendations.append("Consider meal prep to use expiring items")
-        
+
         return recommendations
     
     def _suggest_recipes_for_expiring_items(self, expiring_items: List[Dict]) -> List[str]:
         """Suggest recipes that use expiring items"""
         # This would query recipes that use the expiring ingredients
         suggestions = []
-        
+
         for item in expiring_items[:3]:  # Top 3 expiring items
-            suggestions.append(f"Find recipes using {item['item']} to avoid waste")
-        
+            suggestions.append(f"Find recipes using {item['item_name']} to avoid waste")
+
         return suggestions
 
     
@@ -1476,7 +1811,7 @@ class TrackingAgent:
         for priority in restock_list:
             for item in restock_list[priority]:
                 category = item.get("category", "other")
-                qty_kg = item["suggested_quantity"] / 1000
+                qty_kg = item["recommended_quantity"] / 1000
                 estimated_cost += qty_kg * cost_per_kg.get(category, 100)
         
         return round(estimated_cost, 2)

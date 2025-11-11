@@ -28,7 +28,8 @@ class NotificationWorker:
         self.last_daily_summary = None
         self.last_weekly_report = None
         self.last_meal_reminder_check = None
-        
+        self.last_inventory_check = None
+
         # Handle graceful shutdown
         signal.signal(signal.SIGTERM, self._handle_shutdown)
         signal.signal(signal.SIGINT, self._handle_shutdown)
@@ -87,14 +88,23 @@ class NotificationWorker:
             # Weekly reports on Sunday at 8 PM (only once per week)
             if (current_time.weekday() == 6 and  # Sunday
                 current_hour == 20 and
-                (self.last_weekly_report is None or 
+                (self.last_weekly_report is None or
                  (current_date - self.last_weekly_report).days >= 7)):
-                
+
                 # TRIGGER the notifications - NotificationService will queue them
                 await self._trigger_weekly_reports(notification_service, consumption_service)
                 self.last_weekly_report = current_date
                 logger.info("Weekly reports triggered")
-                
+
+            # Inventory alerts at 8 AM (only once per day)
+            if (current_hour == 8 and
+                (self.last_inventory_check is None or self.last_inventory_check != current_date)):
+
+                # TRIGGER the inventory alerts
+                await self._trigger_inventory_alerts(notification_service.db)
+                self.last_inventory_check = current_date
+                logger.info("Inventory alerts triggered")
+
         except Exception as e:
             logger.error(f"Error processing scheduled notifications: {str(e)}")
 
@@ -216,6 +226,33 @@ class NotificationWorker:
                 
         except Exception as e:
             logger.error(f"Error triggering weekly reports: {str(e)}")
+
+    async def _trigger_inventory_alerts(self, db):
+        """TRIGGER inventory alerts for all active users"""
+        try:
+            from app.agents.tracking_agent import TrackingAgent
+
+            active_users = db.query(User).filter(User.is_active == True).all()
+
+            alert_count = 0
+
+            for user in active_users:
+                try:
+                    tracking_agent = TrackingAgent(db, user.id)
+                    result = await tracking_agent.check_and_send_inventory_alert()
+
+                    if result.get("sent"):
+                        alert_count += 1
+                        logger.info(f"Inventory alerts sent to user {user.id}: {result.get('alerts')}")
+
+                except Exception as e:
+                    logger.error(f"Error checking inventory for user {user.id}: {str(e)}")
+
+            if alert_count > 0:
+                logger.info(f"Sent inventory alerts to {alert_count} users")
+
+        except Exception as e:
+            logger.error(f"Error in _trigger_inventory_alerts: {str(e)}")
 
 async def run_notification_queue_processor():
     """Separate process to handle Redis queue processing"""

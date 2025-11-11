@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # OpenAI (for LLM normalizer)
     openai_api_key: str
 
+    # Spoonacular (for recipe fetching)
+    spoonacular_api_key: str
+
     # Receipt Processing Settings
     receipt_auto_add_threshold: float
 

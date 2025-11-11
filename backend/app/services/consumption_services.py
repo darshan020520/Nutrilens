@@ -345,19 +345,51 @@ class ConsumptionService:
     def get_today_summary(self, user_id: int) -> Dict[str, Any]:
         """
         Get today's consumption summary with <100ms performance
+        Shows only: active plan meals + consumed/skipped meals from any plan + manual entries
+        This prevents duplicate pending meals when a new plan is generated
         """
         try:
             today = date.today()
-            
-            # Single optimized query with all needed data
-            meal_logs = self.db.query(MealLog).options(
+
+            # Get active meal plan to filter correctly
+            active_plan = self.db.query(MealPlan).filter(
+                and_(
+                    MealPlan.user_id == user_id,
+                    MealPlan.is_active == True
+                )
+            ).first()
+
+            # Build optimized query with smart filtering
+            query = self.db.query(MealLog).options(
                 joinedload(MealLog.recipe)
             ).filter(
                 and_(
                     MealLog.user_id == user_id,
                     func.date(MealLog.planned_datetime) == today
                 )
-            ).all()
+            )
+
+            # Filter logic: show active plan meals OR consumed/skipped from any plan OR manual entries
+            if active_plan:
+                query = query.filter(
+                    or_(
+                        MealLog.meal_plan_id == active_plan.id,  # Active plan meals
+                        MealLog.consumed_datetime.isnot(None),   # Already consumed (any plan)
+                        MealLog.was_skipped == True,             # Already skipped (any plan)
+                        MealLog.meal_plan_id.is_(None)          # Manual entries
+                    )
+                )
+            else:
+                # No active plan: show only manual entries or consumed/skipped
+                query = query.filter(
+                    or_(
+                        MealLog.meal_plan_id.is_(None),
+                        MealLog.consumed_datetime.isnot(None),
+                        MealLog.was_skipped == True
+                    )
+                )
+
+            meal_logs = query.all()
             
             # Get user profile and goals in parallel query
             user_data = self.db.query(UserProfile, UserGoal).outerjoin(
@@ -375,7 +407,7 @@ class ConsumptionService:
                 "meals_skipped": 0,
                 "meals_pending": 0,
                 "total_calories": 0,
-                "total_macros": {"protein_g": 0, "carbs_g": 0, "fat_g": 0, "fiber_g": 0},
+                "total_macros": {"calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0, "fiber_g": 0},
                 "meals": [],
                 "compliance_rate": 0,
                 "hydration_reminder": self._get_hydration_reminder()
@@ -383,12 +415,12 @@ class ConsumptionService:
             
             # Process each meal in memory
             for log in meal_logs:
-                macros = self._calculate_meal_macros(log) if log.recipe else {}
+                macros = self._calculate_meal_macros(log)
                 meal_info = {
                     "id": log.id,
                     "meal_type": log.meal_type,
                     "planned_time": log.planned_datetime.isoformat(),
-                    "recipe_id": log.recipe.id,
+                    "recipe_id": log.recipe.id if log.recipe else None,
                     "recipe": log.recipe.title if log.recipe else "External",
                     "status": "pending",
                     "macros": macros
@@ -398,12 +430,12 @@ class ConsumptionService:
                     meal_info["status"] = "consumed"
                     meal_info["consumed_time"] = log.consumed_datetime.isoformat()
                     meal_info["portion"] = log.portion_multiplier or 1.0
-                    
+
                     # Calculate macros
-                    
+
                     summary["meals_consumed"] += 1
                     summary["total_calories"] += macros.get("calories", 0)
-                    for key in ["protein_g", "carbs_g", "fat_g", "fiber_g"]:
+                    for key in ["calories", "protein_g", "carbs_g", "fat_g", "fiber_g"]:
                         summary["total_macros"][key] += macros.get(key, 0)
                         
                 elif log.was_skipped:
@@ -450,11 +482,11 @@ class ConsumptionService:
                 summary["remaining_calories"] = max(0.0, round(target_calories - summary["total_calories"], 2))
 
                 remaining_macros = {}
-                for key in ["protein_g", "carbs_g", "fat_g", "fiber_g", "calorie"]:
+                for key in ["protein_g", "carbs_g", "fat_g", "fiber_g", "calories"]:
                     target_value = summary["targets"].get(key, 0)
                     total_value = summary["total_macros"].get(key, 0)
                     remaining_macros[key] = max(0.0, round(target_value - total_value, 2))
-                
+
                 summary["remaining_macros"] = remaining_macros
 
             # Generate recommendations

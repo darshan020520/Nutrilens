@@ -206,7 +206,8 @@ class PlanningAgent:
             # Save to database
             saved_plan = self._save_meal_plan(meal_plan)
 
-            self._create_meal_logs(meal_plan)
+            # Create meal logs with meal_plan_id linkage
+            self._create_meal_logs(meal_plan, saved_plan.id)
 
             print("saved_plan", saved_plan)
             
@@ -443,65 +444,43 @@ class PlanningAgent:
             return {}
     
     # Tool 5: Find Recipe Alternatives
-    def find_recipe_alternatives(self, recipe_id: int, count: int = 3) -> List[Dict]:
+    def find_recipe_alternatives(self, recipe_id: int, count: int = 5) -> List[Dict]:
         """
-        Find alternative recipes with similar macros
-        
+        Find alternative recipes - delegates to MealPlanService
+
         Args:
             recipe_id: Original recipe ID
-            count: Number of alternatives to find
-            
+            count: Number of alternatives to find (default 5)
+
         Returns:
             List of alternative recipes with similarity scores
         """
         try:
-            # Get original recipe
-            original = self.db.query(Recipe).filter_by(id=recipe_id).first()
-            if not original:
-                return []
-            
-            original_macros = original.macros_per_serving
-            
-            # Find recipes with similar macros
-            all_recipes = self.db.query(Recipe).filter(
-                Recipe.id != recipe_id
-            ).all()
-            
-            alternatives = []
-            for recipe in all_recipes:
-                # Calculate macro similarity
-                similarity = self._calculate_macro_similarity(
-                    original_macros, 
-                    recipe.macros_per_serving
-                )
-                
-                # Check meal time compatibility
-                time_compatible = any(
-                    time in recipe.suitable_meal_times 
-                    for time in original.suitable_meal_times
-                )
-                
-                if similarity > 0.7 and time_compatible:
-                    alternatives.append({
-                        'recipe': RecipeResponse.from_orm(recipe),
-                        'similarity_score': similarity,
-                        'macro_difference': {
-                            'calories': recipe.macros_per_serving['calories'] - original_macros['calories'],
-                            'protein_g': recipe.macros_per_serving['protein_g'] - original_macros['protein_g'],
-                            'carbs_g': recipe.macros_per_serving['carbs_g'] - original_macros['carbs_g'],
-                            'fat_g': recipe.macros_per_serving['fat_g'] - original_macros['fat_g']
-                        }
-                    })
-            
-            # Sort by similarity and return top N
-            alternatives.sort(key=lambda x: x['similarity_score'], reverse=True)
+            # Delegate to meal plan service for consistent logic
+            from app.services.meal_plan_service import MealPlanService
 
-            print("alternatives", alternatives[:count])
-            
-            return alternatives[:count]
-            
+            meal_service = MealPlanService(self.db)
+
+            # Use user_id from context
+            user_id = self.context.user_id if self.context else None
+            if not user_id:
+                logger.warning("No user_id in context, cannot filter by dietary preferences")
+                return []
+
+            alternatives = meal_service.get_alternatives_for_meal(
+                recipe_id=recipe_id,
+                user_id=user_id,
+                count=count
+            )
+
+            logger.info(f"Found {len(alternatives)} alternatives for recipe {recipe_id}")
+
+            return alternatives
+
         except Exception as e:
             logger.error(f"Error finding alternatives: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return []
     
     # Tool 6: Adjust Plan for Eating Out
@@ -1041,14 +1020,39 @@ class PlanningAgent:
             logger.error(f"Error saving meal plan: {str(e)}")
             raise
 
-    def _create_meal_logs(self, meal_plan: Dict):
+    def _create_meal_logs(self, meal_plan: Dict, meal_plan_id: int):
         """
         Create MealLog entries for each planned meal in the weekly plan.
-        Matches the MealLog model exactly.
+        Links logs to meal plan via meal_plan_id and day_index.
+        Sets proper meal times based on user's meal windows or defaults.
         """
         try:
             logs_to_add = []
             start_date = datetime.fromisoformat(meal_plan['start_date'])
+
+            # Get user's meal windows for proper timing
+            user_path = self.db.query(UserPath).filter_by(user_id=self.context.user_id).first()
+            meal_windows = user_path.meal_windows if user_path and user_path.meal_windows else []
+
+            # Create meal time map from windows or use defaults
+            default_meal_times = {
+                'breakfast': '08:00',
+                'lunch': '13:00',
+                'dinner': '19:00',
+                'snack': '16:00'
+            }
+
+            meal_time_map = {}
+            for window in meal_windows:
+                meal_type = window.get('meal', '').lower()
+                start_time = window.get('start', default_meal_times.get(meal_type, '12:00'))
+                meal_time_map[meal_type] = start_time
+
+            # Fill in any missing meal types with defaults
+            for meal_type, default_time in default_meal_times.items():
+                if meal_type not in meal_time_map:
+                    meal_time_map[meal_type] = default_time
+
             print("printing meal plan format inside MealLog save function",meal_plan.get('week_plan', {}))
             for day_key, day_data in meal_plan.get('week_plan', {}).items():
                 # Extract the numeric day offset (e.g., 'day_0' → 0)
@@ -1058,19 +1062,26 @@ class PlanningAgent:
                 for meal_name, recipe in day_data.get('meals', {}).items():
                     if not recipe:
                         continue  # Skip empty meal slots
-                    
+
+                    # Get meal time and create proper datetime
+                    meal_time_str = meal_time_map.get(meal_name.lower(), '12:00')
+                    hour, minute = map(int, meal_time_str.split(':'))
+                    planned_datetime = planned_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
                     logs_to_add.append(
                         MealLog(
                             user_id=self.context.user_id,
                             recipe_id=recipe['id'],
                             meal_type=meal_name,
-                            planned_datetime=planned_date,
+                            planned_datetime=planned_datetime,
                             consumed_datetime=None,
                             was_skipped=False,
                             skip_reason=None,
                             portion_multiplier=1.0,
                             notes=None,
-                            external_meal=None
+                            external_meal=None,
+                            meal_plan_id=meal_plan_id,
+                            day_index=day_offset
                         )
                     )
 

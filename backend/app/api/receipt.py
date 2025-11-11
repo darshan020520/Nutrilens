@@ -7,7 +7,7 @@ import tempfile
 from typing import List, Dict
 from datetime import datetime
 
-from app.models.database import get_db, ReceiptScan, ReceiptPendingItem, User
+from app.models.database import get_db, ReceiptScan, ReceiptPendingItem, User, Item
 from app.services.inventory_service import IntelligentInventoryService
 from app.services.s3_service import S3Service
 from app.services.auth import get_current_user_dependency as get_current_user
@@ -112,18 +112,48 @@ async def upload_receipt(
 
             logger.info(f"Auto-added: {len(auto_added)}, Needs confirmation: {len(needs_confirmation)}")
 
-            # Step 6: Save pending items
-            for item_data in needs_confirmation:
-                pending_item = ReceiptPendingItem(
-                    receipt_scan_id=receipt_scan.id,
-                    item_name=item_data.get("original_input", item_data.get("item_name", "Unknown")),
-                    quantity=item_data.get("quantity", 0),
-                    unit=item_data.get("unit", "unit"),
-                    suggested_item_id=item_data.get("item_id"),
-                    confidence=item_data.get("confidence", 0),
-                    status='pending'
+            # Step 6: Enrich items that need confirmation
+            if needs_confirmation:
+                logger.info(f"Enriching {len(needs_confirmation)} unmatched items...")
+                from app.services.receipt_item_enricher import ReceiptItemEnricher
+
+                items_list = db.query(Item).all()
+                enricher = ReceiptItemEnricher(
+                    openai_api_key=settings.openai_api_key,
+                    existing_items=items_list
                 )
-                db.add(pending_item)
+
+                # Extract item names for enrichment
+                item_names = [item.get("original_input", item.get("item_name", "")) for item in needs_confirmation]
+
+                # Batch enrich
+                enriched_items = await enricher.enrich_batch(item_names)
+
+                # Save pending items with enrichment data
+                for idx, item_data in enumerate(needs_confirmation):
+                    enriched = enriched_items[idx] if idx < len(enriched_items) else {}
+
+                    pending_item = ReceiptPendingItem(
+                        receipt_scan_id=receipt_scan.id,
+                        item_name=item_data.get("original_input", item_data.get("item_name", "Unknown")),
+                        quantity=item_data.get("quantity", 0),
+                        unit=item_data.get("unit", "unit"),
+                        suggested_item_id=item_data.get("item_id"),
+                        confidence=item_data.get("confidence", 0),
+                        status='pending',
+                        # Enrichment data
+                        canonical_name=enriched.get("canonical_name"),
+                        category=enriched.get("category"),
+                        fdc_id=enriched.get("fdc_id"),
+                        nutrition_data=enriched.get("nutrition_per_100g"),
+                        enrichment_confidence=enriched.get("confidence"),
+                        enrichment_reasoning=enriched.get("reasoning")
+                    )
+                    db.add(pending_item)
+
+                logger.info(f"Enriched and saved {len(needs_confirmation)} pending items")
+            else:
+                logger.info("No items need enrichment")
 
             # Step 7: Update receipt_scan status
             receipt_scan.status = 'completed'
@@ -152,6 +182,8 @@ async def upload_receipt(
             db.commit()
 
             logger.error(f"Receipt scanner HTTP error: {e}")
+            import traceback
+            traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Receipt scanner failed: {str(e)}")
 
         except Exception as e:
@@ -161,6 +193,8 @@ async def upload_receipt(
             db.commit()
 
             logger.error(f"Receipt processing error: {e}")
+            import traceback
+            traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Receipt processing failed: {str(e)}")
 
     except Exception as e:
@@ -168,70 +202,86 @@ async def upload_receipt(
         raise HTTPException(status_code=500, detail=f"Failed to upload receipt: {str(e)}")
 
 
-@router.get("/pending")
-async def get_pending_items(
+@router.get("/{receipt_id}/pending")
+async def get_receipt_pending_items(
+    receipt_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get all pending items needing user confirmation
+    Get pending items for a specific receipt with enrichment data
 
     Returns:
         {
+            "receipt_id": int,
             "count": int,
             "items": [
                 {
                     "id": int,
-                    "receipt_id": int,
-                    "item_name": str,
+                    "item_name": str,  # Original from receipt
                     "quantity": float,
                     "unit": str,
-                    "suggested_item_id": int,
-                    "confidence": float
+                    "canonical_name": str,  # Normalized name
+                    "category": str,
+                    "nutrition_data": {...},
+                    "enrichment_confidence": float,
+                    "enrichment_reasoning": str
                 }
             ]
         }
     """
-    pending = db.query(ReceiptPendingItem).join(ReceiptScan).filter(
-        ReceiptScan.user_id == current_user.id,
+    # Verify receipt belongs to user
+    receipt_scan = db.query(ReceiptScan).filter(
+        ReceiptScan.id == receipt_id,
+        ReceiptScan.user_id == current_user.id
+    ).first()
+
+    if not receipt_scan:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+
+    # Get pending items for this receipt
+    pending = db.query(ReceiptPendingItem).filter(
+        ReceiptPendingItem.receipt_scan_id == receipt_id,
         ReceiptPendingItem.status == 'pending'
     ).all()
 
     return {
+        "receipt_id": receipt_id,
         "count": len(pending),
         "items": [
             {
                 "id": item.id,
-                "receipt_id": item.receipt_scan_id,
-                "item_name": item.item_name,
+                "item_name": item.item_name,  # Original from receipt
                 "quantity": item.quantity,
                 "unit": item.unit,
-                "suggested_item_id": item.suggested_item_id,
-                "suggested_item_name": item.suggested_item.canonical_name if item.suggested_item else None,
-                "confidence": item.confidence
+                # Enrichment data
+                "canonical_name": item.canonical_name,
+                "category": item.category,
+                "fdc_id": item.fdc_id,
+                "nutrition_data": item.nutrition_data,
+                "enrichment_confidence": item.enrichment_confidence,
+                "enrichment_reasoning": item.enrichment_reasoning
             }
             for item in pending
         ]
     }
 
 
-@router.post("/confirm")
-async def confirm_items(
+@router.post("/confirm-and-seed")
+async def confirm_and_seed_items(
     request: ConfirmItemsRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Confirm pending items and add to inventory
+    Confirm enriched items, seed to items database, and add to inventory
 
     Request body:
         {
             "items": [
                 {
                     "pending_item_id": 1,
-                    "action": "add",  # or "skip"
-                    "item_id": 7,  # optional override
-                    "quantity_grams": 100  # optional override
+                    "action": "confirm"  # or "skip"
                 }
             ]
         }
@@ -239,11 +289,20 @@ async def confirm_items(
     Returns:
         {
             "status": "success",
-            "added_count": int
+            "seeded_count": int,
+            "added_count": int,
+            "seeded_items": [...]
         }
     """
+    from app.services.embedding_service import EmbeddingService
+    from app.core.config import settings
+
     inventory_service = IntelligentInventoryService(db)
+    embedder = EmbeddingService(api_key=settings.openai_api_key)
+
+    seeded_count = 0
     added_count = 0
+    seeded_items = []
 
     for item_data in request.items:
         pending_id = item_data.get("pending_item_id")
@@ -265,24 +324,64 @@ async def confirm_items(
         if not receipt_scan:
             continue
 
-        if action == "add":
-            item_id = item_data.get("item_id", pending_item.suggested_item_id)
-            quantity_grams = item_data.get("quantity_grams")
+        if action == "confirm":
+            # Check if enrichment data exists
+            if not pending_item.canonical_name or not pending_item.nutrition_data:
+                logger.warning(f"Skipping {pending_item.item_name}: missing enrichment data")
+                continue
 
-            if item_id and quantity_grams:
-                # Add to inventory
-                result = inventory_service.add_item(
-                    user_id=current_user.id,
-                    item_id=item_id,
-                    quantity_grams=quantity_grams,
-                    source='receipt_scanner'
+            # Check if item already exists
+            existing_item = db.query(Item).filter(
+                Item.canonical_name == pending_item.canonical_name
+            ).first()
+
+            if existing_item:
+                item_id = existing_item.id
+                logger.info(f"Item '{pending_item.canonical_name}' already exists (ID: {item_id})")
+            else:
+                # Create new item in database
+                embedding_text = f"{pending_item.canonical_name} {pending_item.category}"
+                embedding = await embedder.get_embedding(embedding_text)
+                embedding_json = embedder.embedding_to_db_string(embedding)
+
+                new_item = Item(
+                    canonical_name=pending_item.canonical_name,
+                    aliases=[pending_item.item_name],  # Add original name as alias
+                    category=pending_item.category,
+                    unit="g",
+                    fdc_id=pending_item.fdc_id,
+                    nutrition_per_100g=pending_item.nutrition_data,
+                    is_staple=False,
+                    embedding=embedding_json,
+                    embedding_model="text-embedding-3-small",
+                    embedding_version=1,
+                    source="receipt_enrichment"
                 )
+                db.add(new_item)
+                db.flush()  # Get the ID
 
-                if result.get("success"):
-                    pending_item.status = 'confirmed'
-                    pending_item.confirmed_at = datetime.now()
-                    added_count += 1
-                    logger.info(f"Confirmed and added: {result.get('item')}")
+                item_id = new_item.id
+                seeded_count += 1
+                seeded_items.append({
+                    "canonical_name": pending_item.canonical_name,
+                    "category": pending_item.category,
+                    "item_id": item_id
+                })
+                logger.info(f"Seeded new item: {pending_item.canonical_name} (ID: {item_id})")
+
+            # Add to inventory
+            result = inventory_service.add_item(
+                user_id=current_user.id,
+                item_id=item_id,
+                quantity_grams=pending_item.quantity,  # Use original quantity from receipt
+                source='receipt_scanner'
+            )
+
+            if result.get("success"):
+                pending_item.status = 'confirmed'
+                pending_item.confirmed_at = datetime.now()
+                added_count += 1
+                logger.info(f"Added to inventory: {pending_item.canonical_name}")
 
         elif action == "skip":
             pending_item.status = 'skipped'
@@ -292,7 +391,9 @@ async def confirm_items(
 
     return {
         "status": "success",
-        "added_count": added_count
+        "seeded_count": seeded_count,
+        "added_count": added_count,
+        "seeded_items": seeded_items
     }
 
 

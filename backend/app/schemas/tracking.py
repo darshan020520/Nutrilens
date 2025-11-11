@@ -220,6 +220,7 @@ class InventoryStatusResponse(BaseModel):
 
 class ExpiringItemWithRecipes(BaseModel):
     """Expiring item with recipe suggestions"""
+    inventory_id: int  # UserInventory primary key for delete/update operations
     item_id: int
     item_name: str
     quantity_grams: float
@@ -284,3 +285,101 @@ class ManualFoodEntryResponse(BaseModel):
     consumed_at: datetime
     updated_daily_totals: Dict[str, Any]
     recommendations: List[str]
+
+
+# ===== EXTERNAL MEAL LOGGING SCHEMAS =====
+
+class ExternalMealEstimateRequest(BaseModel):
+    """Request schema for getting LLM nutrition estimate"""
+    dish_name: str = Field(..., min_length=1, max_length=200, description="Name of the dish")
+    portion_size: str = Field(..., min_length=1, max_length=100, description="Portion size (e.g., '1 large plate', '300g')")
+    restaurant_name: Optional[str] = Field(None, max_length=200, description="Restaurant name for context")
+    cuisine_type: Optional[str] = Field(None, max_length=50, description="Cuisine type (e.g., 'Indian', 'Italian')")
+
+
+class ExternalMealEstimateResponse(BaseModel):
+    """Response schema for nutrition estimate"""
+    calories: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    fiber_g: float
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
+    reasoning: str = Field(..., description="Brief explanation of the estimation")
+    dish_name: str
+    portion_size: str
+    estimation_method: str = Field(..., description="'llm' or 'fallback'")
+
+
+class LogExternalMealRequest(BaseModel):
+    """Request schema for logging an external meal"""
+    dish_name: str = Field(..., min_length=1, max_length=200)
+    portion_size: str = Field(..., min_length=1, max_length=100)
+    restaurant_name: Optional[str] = Field(None, max_length=200)
+    cuisine_type: Optional[str] = Field(None, max_length=50)
+
+    # Estimated or user-provided macros
+    calories: float = Field(..., gt=0, description="Calories (from estimate or user input)")
+    protein_g: float = Field(..., ge=0)
+    carbs_g: float = Field(..., ge=0)
+    fat_g: float = Field(..., ge=0)
+    fiber_g: float = Field(0, ge=0)
+
+    # Meal replacement or addition
+    meal_log_id_to_replace: Optional[int] = Field(
+        None,
+        description="If provided, replaces this planned meal. If None, adds as new meal."
+    )
+    meal_type: Optional[MealType] = Field(
+        None,
+        description="Required if meal_log_id_to_replace is None (adding new meal)"
+    )
+
+    # Additional context
+    notes: Optional[str] = Field(None, max_length=500)
+    consumed_at: Optional[datetime] = Field(
+        None,
+        description="When the meal was consumed (defaults to now)"
+    )
+
+    @validator('meal_type')
+    def validate_meal_type_requirement(cls, v, values):
+        """Ensure meal_type is provided when adding new meal"""
+        if values.get('meal_log_id_to_replace') is None and v is None:
+            raise ValueError("meal_type is required when not replacing an existing meal")
+        return v
+
+
+class RemainingMealOption(BaseModel):
+    """Remaining meal that can be replaced"""
+    meal_log_id: int
+    meal_type: str
+    recipe_name: str
+    planned_time: str
+    planned_calories: float
+
+
+class LogExternalMealResponse(BaseModel):
+    """Response schema for external meal logging"""
+    success: bool
+    meal_log_id: int
+    meal_type: str
+    dish_name: str
+    restaurant_name: Optional[str]
+    consumed_at: datetime
+    macros: MacroNutrients
+
+    # Meal replacement info
+    replaced_meal: bool = Field(..., description="True if replaced a planned meal")
+    original_recipe: Optional[str] = Field(None, description="Original recipe name if replaced")
+
+    # Updated daily summary
+    updated_daily_totals: Dict[str, Any]
+    remaining_calories: float
+
+    # Optional: remaining meals for today that could be swapped
+    remaining_meals_today: Optional[List[RemainingMealOption]] = None
+
+    # Insights and recommendations
+    insights: List[str] = []
+    recommendations: List[str] = []

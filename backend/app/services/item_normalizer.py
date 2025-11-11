@@ -170,12 +170,18 @@ class IntelligentItemNormalizer:
         Traditional normalization (synchronous, no LLM)
         Returns result with confidence score
         """
+        logger.info(f"      🔹 NORMALIZER: normalize() called with '{raw_input}'")
+
         quantity, unit, cleaned = self._extract_quantity_and_clean(raw_input)
+        logger.info(f"      🔹 Extracted: quantity={quantity}, unit='{unit}', cleaned='{cleaned}'")
 
         # Try exact match (100% confidence)
+        logger.info(f"      🔹 Trying exact match...")
         if cleaned in self.items_cache['by_name']:
-            return NormalizationResult(
-                item=self.items_cache['by_name'][cleaned],
+            matched_item = self.items_cache['by_name'][cleaned]
+            logger.info(f"      ✅ EXACT MATCH: '{cleaned}' → '{matched_item.canonical_name}' (confidence: 1.0)")
+            result = NormalizationResult(
+                item=matched_item,
                 confidence=1.0,
                 matched_on='exact',
                 alternatives=[],
@@ -184,11 +190,17 @@ class IntelligentItemNormalizer:
                 extracted_quantity=quantity,
                 extracted_unit=unit
             )
+            result.quantity_grams = self.convert_to_grams(quantity, unit, matched_item)
+            logger.info(f"      🔹 Converted to {result.quantity_grams}g")
+            return result
 
         # Check aliases (95% confidence)
+        logger.info(f"      🔹 Trying alias match...")
         if cleaned in self.items_cache['by_alias']:
-            return NormalizationResult(
-                item=self.items_cache['by_alias'][cleaned],
+            matched_item = self.items_cache['by_alias'][cleaned]
+            logger.info(f"      ✅ ALIAS MATCH: '{cleaned}' → '{matched_item.canonical_name}' (confidence: 0.95)")
+            result = NormalizationResult(
+                item=matched_item,
                 confidence=0.95,
                 matched_on='alias',
                 alternatives=[],
@@ -197,12 +209,17 @@ class IntelligentItemNormalizer:
                 extracted_quantity=quantity,
                 extracted_unit=unit
             )
+            result.quantity_grams = self.convert_to_grams(quantity, unit, matched_item)
+            return result
 
         # Check common misspellings (90% confidence)
+        logger.info(f"      🔹 Trying spelling correction...")
         corrected = self._correct_spelling(cleaned)
         if corrected != cleaned and corrected in self.items_cache['by_name']:
-            return NormalizationResult(
-                item=self.items_cache['by_name'][corrected],
+            matched_item = self.items_cache['by_name'][corrected]
+            logger.info(f"      ✅ SPELLING MATCH: '{cleaned}' → '{corrected}' → '{matched_item.canonical_name}' (confidence: 0.9)")
+            result = NormalizationResult(
+                item=matched_item,
                 confidence=0.9,
                 matched_on='spelling_correction',
                 alternatives=[],
@@ -211,14 +228,19 @@ class IntelligentItemNormalizer:
                 extracted_quantity=quantity,
                 extracted_unit=unit
             )
+            result.quantity_grams = self.convert_to_grams(quantity, unit, matched_item)
+            return result
 
         # Fuzzy matching
+        logger.info(f"      🔹 Trying fuzzy match...")
         best_matches = self._fuzzy_match_with_context(cleaned)
         if best_matches:
             best_item, best_score = best_matches[0]
             alternatives = best_matches[1:4]
+            logger.info(f"      ⚡ FUZZY MATCH: '{cleaned}' → '{best_item.canonical_name}' (confidence: {best_score:.3f})")
+            logger.info(f"      🔹 Alternatives: {[(alt[0].canonical_name, alt[1]) for alt in alternatives[:3]]}")
 
-            return NormalizationResult(
+            result = NormalizationResult(
                 item=best_item if best_score > 0.6 else None,
                 confidence=best_score,
                 matched_on='fuzzy',
@@ -228,13 +250,18 @@ class IntelligentItemNormalizer:
                 extracted_quantity=quantity,
                 extracted_unit=unit
             )
+            if result.item:
+                result.quantity_grams = self.convert_to_grams(quantity, unit, best_item)
+            return result
 
         # Token-based matching
+        logger.info(f"      🔹 Trying token-based match...")
         partial_matches = self._token_based_matching(cleaned)
         if partial_matches:
             best_item, best_score = partial_matches[0]
+            logger.info(f"      ⚡ TOKEN MATCH: '{cleaned}' → '{best_item.canonical_name}' (confidence: {best_score:.3f})")
 
-            return NormalizationResult(
+            result = NormalizationResult(
                 item=best_item if best_score > 0.5 else None,
                 confidence=best_score,
                 matched_on='partial',
@@ -244,6 +271,11 @@ class IntelligentItemNormalizer:
                 extracted_quantity=quantity,
                 extracted_unit=unit
             )
+            if result.item:
+                result.quantity_grams = self.convert_to_grams(quantity, unit, best_item)
+            return result
+
+        logger.warning(f"      ❌ NO MATCH FOUND for '{cleaned}'")
 
         # No match found
         return NormalizationResult(
@@ -360,7 +392,7 @@ class IntelligentItemNormalizer:
 
         # Step 2: Try conversion if matched
         if result.item and result.confidence >= self.traditional_threshold:
-            grams = self._convert_to_grams(
+            grams = self.convert_to_grams(
                 result.extracted_quantity,
                 result.extracted_unit,
                 result.item
@@ -427,7 +459,7 @@ class IntelligentItemNormalizer:
             if result.confidence >= self.traditional_threshold:
                 # High confidence match - try conversion
                 if result.item:
-                    grams = self._convert_to_grams(
+                    grams = self.convert_to_grams(
                         result.extracted_quantity,
                         result.extracted_unit,
                         result.item
@@ -636,10 +668,12 @@ If no match found: {{"matched_item_id": null, "quantity_grams": <estimated_grams
     # UNIT CONVERSION (SINGLE METHOD)
     # ========================================================================
 
-    def _convert_to_grams(self, quantity: float, unit: str, item: Item) -> Optional[float]:
+    def convert_to_grams(self, quantity: float, unit: str, item: Item) -> Optional[float]:
         """
         Simple conversion for standard units
         Returns None if unit is unknown (signals need for LLM)
+
+        PUBLIC method for backward compatibility with old code that calls it directly
         """
         unit_lower = unit.lower().strip()
 

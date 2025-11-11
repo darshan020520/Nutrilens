@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import SwapMealDialog from "./SwapMealDialog";
+import RecipeDetailsDialog from "./RecipeDetailsDialog";
 
 interface Macros {
   calories: number;
@@ -66,41 +68,73 @@ export function WeekView() {
     day: number;
     meal: Meal;
   } | null>(null);
+  const [mealToSwap, setMealToSwap] = useState<{
+    day: number;
+    meal: Meal;
+  } | null>(null);
+  const [recipeToView, setRecipeToView] = useState<number | null>(null);
+  const [showRecipeDialog, setShowRecipeDialog] = useState(false);
   const [showGroceryList, setShowGroceryList] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
-  // Fetch current week's meal plan
-  // Fetch current week's meal plan
-    const { data: weekPlan, isLoading, error } = useQuery<WeekPlan>({
+  // Fetch current week's meal plan with status
+  const { data: weekPlan, isLoading, error } = useQuery<WeekPlan>({
     queryKey: ["meal-plan", "current"],
     queryFn: async () => {
-        const response = await api.get("/meal-plans/current");
+        const response = await api.get("/meal-plans/current/with-status");
         const data = response.data;
+
+        // Handle case where no plan exists for current week
+        // Check for plan_data existence rather than has_plan flag
+        if (!data.plan_data || Object.keys(data.plan_data).length === 0) {
+          return {
+            id: data.id || 0,
+            has_plan: false,
+            week_start: data.week_start_date || new Date().toISOString(),
+            week_end: "",
+            days: [],
+            message: data.message || "No meal plan found for this week."
+          };
+        }
 
         // 🧩 Transform backend structure → frontend format
         const days: any[] = [];
 
         if (data.plan_data) {
+        // Parse week start date to calculate individual day dates
+        const weekStartDate = new Date(data.week_start_date);
+
         for (const [dayName, dayData] of Object.entries(data.plan_data)) {
-            const mealsArray = Object.entries(dayData.meals).map(
+            // Type guard for dayData
+            const typedDayData = dayData as any;
+
+            // Extract day index from "day_0", "day_1", etc.
+            const dayIndex = parseInt(dayName.split('_')[1]);
+
+            // Calculate the actual date for this day
+            const dayDate = new Date(weekStartDate);
+            dayDate.setDate(weekStartDate.getDate() + dayIndex);
+
+            const mealsArray = Object.entries(typedDayData.meals).map(
             ([mealType, meal]: [string, any]) => ({
                 meal_type: mealType,
-                recipe_id: meal.id, 
-                recipe_name: meal.title, 
-                macros: meal.macros_per_serving, 
-                goals: meal.goals || [], 
-                dietary_tags: meal.dietary_tags || [], 
-                suitable_meal_times: meal.suitable_meal_times || [], 
-                prep_time_min: meal.prep_time_min ?? null, 
-                cook_time_min: meal.cook_time_min ?? null, 
-                status: "pending", // still default
+                recipe_id: meal.id,
+                recipe_name: meal.title,
+                macros: meal.macros_per_serving,
+                goals: meal.goals || [],
+                dietary_tags: meal.dietary_tags || [],
+                suitable_meal_times: meal.suitable_meal_times || [],
+                prep_time_min: meal.prep_time_min ?? null,
+                cook_time_min: meal.cook_time_min ?? null,
+                status: meal.status || "pending", // Use status from backend
             })
             );
 
             days.push({
-            day_name: dayName,
-            day_calories: dayData.day_calories ?? null,
-            day_macros: dayData.day_macros ?? {},
+            date: dayDate.toISOString(),
+            day_name: dayDate.toLocaleDateString("en-US", { weekday: "long" }),
+            day_calories: typedDayData.day_calories ?? null,
+            day_macros: typedDayData.day_macros ?? {},
             meals: mealsArray,
             });
         }
@@ -460,16 +494,60 @@ export function WeekView() {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  if (selectedMeal) {
+                    setRecipeToView(selectedMeal.meal.recipe_id);
+                    setShowRecipeDialog(true);
+                    setSelectedMeal(null);
+                  }
+                }}
+              >
                 View Recipe
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  if (selectedMeal) {
+                    setMealToSwap(selectedMeal);
+                    setSelectedMeal(null);
+                  }
+                }}
+              >
                 Swap Meal
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Swap Meal Dialog */}
+      <SwapMealDialog
+        open={!!mealToSwap}
+        onOpenChange={(open) => !open && setMealToSwap(null)}
+        planId={weekPlan?.id || 0}
+        currentRecipe={
+          mealToSwap
+            ? {
+                id: mealToSwap.meal.recipe_id,
+                title: mealToSwap.meal.recipe_name,
+                macros_per_serving: mealToSwap.meal.macros,
+              }
+            : null
+        }
+        day={mealToSwap?.day || 0}
+        mealType={mealToSwap?.meal.meal_type || ""}
+      />
+
+      {/* Recipe Details Dialog */}
+      <RecipeDetailsDialog
+        recipeId={recipeToView}
+        open={showRecipeDialog}
+        onOpenChange={setShowRecipeDialog}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ from datetime import datetime, date, timedelta
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
 from app.services.consumption_services import ConsumptionService
+from app.services.inventory_service import IntelligentInventoryService
 from app.agents.tracking_agent import TrackingAgent
 
 
@@ -220,30 +221,31 @@ async def get_dashboard_summary(
         )
         
         # ===== 3. INVENTORY STATUS CARD =====
-        # Use check_expiring_items for expiring count
-        expiring_result = await tracking_agent.check_expiring_items()
-        
-        # Get total inventory count
-        inventory_result = await tracking_agent.calculate_inventory_status()
-        
-        # Extract counts correctly
-        expiring_count = 0
-        if expiring_result.get("success"):
-            summary = expiring_result.get("summary", {})
-            expiring_count = summary.get("urgent", 0) + summary.get("high", 0)
-        
-        # Critical items = low stock items
-        low_stock_count = len(inventory_result.get("critical_items", []))
-        
-        # Total items
-        total_items = inventory_result.get("total_items_tracked", 0)
-        
+        # Use IntelligentInventoryService for accurate inventory counts
+        inventory_service = IntelligentInventoryService(db)
+        inventory_status = inventory_service.get_inventory_status(user_id)
+
+        # Get expiring items count from inventory status
+        expiring_count = len(inventory_status.expiring_soon)
+
+        # Get low stock count from inventory status
+        low_stock_count = len(inventory_status.low_stock)
+
+        # Get out of stock count - items with quantity = 0
+        out_of_stock = db.query(UserInventory).filter(
+            and_(
+                UserInventory.user_id == user_id,
+                UserInventory.quantity_grams == 0
+            )
+        ).count()
+
         inventory_card = InventoryCardData(
             expiring_soon_count=expiring_count,
             low_stock_count=low_stock_count,
-            out_of_stock_count=0,  # Not currently tracked
-            total_items=total_items
+            out_of_stock_count=out_of_stock,
+            total_items=inventory_status.total_items
         )
+        print("inventory_card", inventory_card)
         
         # ===== 4. GOAL PROGRESS CARD =====
         # Get user profile and goal
@@ -260,9 +262,11 @@ async def get_dashboard_summary(
         
         # Extract goal data
         current_weight = user_profile.weight_kg if user_profile else 70.0
-        target_weight = user_goal.target_weight if user_goal else current_weight
+        target_weight = getattr(user_goal, 'target_weight', None) if user_goal else None
+        if target_weight is None:
+            target_weight = current_weight
         goal_type = user_goal.goal_type if user_goal else "maintain_weight"
-        
+
         # Calculate progress
         weight_change = target_weight - current_weight
         

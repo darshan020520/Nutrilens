@@ -263,7 +263,15 @@ class NotificationService:
         priority: NotificationPriority = NotificationPriority.NORMAL
     ) -> bool:
         """Send achievement notification"""
-        
+
+        print("\n" + "="*80)
+        print("[NOTIFICATION SERVICE] send_achievement() called")
+        print(f"[NOTIFICATION SERVICE] User ID: {user_id}")
+        print(f"[NOTIFICATION SERVICE] Achievement Type: {achievement_type}")
+        print(f"[NOTIFICATION SERVICE] Message: {message}")
+        print(f"[NOTIFICATION SERVICE] Priority: {priority}")
+        print("="*80 + "\n")
+
         notification_data = {
             "type": NotificationType.ACHIEVEMENT,
             "user_id": user_id,
@@ -278,9 +286,14 @@ class NotificationService:
             "created_at": datetime.utcnow().isoformat()
         }
 
-        print("SENDING TO QUEUE", notification_data)
-        
-        return await self._queue_notification(notification_data)
+        print(f"[NOTIFICATION SERVICE] Notification data prepared: {notification_data}")
+        print(f"[NOTIFICATION SERVICE] Calling _queue_notification()...")
+
+        result = await self._queue_notification(notification_data)
+
+        print(f"[NOTIFICATION SERVICE] _queue_notification() returned: {result}\n")
+
+        return result
     
     async def send_daily_summary(
         self,
@@ -335,39 +348,54 @@ class NotificationService:
     async def _queue_notification(self, notification_data: Dict) -> bool:
         """Queue notification for processing"""
         try:
-            # Get user preferences
-            preferences = self._get_user_preferences(notification_data["user_id"])
+            print("\n" + "="*80)
+            print("[QUEUE NOTIFICATION] _queue_notification() called")
+            print(f"[QUEUE NOTIFICATION] User ID: {notification_data['user_id']}")
+            print(f"[QUEUE NOTIFICATION] Notification Type: {notification_data['type']}")
+            print("="*80 + "\n")
 
-            print("get notification prefrences", preferences)
-            
+            # Get user preferences
+            print("[QUEUE NOTIFICATION] Fetching user preferences...")
+            preferences = self._get_user_preferences(notification_data["user_id"])
+            print(f"[QUEUE NOTIFICATION] User preferences: {preferences}")
+
             # Check if user wants this type of notification
             notification_type = notification_data["type"]
+            print(f"\n[QUEUE NOTIFICATION] Checking if notification type '{notification_type}' is enabled...")
+
             if not self._should_send_notification(preferences, notification_type):
+                print(f"[QUEUE NOTIFICATION] ❌ Notification type '{notification_type}' is DISABLED for user")
                 logger.info(f"Notification {notification_type} disabled for user {notification_data['user_id']}")
                 return True  # Return True as this is expected behavior
-            
+
+            print(f"[QUEUE NOTIFICATION] ✅ Notification type '{notification_type}' is ENABLED")
+
             # Apply user timing preferences
+            print(f"[QUEUE NOTIFICATION] Checking quiet hours (priority: {notification_data['priority']})...")
             if not self._is_allowed_time(preferences, notification_data["priority"]):
-                # Schedule for later
+                print("[QUEUE NOTIFICATION] ⏰ In quiet hours - scheduling for later")
                 return await self._schedule_notification(notification_data, preferences)
-            
+
+            print("[QUEUE NOTIFICATION] ✅ Current time is allowed (not in quiet hours)")
+
             # Add to Redis queue based on priority
             queue_name = f"notifications:{notification_data['priority']}"
+            print(f"[QUEUE NOTIFICATION] Target queue: {queue_name}")
 
-            
             # Add retry count and attempt tracking
             notification_data["retry_count"] = 0
             notification_data["max_retries"] = self.max_retries
             notification_data["queued_at"] = datetime.utcnow().isoformat()
-            
-            # Push to Redis queue
-            print("notification data befor pushing to queue", notification_data)
 
+            # Push to Redis queue
+            print(f"\n[QUEUE NOTIFICATION] Pushing to Redis queue '{queue_name}'...")
+            print(f"[QUEUE NOTIFICATION] Notification data: {notification_data}")
 
             result = self.redis_client.lpush(queue_name, json.dumps(notification_data))
 
+            print(f"[QUEUE NOTIFICATION] ✅ Redis lpush result: {result}")
+            print(f"[QUEUE NOTIFICATION] ✅ Notification queued successfully!\n")
 
-            
             logger.info(f"Queued {notification_type} notification for user {notification_data['user_id']}")
             return True
             

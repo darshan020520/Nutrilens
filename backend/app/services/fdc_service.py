@@ -93,7 +93,13 @@ class FDCService:
         return nutrition
     
     def _parse_fdc_nutrients(self, food_data: Dict) -> Dict:
-        """Parse FDC food data into our nutrition format"""
+        """Parse FDC food data into our nutrition format
+
+        Complete nutrient ID mapping verified from 21 items, 60 FDC matches:
+        - Calories: 4 different IDs (1008 SR Legacy kcal, 2047/2048 Foundation Atwater, 1062 kJ)
+        - Other nutrients: Universal IDs across data types
+        - Fiber: Often missing in Foundation data (only 49/60 matches have it)
+        """
         nutrients = {
             "calories": 0,
             "protein_g": 0,
@@ -102,23 +108,62 @@ class FDCService:
             "fiber_g": 0,
             "sodium_mg": 0
         }
-        
-        # Map FDC nutrient IDs to our fields
+
+        # Complete nutrient ID mapping - verified from all debug files
+        # Multiple IDs can map to same field (especially calories)
         nutrient_map = {
-            1008: 'calories',     # Energy (kcal)
-            1003: 'protein_g',    # Protein
-            1004: 'fat_g',        # Total fat
-            1005: 'carbs_g',      # Carbohydrate
-            1079: 'fiber_g',      # Fiber
-            1093: 'sodium_mg'     # Sodium
+            # CALORIES - 4 different IDs across data types
+            1008: 'calories',  # Energy (kcal) - SR Legacy
+            2047: 'calories',  # Energy (Atwater General) - Foundation
+            2048: 'calories',  # Energy (Atwater Specific) - Foundation
+            1062: 'calories_kj',  # Energy (kJ) - needs conversion
+
+            # PROTEIN - Universal ID
+            1003: 'protein_g',
+
+            # CARBS - Universal ID
+            1005: 'carbs_g',
+
+            # FAT - Universal ID
+            1004: 'fat_g',
+
+            # FIBER - Universal ID but often missing (only 49/60 matches)
+            1079: 'fiber_g',
+
+            # SODIUM - Universal ID
+            1093: 'sodium_mg',
         }
-        
+
+        # Track kJ for conversion if kcal not available
+        calories_kj = 0
+
+        # Parse all nutrients
         for nutrient in food_data.get('foodNutrients', []):
             nutrient_id = nutrient.get('nutrientId') or nutrient.get('nutrient', {}).get('id')
-            if nutrient_id in nutrient_map:
-                value = nutrient.get('value', 0)
-                nutrients[nutrient_map[nutrient_id]] = round(value, 2)
-        
+
+            if nutrient_id not in nutrient_map:
+                continue
+
+            value = nutrient.get('value', 0)
+            if value == 0:
+                continue
+
+            field_name = nutrient_map[nutrient_id]
+
+            # Handle kJ separately for conversion
+            if field_name == 'calories_kj':
+                calories_kj = value
+                continue
+
+            # For all other fields, use first non-zero value found
+            if nutrients[field_name] == 0:
+                nutrients[field_name] = round(value, 2)
+
+        # Fallback: Convert kJ to kcal if no kcal value found (1 kcal = 4.184 kJ)
+        if nutrients['calories'] == 0 and calories_kj > 0:
+            nutrients['calories'] = round(calories_kj / 4.184, 2)
+            logger.debug(f"Converted {calories_kj} kJ to {nutrients['calories']} kcal")
+
         return nutrients
     
     def _local_search(self, query: str) -> List[Dict]:

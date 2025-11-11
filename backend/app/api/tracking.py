@@ -6,7 +6,7 @@ Handles meal logging, inventory management, and consumption analytics
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from datetime import datetime
 
@@ -20,6 +20,8 @@ from app.schemas.tracking import (
     SkipMealRequest,
     BulkInventoryUpdateRequest,
     ManualFoodEntryRequest,
+    ExternalMealEstimateRequest,
+    LogExternalMealRequest,
     # Response schemas
     LogMealResponse,
     SkipMealResponse,
@@ -31,6 +33,9 @@ from app.schemas.tracking import (
     RestockListResponse,
     BulkInventoryUpdateResponse,
     ManualFoodEntryResponse,
+    ExternalMealEstimateResponse,
+    LogExternalMealResponse,
+    RemainingMealOption,
     MacroNutrients,
     InventoryChangeItem,
     InsightItem,
@@ -72,11 +77,19 @@ def format_insights(insights: list) -> list:
     """Format insights for response"""
     formatted = []
     for insight in insights:
-        formatted.append(InsightItem(
-            type=insight.get("type", "info"),
-            message=insight.get("message", ""),
-            priority=insight.get("priority", "normal")
-        ))
+        # Handle both string and dict formats
+        if isinstance(insight, str):
+            formatted.append(InsightItem(
+                type="info",
+                message=insight,
+                priority="normal"
+            ))
+        else:
+            formatted.append(InsightItem(
+                type=insight.get("type", "info"),
+                message=insight.get("message", ""),
+                priority=insight.get("priority", "normal")
+            ))
     return formatted
 
 
@@ -84,12 +97,21 @@ def format_recommendations(recommendations: list) -> list:
     """Format recommendations for response"""
     formatted = []
     for rec in recommendations:
-        formatted.append(RecommendationItem(
-            type=rec.get("type", "general"),
-            title=rec.get("title", ""),
-            description=rec.get("description", ""),
-            action_url=rec.get("action_url")
-        ))
+        # Handle both string and dict formats
+        if isinstance(rec, str):
+            formatted.append(RecommendationItem(
+                type="general",
+                title="Recommendation",
+                description=rec,
+                action_url=None
+            ))
+        else:
+            formatted.append(RecommendationItem(
+                type=rec.get("type", "general"),
+                title=rec.get("title", ""),
+                description=rec.get("description", ""),
+                action_url=rec.get("action_url")
+            ))
     return formatted
 
 
@@ -174,7 +196,9 @@ async def log_meal(
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
         logger.error(f"Error logging meal: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to log meal: {str(e)}"
@@ -356,19 +380,30 @@ async def manual_food_entry(
         # Parse and normalize food item
         # This would call the item normalizer service
         from app.services.item_normalizer import IntelligentItemNormalizer
-        normalizer = IntelligentItemNormalizer(db)
-        
-        normalized_result = normalizer.normalize_item(
-            text_input=f"{request.quantity} {request.food_name}"
-        )
-        
-        if not normalized_result.get("success"):
+        from app.models.database import Item
+        from app.core.config import settings
+        items_list = db.query(Item).all()
+        normalizer = IntelligentItemNormalizer(items_list, settings.openai_api_key)
+
+        # Fixed: normalize_item() doesn't exist, using normalize() instead
+        raw_input = f"{request.quantity} {request.food_name}"
+        normalized_result = normalizer.normalize(raw_input)
+
+        # normalize() returns NormalizationResult object, not dict
+        if not normalized_result.item or normalized_result.confidence < 0.6:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Could not normalize food item"
             )
-        
-        normalized_item = normalized_result["normalized_items"][0]
+
+        # Extract normalized item data
+        normalized_item = {
+            "item_id": normalized_result.item.id,
+            "canonical_name": normalized_result.item.canonical_name,
+            "quantity": normalized_result.extracted_quantity,
+            "unit": normalized_result.extracted_unit,
+            "confidence": normalized_result.confidence
+        }
         
         # Estimate macros (you would implement macro estimation logic here)
         # For now, using placeholder values
@@ -704,15 +739,20 @@ async def get_inventory_status(
 @router.get("/expiring-items", response_model=ExpiringItemsResponse)
 async def get_expiring_items(
     days: int = Query(3, ge=1, le=14, description="Days threshold for expiry"),
+    filter_mode: str = Query("both", regex="^(date_only|consumption_only|both)$", description="Filtering mode: date_only, consumption_only, or both"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get items expiring within specified days with recipe suggestions
-    
+
     Query Parameters:
     - days: Expiry threshold in days (1-14, default 3)
-    
+    - filter_mode: Filtering approach (default: both)
+      - date_only: Check expiry based on date alone
+      - consumption_only: Check if item won't be consumed before expiry (smart filtering)
+      - both: Combine date + consumption pattern filtering
+
     Returns items expiring soon with:
     - Expiry urgency levels
     - Recipe suggestions to use them
@@ -721,26 +761,28 @@ async def get_expiring_items(
     try:
         # Initialize tracking agent
         tracking_agent = TrackingAgent(db, current_user.id)
-        
-        # Get expiring items
-        result = tracking_agent.check_expiring_items(days)
-        
+
+        # Get expiring items with specified filter mode
+        result = await tracking_agent.check_expiring_items(filter_mode=filter_mode, days_threshold=days)
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to check expiring items"
             )
-        
-        expiry_data = result["expiring_items"]
-        
+
+        # Extract data from result
+        expiring_items = result["expiring_items"]
+        summary = result.get("summary", {})
+
         # Format response
         response = ExpiringItemsResponse(
-            total_expiring=expiry_data.get("total_count", 0),
-            urgent_count=expiry_data.get("urgent_count", 0),
-            high_priority_count=expiry_data.get("high_priority_count", 0),
-            medium_priority_count=expiry_data.get("medium_priority_count", 0),
-            items=expiry_data.get("items", []),
-            action_recommendations=expiry_data.get("recommendations", [])
+            total_expiring=result.get("expiring_count", 0),
+            urgent_count=summary.get("urgent", 0),
+            high_priority_count=summary.get("high", 0),
+            medium_priority_count=summary.get("medium", 0),
+            items=expiring_items,
+            action_recommendations=result.get("recommendations", [])
         )
         
         return response
@@ -784,19 +826,19 @@ async def get_restock_list(
             )
         
         restock_data = result["restock_list"]
-        
+
         # Format response
         response = RestockListResponse(
-            total_items=restock_data.get("total_items", 0),
+            total_items=result.get("total_items", 0),
             urgent_items=restock_data.get("urgent", []),
             soon_items=restock_data.get("soon", []),
             routine_items=restock_data.get("routine", []),
-            estimated_total_cost=restock_data.get("estimated_cost"),
-            shopping_strategy=restock_data.get("shopping_strategy", [])
+            estimated_total_cost=result.get("estimated_cost"),
+            shopping_strategy=result.get("shopping_strategy", [])
         )
         
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -804,4 +846,250 @@ async def get_restock_list(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate restock list: {str(e)}"
+        )
+
+
+# ===== EXTERNAL MEAL LOGGING ENDPOINTS =====
+
+@router.post("/estimate-external-meal", response_model=ExternalMealEstimateResponse)
+async def estimate_external_meal(
+    request: ExternalMealEstimateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get LLM-based nutrition estimate for an external meal.
+
+    This endpoint:
+    1. Takes dish description and portion size
+    2. Uses OpenAI to estimate macronutrients
+    3. Returns estimate with confidence score
+    4. Does NOT create any database entries
+
+    Returns estimated nutrition that user can confirm before logging.
+    """
+    try:
+        from app.services.llm_nutrition_estimator import estimate_nutrition_with_llm
+
+        # Get LLM estimation
+        estimation = estimate_nutrition_with_llm(
+            dish_name=request.dish_name,
+            portion_size=request.portion_size,
+            restaurant_name=request.restaurant_name,
+            cuisine_type=request.cuisine_type
+        )
+
+        # Format response
+        response = ExternalMealEstimateResponse(
+            calories=estimation["calories"],
+            protein_g=estimation["protein_g"],
+            carbs_g=estimation["carbs_g"],
+            fat_g=estimation["fat_g"],
+            fiber_g=estimation["fiber_g"],
+            confidence=estimation["confidence"],
+            reasoning=estimation["reasoning"],
+            dish_name=estimation["dish_name"],
+            portion_size=estimation["portion_size"],
+            estimation_method=estimation["estimation_method"]
+        )
+
+        logger.info(f"User {current_user.id} estimated nutrition for: {request.dish_name}")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error estimating external meal: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to estimate meal nutrition: {str(e)}"
+        )
+
+
+@router.post("/log-external-meal", response_model=LogExternalMealResponse)
+async def log_external_meal(
+    request: LogExternalMealRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Log an external meal (restaurant, eating out, etc.)
+
+    This endpoint:
+    1. Can replace a planned meal OR add as new meal
+    2. Stores nutrition data in external_meal JSON field
+    3. Updates daily consumption totals
+    4. Returns remaining meals that could be adjusted
+    5. Provides insights and recommendations
+
+    If meal_log_id_to_replace is provided: replaces that planned meal
+    If meal_log_id_to_replace is None: adds as new standalone meal
+    """
+    try:
+        from datetime import datetime
+        from sqlalchemy import and_, func
+        from sqlalchemy.orm import joinedload
+        from app.models.database import Recipe
+
+        consumed_at = request.consumed_at or datetime.utcnow()
+        consumption_service = ConsumptionService(db)
+
+        # Build external_meal JSON data
+        external_meal_data = {
+            "dish_name": request.dish_name,
+            "portion_size": request.portion_size,
+            "restaurant_name": request.restaurant_name,
+            "cuisine_type": request.cuisine_type,
+            "calories": request.calories,
+            "protein_g": request.protein_g,
+            "carbs_g": request.carbs_g,
+            "fat_g": request.fat_g,
+            "fiber_g": request.fiber_g,
+            "logged_at": consumed_at.isoformat()
+        }
+
+        replaced_meal = False
+        original_recipe_name = None
+        meal_log = None
+
+        # CASE 1: Replacing an existing planned meal
+        if request.meal_log_id_to_replace:
+            meal_log = db.query(MealLog).filter(
+                and_(
+                    MealLog.id == request.meal_log_id_to_replace,
+                    MealLog.user_id == current_user.id
+                )
+            ).first()
+
+            if not meal_log:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Meal log {request.meal_log_id_to_replace} not found"
+                )
+
+            if meal_log.consumed_datetime:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This meal has already been logged"
+                )
+
+            # Get original recipe name
+            if meal_log.recipe:
+                original_recipe_name = meal_log.recipe.title
+
+            # Update the existing meal log
+            meal_log.consumed_datetime = consumed_at
+            meal_log.external_meal = external_meal_data
+            meal_log.recipe_id = None  # Clear recipe link
+            if request.notes:
+                meal_log.notes = request.notes
+
+            replaced_meal = True
+
+        # CASE 2: Adding new external meal
+        else:
+            if not request.meal_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="meal_type is required when not replacing an existing meal"
+                )
+
+            # Create new meal log
+            meal_log = MealLog(
+                user_id=current_user.id,
+                recipe_id=None,
+                meal_type=request.meal_type.value,
+                planned_datetime=consumed_at,
+                consumed_datetime=consumed_at,
+                was_skipped=False,
+                meal_plan_id=None,  # Not linked to meal plan
+                day_index=None,
+                external_meal=external_meal_data,
+                notes=request.notes
+            )
+
+            db.add(meal_log)
+
+        db.commit()
+        db.refresh(meal_log)
+
+        # Get updated daily summary
+        today_summary = consumption_service.get_today_summary(current_user.id)
+
+        # Get remaining meals for today (for potential swapping)
+        today = datetime.utcnow().date()
+        remaining_meals = db.query(MealLog).options(
+            joinedload(MealLog.recipe)
+        ).filter(
+            and_(
+                MealLog.user_id == current_user.id,
+                func.date(MealLog.planned_datetime) == today,
+                MealLog.consumed_datetime.is_(None),
+                MealLog.was_skipped == False,
+                MealLog.recipe_id.isnot(None)  # Only planned meals with recipes
+            )
+        ).all()
+
+        remaining_meal_options = []
+        for rm in remaining_meals:
+            if rm.recipe:
+                remaining_meal_options.append(RemainingMealOption(
+                    meal_log_id=rm.id,
+                    meal_type=rm.meal_type,
+                    recipe_name=rm.recipe.title,
+                    planned_time=rm.planned_datetime.strftime("%H:%M"),
+                    planned_calories=rm.recipe.macros_per_serving.get("calories", 0)
+                ))
+
+        # Generate insights
+        insights = []
+        recommendations = []
+
+        total_calories = today_summary.get("total_calories", 0)
+        target_calories = today_summary.get("target_calories", 2000)
+
+        if total_calories > target_calories * 1.1:
+            insights.append(f"You're {int(total_calories - target_calories)} calories over your daily target")
+            if remaining_meal_options:
+                recommendations.append("Consider lighter options for remaining meals today")
+        elif total_calories < target_calories * 0.9:
+            insights.append(f"You have {int(target_calories - total_calories)} calories remaining for today")
+            recommendations.append("You're within your calorie target - great job!")
+
+        if replaced_meal:
+            insights.append(f"Replaced planned '{original_recipe_name}' with external meal")
+
+        # Format response
+        response = LogExternalMealResponse(
+            success=True,
+            meal_log_id=meal_log.id,
+            meal_type=meal_log.meal_type,
+            dish_name=request.dish_name,
+            restaurant_name=request.restaurant_name,
+            consumed_at=consumed_at,
+            macros=MacroNutrients(
+                calories=request.calories,
+                protein_g=request.protein_g,
+                carbs_g=request.carbs_g,
+                fat_g=request.fat_g,
+                fiber_g=request.fiber_g
+            ),
+            replaced_meal=replaced_meal,
+            original_recipe=original_recipe_name,
+            updated_daily_totals=today_summary,
+            remaining_calories=max(0, target_calories - total_calories),
+            remaining_meals_today=remaining_meal_options if remaining_meal_options else None,
+            insights=insights,
+            recommendations=recommendations
+        )
+
+        logger.info(f"User {current_user.id} logged external meal: {request.dish_name}")
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error logging external meal: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to log external meal: {str(e)}"
         )

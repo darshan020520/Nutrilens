@@ -1,0 +1,412 @@
+{
+  "celery": [
+    {
+      "description": "Celery, raw",
+      "fdcId": 2346405,
+      "dataType": "Foundation",
+      "nutrition": {
+        "calories": 16.7,
+        "protein_g": 0.49,
+        "carbs_g": 3.32,
+        "fat_g": 0.16,
+        "fiber_g": 0,
+        "sodium_mg": 97.2
+      }
+    },
+    {
+      "description": "Celery, raw",
+      "fdcId": 169988,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 14.0,
+        "protein_g": 0.69,
+        "carbs_g": 2.97,
+        "fat_g": 0.17,
+        "fiber_g": 1.6,
+        "sodium_mg": 80.0
+      }
+    },
+    {
+      "description": "Spices, celery seed",
+      "fdcId": 170920,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 392,
+        "protein_g": 18.1,
+        "carbs_g": 41.4,
+        "fat_g": 25.3,
+        "fiber_g": 11.8,
+        "sodium_mg": 160
+      }
+    }
+  ],
+  "herb_mint": [
+    {
+      "description": "Beverages, tea, herb, brewed, chamomile",
+      "fdcId": 174156,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 1.0,
+        "protein_g": 0,
+        "carbs_g": 0.2,
+        "fat_g": 0,
+        "fiber_g": 0,
+        "sodium_mg": 1.0
+      }
+    },
+    {
+      "description": "Candies, NESTLE, AFTER EIGHT Mints",
+      "fdcId": 168766,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 432,
+        "protein_g": 1.67,
+        "carbs_g": 79.5,
+        "fat_g": 11.9,
+        "fiber_g": 2.4,
+        "sodium_mg": 1.0
+      }
+    },
+    {
+      "description": "Tomato products, canned, sauce, with herbs and cheese",
+      "fdcId": 170057,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 59.0,
+        "protein_g": 2.13,
+        "carbs_g": 10.2,
+        "fat_g": 1.93,
+        "fiber_g": 2.2,
+        "sodium_mg": 543
+      }
+    }
+  ],
+  "japanese_pumpkin": [
+    {
+      "description": "Persimmons, japanese, dried",
+      "fdcId": 169942,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 274,
+        "protein_g": 1.38,
+        "carbs_g": 73.4,
+        "fat_g": 0.59,
+        "fiber_g": 14.5,
+        "sodium_mg": 2.0
+      }
+    },
+    {
+      "description": "Persimmons, japanese, raw",
+      "fdcId": 169941,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 70.0,
+        "protein_g": 0.58,
+        "carbs_g": 18.6,
+        "fat_g": 0.19,
+        "fiber_g": 3.6,
+        "sodium_mg": 1.0
+      }
+    },
+    {
+      "description": "Noodles, japanese, soba, cooked",
+      "fdcId": 168907,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 99.0,
+        "protein_g": 5.06,
+        "carbs_g": 21.4,
+        "fat_g": 0.1,
+        "fiber_g": 0,
+        "sodium_mg": 60.0
+      }
+    }
+  ],
+  "rice_noodles": [
+    {
+      "description": "Rice noodles, cooked",
+      "fdcId": 168914,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 108,
+        "protein_g": 1.79,
+        "carbs_g": 24.0,
+        "fat_g": 0.2,
+        "fiber_g": 1.0,
+        "sodium_mg": 19.0
+      }
+    },
+    {
+      "description": "Rice noodles, dry",
+      "fdcId": 169742,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 364,
+        "protein_g": 5.95,
+        "carbs_g": 80.2,
+        "fat_g": 0.56,
+        "fiber_g": 1.6,
+        "sodium_mg": 182
+      }
+    },
+    {
+      "description": "Noodles, chinese, cellophane or long rice (mung beans), dehydrated",
+      "fdcId": 174258,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 351,
+        "protein_g": 0.16,
+        "carbs_g": 86.1,
+        "fat_g": 0.06,
+        "fiber_g": 0.5,
+        "sodium_mg": 10.0
+      }
+    }
+  ],
+  "cheddar_cheese": [
+    {
+      "description": "Cheese, cheddar",
+      "fdcId": 328637,
+      "dataType": "Foundation",
+      "nutrition": {
+        "calories": 408,
+        "protein_g": 23.3,
+        "carbs_g": 2.44,
+        "fat_g": 34.0,
+        "fiber_g": 0,
+        "sodium_mg": 654
+      }
+    },
+    {
+      "description": "Cheese, american cheddar, imitation",
+      "fdcId": 169901,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 239,
+        "protein_g": 16.7,
+        "carbs_g": 11.6,
+        "fat_g": 14.0,
+        "fiber_g": 0,
+        "sodium_mg": 1340.0
+      }
+    },
+    {
+      "description": "Cheese, cheddar, sharp, sliced",
+      "fdcId": 170899,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 410,
+        "protein_g": 24.2,
+        "carbs_g": 2.13,
+        "fat_g": 33.8,
+        "fiber_g": 0,
+        "sodium_mg": 644
+      }
+    }
+  ],
+  "cottage_cheese": [
+    {
+      "description": "Cheese, cottage, with vegetables",
+      "fdcId": 169078,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 95.0,
+        "protein_g": 10.9,
+        "carbs_g": 3.0,
+        "fat_g": 4.2,
+        "fiber_g": 0.1,
+        "sodium_mg": 403
+      }
+    },
+    {
+      "description": "Cheese, cottage, creamed, with fruit",
+      "fdcId": 172180,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 97.0,
+        "protein_g": 10.7,
+        "carbs_g": 4.61,
+        "fat_g": 3.85,
+        "fiber_g": 0.2,
+        "sodium_mg": 344
+      }
+    },
+    {
+      "description": "Cheese, cottage, lowfat, 1% milkfat",
+      "fdcId": 173417,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 72.0,
+        "protein_g": 12.4,
+        "carbs_g": 2.72,
+        "fat_g": 1.02,
+        "fiber_g": 0,
+        "sodium_mg": 406
+      }
+    }
+  ],
+  "dark_chocolate": [
+    {
+      "description": "Candies, SPECIAL DARK Chocolate Bar",
+      "fdcId": 169592,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 556,
+        "protein_g": 5.54,
+        "carbs_g": 60.5,
+        "fat_g": 32.4,
+        "fiber_g": 6.5,
+        "sodium_mg": 6.0
+      }
+    },
+    {
+      "description": "Candies, dark chocolate coated coffee beans",
+      "fdcId": 169634,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 540,
+        "protein_g": 7.5,
+        "carbs_g": 60.0,
+        "fat_g": 30.0,
+        "fiber_g": 7.5,
+        "sodium_mg": 25.0
+      }
+    },
+    {
+      "description": "Chocolate, dark, 45- 59% cacao solids",
+      "fdcId": 170271,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 546,
+        "protein_g": 4.88,
+        "carbs_g": 61.2,
+        "fat_g": 31.3,
+        "fiber_g": 7.0,
+        "sodium_mg": 24.0
+      }
+    }
+  ],
+  "sourdough_bread": [
+    {
+      "description": "Bread, french or vienna (includes sourdough)",
+      "fdcId": 172675,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 272,
+        "protein_g": 10.8,
+        "carbs_g": 51.9,
+        "fat_g": 2.42,
+        "fiber_g": 2.2,
+        "sodium_mg": 602
+      }
+    },
+    {
+      "description": "Bread, french or vienna, toasted (includes sourdough)",
+      "fdcId": 174911,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 319,
+        "protein_g": 13.0,
+        "carbs_g": 61.9,
+        "fat_g": 2.14,
+        "fiber_g": 3.1,
+        "sodium_mg": 720
+      }
+    },
+    {
+      "description": "English muffins, plain, unenriched, with calcium propionate (includes sourdough)",
+      "fdcId": 172828,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 235,
+        "protein_g": 7.7,
+        "carbs_g": 46.0,
+        "fat_g": 1.8,
+        "fiber_g": 2.7,
+        "sodium_mg": 464
+      }
+    }
+  ],
+  "green_apple": [
+    {
+      "description": "Croissants, apple",
+      "fdcId": 174988,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 254,
+        "protein_g": 7.4,
+        "carbs_g": 37.1,
+        "fat_g": 8.7,
+        "fiber_g": 2.5,
+        "sodium_mg": 274
+      }
+    },
+    {
+      "description": "Strudel, apple",
+      "fdcId": 175032,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 274,
+        "protein_g": 3.3,
+        "carbs_g": 41.1,
+        "fat_g": 11.2,
+        "fiber_g": 2.2,
+        "sodium_mg": 135
+      }
+    },
+    {
+      "description": "Asparagus, green, raw",
+      "fdcId": 2710823,
+      "dataType": "Foundation",
+      "nutrition": {
+        "calories": 28.1,
+        "protein_g": 1.44,
+        "carbs_g": 5.1,
+        "fat_g": 0.22,
+        "fiber_g": 1.88,
+        "sodium_mg": 2.46
+      }
+    }
+  ],
+  "sunflower_oil": [
+    {
+      "description": "Oil, sunflower",
+      "fdcId": 1750349,
+      "dataType": "Foundation",
+      "nutrition": {
+        "calories": 0,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 0,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      }
+    },
+    {
+      "description": "Oil, industrial, mid-oleic, sunflower",
+      "fdcId": 172357,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 884,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 100,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      }
+    },
+    {
+      "description": "Oil, sunflower, linoleic, (approx. 65%)",
+      "fdcId": 171025,
+      "dataType": "SR Legacy",
+      "nutrition": {
+        "calories": 884,
+        "protein_g": 0,
+        "carbs_g": 0,
+        "fat_g": 100,
+        "fiber_g": 0,
+        "sodium_mg": 0
+      }
+    }
+  ]
+}

@@ -4,7 +4,8 @@ import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy import and_, func, cast, String, Float
 
 from app.models.database import MealPlan, MealLog, Recipe, UserInventory
 from app.schemas.meal_plan import (
@@ -70,15 +71,56 @@ class MealPlanService:
             raise
     
     def get_active_meal_plan(self, user_id: int) -> Optional[MealPlanResponse]:
-        """Get user's active meal plan"""
-        meal_plan = self.db.query(MealPlan).filter_by(
-            user_id=user_id,
-            is_active=True
+        """Get user's active meal plan that is still valid (hasn't expired)"""
+        # First, deactivate old plans (plans where all 7 days have passed)
+        self.deactivate_old_plans(user_id)
+
+        # Get the active plan - meal plans can start on any day, not just Monday
+        # The plan is valid as long as it's marked active and hasn't been deactivated
+        meal_plan = self.db.query(MealPlan).filter(
+            and_(
+                MealPlan.user_id == user_id,
+                MealPlan.is_active == True
+            )
         ).first()
-        
+
         if meal_plan:
             return MealPlanResponse.from_orm(meal_plan)
         return None
+
+    def deactivate_old_plans(self, user_id: int) -> int:
+        """
+        Deactivate meal plans where all 7 days have passed
+
+        Returns:
+            Number of plans deactivated
+        """
+        try:
+            # Calculate cutoff date - plans that started more than 7 days ago
+            today = datetime.now()
+            cutoff_date = today - timedelta(days=7)
+
+            # Deactivate plans where week_start_date + 7 days < today
+            # This means all 7 days of the plan have passed
+            result = self.db.query(MealPlan).filter(
+                and_(
+                    MealPlan.user_id == user_id,
+                    MealPlan.week_start_date < cutoff_date,
+                    MealPlan.is_active == True
+                )
+            ).update({'is_active': False}, synchronize_session=False)
+
+            self.db.commit()
+
+            if result > 0:
+                logger.info(f"Deactivated {result} expired meal plan(s) for user {user_id}")
+
+            return result
+
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error deactivating old plans: {str(e)}")
+            return 0
     
     def get_meal_plan_by_id(self, plan_id: int, user_id: int) -> Optional[MealPlanResponse]:
         """Get specific meal plan by ID"""
@@ -120,108 +162,134 @@ class MealPlanService:
     def swap_meal(self, user_id: int, swap_request: MealSwapRequest) -> Dict:
         """
         Swap a meal in the active plan
-        
+
         Args:
             user_id: User ID
             swap_request: Swap request with day, meal, and new recipe
-            
+
         Returns:
-            Updated meal plan for the day
+            Updated meal plan data with success status
         """
-        try:
-            # Get active plan
-            meal_plan = self.db.query(MealPlan).filter_by(
+        # Get active plan
+        meal_plan = self.db.query(MealPlan).filter_by(
+            user_id=user_id,
+            is_active=True
+        ).first()
+
+        if not meal_plan:
+            raise ValueError("No active meal plan found")
+
+        # Get new recipe
+        new_recipe = self.db.query(Recipe).filter_by(
+            id=swap_request.new_recipe_id
+        ).first()
+
+        if not new_recipe:
+            raise ValueError(f"Recipe {swap_request.new_recipe_id} not found")
+
+        # Handle both flat and nested week_plan structures
+        # Some plans have: plan_data = {day_0: {...}, day_1: {...}}
+        # Others have: plan_data = {week_plan: {day_0: {...}, day_1: {...}}}
+        day_key = f"day_{swap_request.day}"
+
+        if 'week_plan' in meal_plan.plan_data:
+            # Nested structure
+            week_data = meal_plan.plan_data['week_plan']
+        else:
+            # Flat structure (current case)
+            week_data = meal_plan.plan_data
+
+        # Validate day exists in plan
+        if day_key not in week_data:
+            raise ValueError(f"Day {swap_request.day} not in plan")
+
+        # Validate meal type exists for this day
+        if swap_request.meal_type not in week_data[day_key].get('meals', {}):
+            raise ValueError(f"Meal type '{swap_request.meal_type}' not found for day {swap_request.day}")
+
+        # Store old recipe for logging
+        old_recipe = week_data[day_key]['meals'].get(swap_request.meal_type)
+        old_recipe_title = old_recipe.get('title', 'N/A') if old_recipe else 'N/A'
+
+        # Swap the meal using to_dict()
+        week_data[day_key]['meals'][swap_request.meal_type] = new_recipe.to_dict()
+
+        # Recalculate day totals
+        day_calories = 0
+        day_protein = 0
+        day_carbs = 0
+        day_fat = 0
+
+        for meal in week_data[day_key]['meals'].values():
+            if meal:
+                macros = meal.get('macros_per_serving', {})
+                day_calories += macros.get('calories', 0)
+                day_protein += macros.get('protein_g', 0)
+                day_carbs += macros.get('carbs_g', 0)
+                day_fat += macros.get('fat_g', 0)
+
+        week_data[day_key]['day_calories'] = day_calories
+        week_data[day_key]['day_macros'] = {
+            'protein_g': day_protein,
+            'carbs_g': day_carbs,
+            'fat_g': day_fat
+        }
+
+        # Update total calories and average macros for entire plan
+        self._recalculate_plan_totals(meal_plan)
+
+        # Mark plan_data as modified for SQLAlchemy to detect JSON changes
+        flag_modified(meal_plan, 'plan_data')
+
+        # Sync MealLog: Update or create log entry for the new meal
+        # Query for existing log by meal_plan_id, day_index, and meal_type
+        existing_log = self.db.query(MealLog).filter_by(
+            meal_plan_id=meal_plan.id,
+            day_index=swap_request.day,
+            meal_type=swap_request.meal_type
+        ).first()
+
+        # Calculate planned datetime (week_start_date + day_index)
+        planned_datetime = meal_plan.week_start_date + timedelta(days=swap_request.day)
+
+        if existing_log:
+            # Update existing log with new recipe
+            existing_log.recipe_id = new_recipe.id
+            existing_log.planned_datetime = planned_datetime
+            logger.info(f"Updated MealLog {existing_log.id} with new recipe {new_recipe.id}")
+        else:
+            # Create new log entry for the swapped meal
+            new_log = MealLog(
                 user_id=user_id,
-                is_active=True
-            ).first()
-            
-            if not meal_plan:
-                raise ValueError("No active meal plan")
-            
-            # Get new recipe
-            new_recipe = self.db.query(Recipe).filter_by(
-                id=swap_request.new_recipe_id
-            ).first()
-            
-            if not new_recipe:
-                raise ValueError(f"Recipe {swap_request.new_recipe_id} not found")
-            
-            # Update plan data
-            day_key = f"day_{swap_request.day}"
-            if day_key not in meal_plan.plan_data['week_plan']:
-                raise ValueError(f"Day {swap_request.day} not in plan")
-            
-            old_recipe = meal_plan.plan_data['week_plan'][day_key]['meals'].get(swap_request.meal_type)
-            
-            # Swap the meal
-            meal_plan.plan_data['week_plan'][day_key]['meals'][swap_request.meal_type] = new_recipe.to_dict()
-            
-            # Recalculate day totals
-            day_calories = 0
-            day_protein = 0
-            day_carbs = 0
-            day_fat = 0
-            
-            for meal in meal_plan.plan_data['week_plan'][day_key]['meals'].values():
-                if meal:
-                    macros = meal.get('macros_per_serving', {})
-                    day_calories += macros.get('calories', 0)
-                    day_protein += macros.get('protein_g', 0)
-                    day_carbs += macros.get('carbs_g', 0)
-                    day_fat += macros.get('fat_g', 0)
-            
-            meal_plan.plan_data['week_plan'][day_key]['day_calories'] = day_calories
-            meal_plan.plan_data['week_plan'][day_key]['day_macros'] = {
-                'protein_g': day_protein,
-                'carbs_g': day_carbs,
-                'fat_g': day_fat
+                recipe_id=new_recipe.id,
+                meal_type=swap_request.meal_type,
+                planned_datetime=planned_datetime,
+                meal_plan_id=meal_plan.id,
+                day_index=swap_request.day,
+                portion_multiplier=1.0
+            )
+            self.db.add(new_log)
+            logger.info(f"Created new MealLog for recipe {new_recipe.id} at day {swap_request.day}, {swap_request.meal_type}")
+
+        self.db.commit()
+        self.db.refresh(meal_plan)
+
+        logger.info(f"Swapped meal for user {user_id}: day {swap_request.day}, "
+                    f"{swap_request.meal_type}, old recipe: {old_recipe_title}, "
+                    f"new recipe: {new_recipe.title}")
+
+        # Return updated plan data
+        return {
+            'success': True,
+            'day': swap_request.day,
+            'meal_type': swap_request.meal_type,
+            'new_recipe': new_recipe.to_dict(),
+            'day_totals': {
+                'calories': day_calories,
+                'macros': week_data[day_key]['day_macros']
             }
-            
-            # Update total calories and average macros
-            self._recalculate_plan_totals(meal_plan)
-            
-            self.db.commit()
+        }
 
-            # after swapping the meal lets add the new meal to Meallog 
-
-            log_entry = self.db.query(MealLog).filter_by(user_id=user_id, planned_datetime=swap_request.day, meal_type=swap_request.meal_type).first()
-
-            if log_entry:
-                log_entry.recipe_id = swap_request.new_recipe_id
-                log_entry.status = 'planned'
-            else:
-                log_entry = MealLog(
-                    user_id=user_id,
-                    recipe_id=swap_request.new_recipe_id,
-                    planned_datetime=day_date,
-                    meal_type=swap_request.meal_type,
-                    portion_multiplier=1,
-                    status='planned'
-                )
-                self.db.add(log_entry)
-
-            
-            logger.info(f"Swapped meal for user {user_id}: day {swap_request.day}, {swap_request.meal_type}")
-            
-            return {
-                'success': True,
-                'day': swap_request.day,
-                'meal_type': swap_request.meal_type,
-                'old_recipe': old_recipe,
-                'new_recipe': new_recipe.to_dict(),
-                'updated_day_totals': {
-                    'calories': day_calories,
-                    'protein_g': day_protein,
-                    'carbs_g': day_carbs,
-                    'fat_g': day_fat
-                }
-            }
-            
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Error swapping meal: {str(e)}")
-            raise
-    
     def log_meal_consumption(self, user_id: int, meal_log: MealLogCreate) -> Dict:
         """
         Log meal consumption and update inventory
@@ -326,66 +394,146 @@ class MealPlanService:
         
         return history
     
-    def get_alternatives_for_meal(self, recipe_id: int, count: int = 3) -> List[Dict]:
+    def get_alternatives_for_meal(self, recipe_id: int, user_id: int, count: int = 5) -> List[Dict]:
         """
-        Get alternative recipes with similar macros
-        
+        Get alternative recipes - SIMPLIFIED VERSION
+
+        Strategy:
+        1. SQL pre-filter: meal time, calories (±30%), dietary restrictions
+        2. Simple scoring: macro similarity + goal bonus
+        3. Return top N by score
+
         Args:
             recipe_id: Original recipe ID
-            count: Number of alternatives to return
-            
+            user_id: User requesting alternatives
+            count: Number of alternatives to return (default 5)
+
         Returns:
-            List of alternative recipes
+            List of alternative recipes with scores and macro differences
         """
         try:
             # Get original recipe
             original = self.db.query(Recipe).filter_by(id=recipe_id).first()
             if not original:
+                logger.warning(f"Recipe {recipe_id} not found")
                 return []
-            
-            # Find recipes with similar calories (±20%)
-            target_calories = original.macros_per_serving['calories']
-            min_cal = target_calories * 0.8
-            max_cal = target_calories * 1.2
-            
-            # Query similar recipes
-            alternatives = self.db.query(Recipe).filter(
-                and_(
-                    Recipe.id != recipe_id,
-                    Recipe.suitable_meal_times.overlap(original.suitable_meal_times)
+
+            # Get user preferences and goal
+            from app.models.database import UserPreference, UserGoal
+            preferences = self.db.query(UserPreference).filter_by(user_id=user_id).first()
+            user_goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+
+            # ============================================================
+            # STAGE 1: SQL PRE-FILTERING (Hard requirements)
+            # ============================================================
+
+            target_cal = original.macros_per_serving['calories']
+
+            # Query all recipes except the current one
+            query = self.db.query(Recipe).filter(Recipe.id != recipe_id)
+
+            # Apply dietary type if user has one
+            if preferences and preferences.dietary_type:
+                dietary_tag = preferences.dietary_type.value
+                query = query.filter(
+                    cast(Recipe.dietary_tags, String).contains(dietary_tag)
                 )
-            ).all()
-            
-            # Score and filter alternatives
-            scored_alternatives = []
-            for alt in alternatives:
-                alt_calories = alt.macros_per_serving['calories']
-                if min_cal <= alt_calories <= max_cal:
-                    # Calculate similarity score
-                    cal_diff = abs(alt_calories - target_calories) / target_calories
-                    protein_diff = abs(
-                        alt.macros_per_serving['protein_g'] - 
-                        original.macros_per_serving['protein_g']
-                    ) / max(original.macros_per_serving['protein_g'], 1)
-                    
-                    similarity = 1 - (cal_diff * 0.5 + protein_diff * 0.5)
-                    
-                    scored_alternatives.append({
-                        'recipe': alt.to_dict(),
-                        'similarity_score': similarity,
-                        'calorie_difference': alt_calories - target_calories,
-                        'protein_difference': (
-                            alt.macros_per_serving['protein_g'] - 
-                            original.macros_per_serving['protein_g']
-                        )
-                    })
-            
-            # Sort by similarity and return top N
-            scored_alternatives.sort(key=lambda x: x['similarity_score'], reverse=True)
-            return scored_alternatives[:count]
-            
+
+            all_recipes = query.all()
+
+            # Filter in Python (simpler and database-agnostic)
+            min_cal = target_cal * 0.7
+            max_cal = target_cal * 1.3
+            original_meal_times = set(original.suitable_meal_times or [])
+
+            candidates = []
+            for recipe in all_recipes:
+                # Check calorie range
+                calories = recipe.macros_per_serving.get('calories', 0)
+                if not (min_cal <= calories <= max_cal):
+                    continue
+
+                # Check meal time overlap
+                recipe_meal_times = set(recipe.suitable_meal_times or [])
+                if not (original_meal_times & recipe_meal_times):
+                    continue
+
+                candidates.append(recipe)
+
+            if not candidates:
+                logger.info(f"No alternative candidates found for recipe {recipe_id} (filtered {len(all_recipes)} by meal time)")
+                return []
+
+            logger.info(f"Found {len(candidates)} candidate alternatives for recipe {recipe_id} (from {len(all_recipes)} after calorie filter)")
+
+            # ============================================================
+            # STAGE 2: SIMPLE SCORING (Soft preferences)
+            # ============================================================
+
+            scored = []
+            orig_macros = original.macros_per_serving
+
+            for recipe in candidates:
+                macros = recipe.macros_per_serving
+
+                # Calculate macro differences (as percentages)
+                cal_diff = abs(macros['calories'] - orig_macros['calories']) / orig_macros['calories']
+                protein_diff = abs(macros['protein_g'] - orig_macros['protein_g']) / max(orig_macros['protein_g'], 1)
+                carbs_diff = abs(macros['carbs_g'] - orig_macros['carbs_g']) / max(orig_macros['carbs_g'], 1)
+                fat_diff = abs(macros['fat_g'] - orig_macros['fat_g']) / max(orig_macros['fat_g'], 1)
+
+                # Simple similarity score: 1 - weighted_average_difference
+                # Lower difference = higher score
+                macro_similarity = 1 - (
+                    cal_diff * 0.4 +        # Calories most important
+                    protein_diff * 0.35 +   # Protein second
+                    carbs_diff * 0.15 +     # Carbs third
+                    fat_diff * 0.1          # Fat least important
+                )
+
+                # Goal bonus: +0.2 if matches user goal, otherwise 0
+                goal_bonus = 0
+                if user_goal and recipe.goals:
+                    if user_goal.goal_type.value in recipe.goals:
+                        goal_bonus = 0.2
+
+                # Final score = macro_similarity (0-1) + goal_bonus (0-0.2)
+                # Range: 0 to 1.2
+                total_score = macro_similarity + goal_bonus
+
+                # Match AlternativesResponse schema from schemas/meal_plan.py
+                scored.append({
+                    'recipe': {
+                        'id': recipe.id,
+                        'title': recipe.title,
+                        'description': recipe.description,
+                        'suitable_meal_times': recipe.suitable_meal_times or [],
+                        'macros_per_serving': recipe.macros_per_serving,
+                        'prep_time_min': recipe.prep_time_min or 0,
+                        'cook_time_min': recipe.cook_time_min or 0,
+                        'servings': recipe.servings or 1,
+                        'goals': recipe.goals or [],
+                        'dietary_tags': recipe.dietary_tags or []
+                    },
+                    'similarity_score': round(total_score, 3),
+                    'calorie_difference': round(macros['calories'] - orig_macros['calories'], 1),
+                    'protein_difference': round(macros['protein_g'] - orig_macros['protein_g'], 1),
+                    'carbs_difference': round(macros['carbs_g'] - orig_macros['carbs_g'], 1),
+                    'fat_difference': round(macros['fat_g'] - orig_macros['fat_g'], 1),
+                    'suitable_for_swap': True
+                })
+
+            # Sort by score and return top N
+            scored.sort(key=lambda x: x['similarity_score'], reverse=True)
+
+            logger.info(f"Returning top {count} alternatives with scores: {[s['similarity_score'] for s in scored[:count]]}")
+
+            return scored[:count]
+
         except Exception as e:
-            logger.error(f"Error finding alternatives: {str(e)}")
+            logger.error(f"Error finding alternatives for recipe {recipe_id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return []
     
     def adjust_for_eating_out(self, user_id: int, day: int, meal_type: str, external_calories: int) -> Dict:
@@ -472,8 +620,14 @@ class MealPlanService:
         total_protein = 0
         total_carbs = 0
         total_fat = 0
-        
-        for day_data in meal_plan.plan_data['week_plan'].values():
+
+        # Handle both flat and nested week_plan structures
+        if 'week_plan' in meal_plan.plan_data:
+            week_data = meal_plan.plan_data['week_plan']
+        else:
+            week_data = meal_plan.plan_data
+
+        for day_data in week_data.values():
             for meal in day_data.get('meals', {}).values():
                 if meal:
                     macros = meal.get('macros_per_serving', {})
@@ -481,9 +635,9 @@ class MealPlanService:
                     total_protein += macros.get('protein_g', 0)
                     total_carbs += macros.get('carbs_g', 0)
                     total_fat += macros.get('fat_g', 0)
-        
-        days = len(meal_plan.plan_data['week_plan'])
-        
+
+        days = len(week_data)
+
         meal_plan.total_calories = total_calories
         meal_plan.avg_macros = {
             'protein_g': round(total_protein / days, 1) if days > 0 else 0,

@@ -115,6 +115,8 @@ class AlternativesResponse(BaseModel):
     similarity_score: float
     calorie_difference: float
     protein_difference: float
+    carbs_difference: float
+    fat_difference: float
     suitable_for_swap: bool = True
 
 class GroceryItemDetail(BaseModel):

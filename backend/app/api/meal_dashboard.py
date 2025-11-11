@@ -42,13 +42,14 @@ def get_week_meal_plan(
                 "days": []
             }
         
-        # Parse plan_data
+        # Parse plan_data - handle both flat and nested structures
         plan_data = active_plan.plan_data
-        
+        week_plan = plan_data.get('week_plan', plan_data)  # Support both structures
+
         # Get all meal logs for this week to determine status
         week_start = active_plan.week_start_date
         week_end = week_start + timedelta(days=7)
-        
+
         meal_logs = db.query(MealLog).filter(
             and_(
                 MealLog.user_id == current_user.id,
@@ -56,7 +57,7 @@ def get_week_meal_plan(
                 MealLog.planned_datetime < week_end
             )
         ).all()
-        
+
         # Create lookup for meal status
         meal_status_map = {}
         for log in meal_logs:
@@ -67,29 +68,36 @@ def get_week_meal_plan(
                 meal_status_map[key] = "skipped"
             else:
                 meal_status_map[key] = "pending"
-        
-        # Format week data
+
+        # Format week data - iterate through day_0 to day_6
         week_meals = []
-        for day_data in plan_data.get("days", []):
-            day_date = datetime.fromisoformat(day_data["date"])
-            
+
+        for day_index in range(7):
+            day_key = f"day_{day_index}"
+            day_data = week_plan.get(day_key)
+
+            if not day_data:
+                continue
+
+            day_date = week_start + timedelta(days=day_index)
             day_meals = []
-            for meal in day_data.get("meals", []):
-                meal_key = f"{day_date.date()}_{meal['meal_type']}"
+
+            for meal_type, meal_recipe in day_data.get('meals', {}).items():
+                if not meal_recipe:
+                    continue
+
+                # Get status from meal logs using date + meal_type
+                meal_key = f"{day_date.date()}_{meal_type}"
                 status = meal_status_map.get(meal_key, "pending")
-                
-                # Get recipe details
-                recipe = db.query(Recipe).filter(Recipe.id == meal["recipe_id"]).first()
-                
+
                 day_meals.append({
-                    "meal_type": meal["meal_type"],
-                    "recipe_id": meal["recipe_id"],
-                    "recipe_name": recipe.title if recipe else "Unknown Recipe",
-                    "macros": recipe.macros_per_serving if recipe else {},
-                    "status": status,
-                    "planned_time": meal.get("planned_time")
+                    "meal_type": meal_type,
+                    "recipe_id": meal_recipe.get('id') or meal_recipe.get('recipe_id'),
+                    "recipe_name": meal_recipe.get('title', 'Unknown Recipe'),
+                    "macros": meal_recipe.get('macros_per_serving', {}),
+                    "status": status
                 })
-            
+
             week_meals.append({
                 "date": day_date.date().isoformat(),
                 "day_name": day_date.strftime("%A"),
