@@ -5,6 +5,8 @@ from app.api import auth, onboarding, recipes, inventory, meal_plan, notificatio
 from app.core.config import settings
 from app.services.websocket_manager import websocket_manager
 from app.core.events import event_bus
+from app.core.mongodb import init_mongodb_collections, close_mongo_clients
+from app.agents.graph_instance import initialize_nutrition_graph
 import asyncio
 import logging
 
@@ -13,12 +15,28 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize WebSocket Redis connection
     await websocket_manager.initialize_redis()
     print("✅ WebSocket manager initialized")
-    
-    yield
-    
+
+    # Startup: Initialize MongoDB collections and indexes
+    try:
+        init_mongodb_collections()
+        print("✅ MongoDB initialized")
+    except Exception as e:
+        print(f"⚠️ MongoDB initialization failed: {e}")
+        logging.error(f"MongoDB initialization error: {e}")
+
+    # Startup: Initialize and compile LangGraph (singleton pattern)
+    async with initialize_nutrition_graph():
+        print("✅ LangGraph compiled and ready")
+
+        yield  # Application runs here with compiled graph available
+
     # Shutdown: Close all connections gracefully
     await websocket_manager.close_all_connections()
     print("✅ WebSocket manager closed")
+
+    # Shutdown: Close MongoDB clients
+    close_mongo_clients()
+    print("✅ MongoDB clients closed")
 
 app = FastAPI(
     title="NutriLens API",

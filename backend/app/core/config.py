@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     redis_port: int
     redis_db: int = 0
 
+    # MongoDB (for agent state & conversation history)
+    mongodb_host: str = "mongodb"
+    mongodb_port: int = 27017
+    mongodb_user: str = "nutri"
+    mongodb_password: str = "nutri"
+    mongodb_db: str = "nutrilens_agent"
+
     # MinIO
     minio_endpoint: str
     minio_access_key: str
@@ -70,6 +77,13 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         return f"redis://{self.redis_host}:{self.redis_port}/0"
+
+    @property
+    def mongodb_url(self) -> str:
+        return (
+            f"mongodb://{self.mongodb_user}:{self.mongodb_password}"
+            f"@{self.mongodb_host}:{self.mongodb_port}/{self.mongodb_db}?authSource=admin"
+        )
 
     class Config:
         env_file = ".env"

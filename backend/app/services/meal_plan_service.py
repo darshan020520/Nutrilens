@@ -96,16 +96,18 @@ class MealPlanService:
             Number of plans deactivated
         """
         try:
-            # Calculate cutoff date - plans that started more than 7 days ago
+            # Calculate cutoff date - plans that started 7 days ago or earlier
+            # A plan that starts on day X ends on day X+6 (7 days total)
+            # So we deactivate plans where week_start_date + 7 days <= today
             today = datetime.now()
             cutoff_date = today - timedelta(days=7)
 
-            # Deactivate plans where week_start_date + 7 days < today
+            # Deactivate plans where week_start_date + 7 days <= today
             # This means all 7 days of the plan have passed
             result = self.db.query(MealPlan).filter(
                 and_(
                     MealPlan.user_id == user_id,
-                    MealPlan.week_start_date < cutoff_date,
+                    MealPlan.week_start_date <= cutoff_date,  # Fixed: was <, should be <=
                     MealPlan.is_active == True
                 )
             ).update({'is_active': False}, synchronize_session=False)

@@ -12,7 +12,8 @@ import {
   User,
   Send,
   Loader2,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,12 +32,20 @@ export default function NutritionChatPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm your AI nutrition assistant. I have access to all your nutrition data, so feel free to ask me anything! Try questions like:\n\n• \"How is my protein intake today?\"\n• \"What if I eat 2 samosas?\"\n• \"Suggest a high-protein lunch\"\n• \"Is protein important for muscle gain?\"",
+      content: "Hi! I'm your AI nutrition assistant powered by LangGraph! 🚀 I have access to all your nutrition data and can remember our conversation. Try:\n\n• \"How is my protein intake today?\"\n• \"What if I eat 2 samosas?\"\n• \"Suggest a high-protein lunch\"\n• \"Log 2 eggs for breakfast\"",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>(() => {
+    // Generate or retrieve session ID
+    const stored = localStorage.getItem("chat_session_id");
+    if (stored) return stored;
+    const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem("chat_session_id", newSessionId);
+    return newSessionId;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,6 +55,20 @@ export default function NutritionChatPage() {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  const startNewChat = () => {
+    const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem("chat_session_id", newSessionId);
+    setSessionId(newSessionId);
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "Hi! I'm your AI nutrition assistant powered by LangGraph! 🚀 I have access to all your nutrition data and can remember our conversation. Try:\n\n• \"How is my protein intake today?\"\n• \"What if I eat 2 samosas?\"\n• \"Suggest a high-protein lunch\"\n• \"Log 2 eggs for breakfast\"",
+        timestamp: new Date(),
+      },
+    ]);
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -63,7 +86,7 @@ export default function NutritionChatPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/nutrition/chat", {
+      const response = await fetch("http://localhost:8000/api/nutrition/chat/v2", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -72,6 +95,7 @@ export default function NutritionChatPage() {
         body: JSON.stringify({
           query: userMessage.content,
           include_context: true,
+          session_id: sessionId,
         }),
       });
 
@@ -138,17 +162,30 @@ export default function NutritionChatPage() {
       <div className="container mx-auto py-6 px-4 md:px-6 h-[calc(100vh-6rem)]">
         <Card className="h-full flex flex-col">
           <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-6 w-6 text-primary" />
-              AI Nutrition Assistant
-              <Badge variant="outline" className="ml-auto">
-                <Sparkles className="h-3 w-3 mr-1" />
-                LLM-Powered
-              </Badge>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Ask me anything about your nutrition, meals, or fitness goals
-            </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-6 w-6 text-primary" />
+                  AI Nutrition Assistant
+                  <Badge variant="outline">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    V2 - LangGraph
+                  </Badge>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ask me anything about your nutrition, meals, or fitness goals
+                </p>
+              </div>
+              <Button
+                onClick={startNewChat}
+                variant="outline"
+                size="sm"
+                className="flex-shrink-0"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                New Chat
+              </Button>
+            </div>
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col p-0">

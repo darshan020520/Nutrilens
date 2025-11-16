@@ -30,6 +30,26 @@ services:
     networks:
       - nutrilens-network
 
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: nutri
+      MONGO_INITDB_ROOT_PASSWORD: nutri
+      MONGO_INITDB_DATABASE: nutrilens_agent
+      TZ: Asia/Kolkata
+    volumes:
+      - mongodata:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nutrilens-network
+
   minio:
     image: minio/minio:latest
     command: server /data
@@ -60,6 +80,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      mongodb:
+        condition: service_healthy
       minio:
         condition: service_started
     volumes:
@@ -114,4 +136,5 @@ networks:
 volumes:
   pgdata:
   minio_data:
-  
+  mongodata:
+
