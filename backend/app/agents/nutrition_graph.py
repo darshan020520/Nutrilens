@@ -25,7 +25,7 @@ import operator
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.prebuilt import ToolNode
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, trim_messages
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from sqlalchemy.orm import Session
@@ -56,6 +56,9 @@ class NutritionState(TypedDict):
     """
     # Messages (automatically appended by operator.add)
     messages: Annotated[Sequence[BaseMessage], operator.add]
+
+    # Trimmed messages for LLM input (not persisted, recalculated each turn)
+    llm_input_messages: Optional[Sequence[BaseMessage]]
 
     # User context (refreshed each turn)
     user_context: Dict[str, Any]
@@ -464,22 +467,18 @@ async def classify_intent_node(state: NutritionState) -> Dict[str, Any]:
             logger.warning("[Node:classify_intent] No user message found")
             return {"intent": "error", "confidence": 0.0, "entities": {}}
 
-        # Build context summary
+        # Build context summary from MINIMAL context fields only
+        # Note: Intent classification doesn't need detailed stats/inventory - just the user's message
         context = state.get("user_context", {})
-        profile = context.get("profile", {})
-        today = context.get("today", {})
-        consumed = today.get("consumed", {})
-        targets = context.get("targets", {})
-        inventory = context.get("inventory_summary", {})
 
-        # Classification prompt
+        # Classification prompt (using only minimal context)
         prompt = f"""Classify this nutrition app query into ONE intent.
 
 User Context:
-- Goal: {profile.get('goal_type', 'unknown')}
-- Consumed today: {consumed.get('calories', 0):.0f}/{targets.get('calories', 2000):.0f} cal
-- Protein: {consumed.get('protein_g', 0):.0f}/{targets.get('protein_g', 100):.0f}g
-- Inventory items: {inventory.get('total_items', 0)}
+- User ID: {context.get('user_id', 'unknown')}
+- Goal: {context.get('goal_type', 'unknown')}
+- Activity Level: {context.get('activity_level', 'unknown')}
+- Dietary Restrictions: {', '.join(context.get('dietary_restrictions', [])) if context.get('dietary_restrictions') else 'None'}
 
 Available Intents:
 1. STATS - User wants nutrition statistics (e.g., "how is my protein?", "show my macros", "am I on track?")
@@ -526,6 +525,52 @@ Respond with ONLY valid JSON (no markdown, no extra text):
         return {"intent": "error", "confidence": 0.0, "entities": {}}
 
 
+async def trim_messages_node(state: NutritionState) -> Dict[str, Any]:
+    """
+    Trim messages to fit context window (official LangGraph pattern).
+
+    Returns trimmed messages under 'llm_input_messages' key to preserve
+    full history in state while sending only trimmed version to LLM.
+    """
+    try:
+        from langchain_core.messages.utils import trim_messages, count_tokens_approximately
+
+        messages = state.get("messages", [])
+        original_count = len(messages)
+
+        # Trim if conversation is getting long
+        MAX_MESSAGES_THRESHOLD = 10
+        MAX_MESSAGES = 5  # Keep last 5 messages only
+
+        if original_count > MAX_MESSAGES_THRESHOLD:
+            print(f"\n[TRIM] Messages in state: {original_count}")
+
+            # Use token_counter=len to count messages instead of tokens
+            # Source: https://python.langchain.com/docs/how_to/trim_messages/
+            trimmed = trim_messages(
+                messages,
+                strategy="last",
+                token_counter=len,  # Count messages, not tokens
+                max_tokens=MAX_MESSAGES,  # Keep last 8 messages
+                start_on="human",
+                end_on=("human", "tool"),  # Official pattern - preserves tool call sequences
+                include_system=False,  # Don't include old system messages
+            )
+
+            removed = original_count - len(trimmed)
+            trimmed_count = len(trimmed)
+            print(f"[TRIM] ✂️ Trimmed: {original_count} → {trimmed_count} messages (removed {removed})")
+
+            return {"llm_input_messages": trimmed}
+        else:
+            print(f"[TRIM] ✅ No trimming needed ({original_count} messages)")
+            return {}  # No trimming needed
+
+    except Exception as e:
+        logger.error(f"[trim_messages_node] Error: {e}")
+        return {}  # Fall back to full history
+
+
 async def generate_response_node(state: NutritionState) -> Dict[str, Any]:
     """
     Node 3: Generate response using LLM with tools.
@@ -565,128 +610,27 @@ async def generate_response_node(state: NutritionState) -> Dict[str, Any]:
         print(context_json)
         print(f"{'='*100}\n")
 
-        # Minimal system prompt (~500 tokens) - tools fetch data on demand
-        system_prompt = f"""You are a helpful nutrition AI assistant. Today is {context['current_date']} at {context['current_time']}.
+        # OPTIMIZED: Minimal system prompt (~50 tokens)
+        # Tool definitions are sent automatically by OpenAI API - no need to duplicate
+        system_prompt = f"""You are a nutrition AI assistant. Today is {context['current_date']} at {context['current_time']}.
 
-# USER PROFILE
-User ID: {context['user_id']}
-Fitness Goal: {context['goal_type']}
-Activity Level: {context['activity_level']}
-Dietary Restrictions: {', '.join(context['dietary_restrictions']) if context['dietary_restrictions'] else 'None'}
+User {context['user_id']} | Goal: {context['goal_type']} | Activity: {context['activity_level']}
+{f"Restrictions: {', '.join(context['dietary_restrictions'])}" if context['dietary_restrictions'] else ""}
 
-# YOUR TOOLS - Use these to fetch data when needed
+Use available tools to fetch current data when needed. Always pass user_id={context['user_id']}.
+Be helpful and conversational.
 
-📊 **get_nutrition_stats(user_id: int, nutrients: str = None)**
-   Get today's consumed/remaining/targets for all macros
-
-   When to call: User asks "How is my protein?", "What's my progress?", "Show my macros"
-
-   Example: User says "How am I doing?" → Call get_nutrition_stats(user_id={context['user_id']})
-
-🥘 **check_inventory(user_id: int, search_term: str = None)**
-   Get user's food inventory
-
-   When to call: User asks "What food do I have?", "What's expiring?"
-
-   Example: User says "What's in my pantry?" → Call check_inventory(user_id={context['user_id']})
-
-📅 **get_meal_plan(user_id: int, target_date: str = None)**
-   Get upcoming scheduled meals
-
-   When to call: User asks "What's for dinner?", "Show my meal plan"
-
-   Example: User says "What's planned?" → Call get_meal_plan(user_id={context['user_id']})
-
-🔍 **get_makeable_recipes(user_id: int, min_protein: float = None, max_calories: float = None)**
-   Search recipes user can make with current inventory
-
-   When to call: User asks "What can I cook?", "Find high-protein meals"
-
-   Example: User says "Healthy options?" → Call get_makeable_recipes(user_id={context['user_id']})
-
-🎯 **get_goal_aligned_recipes(user_id: int, count: int = 5)**
-   Get recipes for user's goal ({context['goal_type']})
-
-   When to call: User asks "Recipes for my goal", "Goal-focused meals"
-
-✍️ **log_meal_consumption(user_id: int, meal_log_id: int, portions: float = 1.0)**
-   Record meal consumed (WRITES to database)
-
-   When to call: User says "I ate [meal]", "Log my breakfast"
-
-🔄 **swap_meal_recipe(user_id: int, meal_log_id: int, new_recipe_id: int)**
-   Change planned meal (WRITES to database)
-
-   When to call: User says "Swap my dinner", "Different meal"
-
-# INSTRUCTIONS
-
-1. Understand the query
-2. Decide tool strategy:
-   - Stats questions? → Call get_nutrition_stats
-   - Inventory questions? → Call check_inventory
-   - Meal plan questions? → Call get_meal_plan
-   - Recipe requests? → Call get_makeable_recipes or get_goal_aligned_recipes
-   - Log meals? → Call log_meal_consumption
-   - General chat? → No tools needed
-3. Always pass user_id={context['user_id']} to tools
-4. Use tool results to give helpful, friendly answers
-5. Use emojis and markdown for readability
-
-# EXAMPLES
-
-User: "How is my protein?"
-You: [Call get_nutrition_stats(user_id={context['user_id']})] "You've consumed 45g out of 100g protein (45%). 📊"
-
-User: "Suggest me lunch"
-You: [Call get_makeable_recipes(user_id={context['user_id']})] "Here are lunch options you can make..."
-
-User: "Hello!"
-You: [No tools] "Hi! How can I help with your nutrition today?"
-
-Current session: {state.get('session_id')}
+Session: {state.get('session_id')}
 """
 
         # Get conversation messages
-        conversation_messages = state.get("messages", [])
-        original_count = len(conversation_messages)
-
-        # MESSAGE TRIMMING using trim_messages (production best practice)
-        # From research: Production systems use trim_messages with token counting
-        MAX_MESSAGES = 6    # Hard cap: last 6 messages
-        MAX_TOKENS = 1500   # Token limit for conversation only
+        # Use trimmed messages if available (from previous invocation), otherwise use full history
+        conversation_messages = state.get("llm_input_messages", state.get("messages", []))
+        original_count = len(state.get("messages", []))
 
         print(f"\n{'='*80}")
         print(f"[TRIM] Messages in state: {original_count}")
-        print(f"[TRIM] Limits: MAX {MAX_MESSAGES} messages OR {MAX_TOKENS} tokens")
-
-        # Apply trimming if needed
-        if len(conversation_messages) > MAX_MESSAGES or original_count > 5:
-            try:
-                from langchain_core.messages.utils import count_tokens_approximately
-
-                # Use trim_messages (official LangChain method for production)
-                conversation_messages = trim_messages(
-                    conversation_messages,
-                    strategy="last",
-                    token_counter=count_tokens_approximately,
-                    max_tokens=MAX_TOKENS,
-                    start_on="human",
-                    end_on=("human", "tool"),
-                )
-
-                # If still too many messages, apply hard cap
-                if len(conversation_messages) > MAX_MESSAGES:
-                    conversation_messages = conversation_messages[-MAX_MESSAGES:]
-
-                removed = original_count - len(conversation_messages)
-                print(f"[TRIM] ✂️ Trimmed: {original_count} → {len(conversation_messages)} messages (removed {removed})")
-            except Exception as e:
-                print(f"[TRIM] ❌ Error: {e}, falling back to simple trim")
-                conversation_messages = conversation_messages[-MAX_MESSAGES:]
-        else:
-            print(f"[TRIM] ✅ No trimming needed")
-
+        print(f"[TRIM] Using: {'llm_input_messages' if 'llm_input_messages' in state else 'messages'}")
         print(f"{'='*80}\n")
 
         # Build final messages list for LLM
@@ -801,13 +745,15 @@ def create_nutrition_graph_structure() -> StateGraph:
     # Add nodes (all stateless - get data from state)
     workflow.add_node("load_context", load_context_node)
     workflow.add_node("classify_intent", classify_intent_node)
+    workflow.add_node("trim_messages", trim_messages_node)  # Trim before LLM call
     workflow.add_node("generate_response", generate_response_node)
     workflow.add_node("tools", ToolNode(tools))
 
     # Define flow
     workflow.set_entry_point("load_context")
     workflow.add_edge("load_context", "classify_intent")
-    workflow.add_edge("classify_intent", "generate_response")
+    workflow.add_edge("classify_intent", "trim_messages")  # Trim before generating response
+    workflow.add_edge("trim_messages", "generate_response")
 
     # Conditional edge: tools or end
     workflow.add_conditional_edges(
@@ -819,8 +765,9 @@ def create_nutrition_graph_structure() -> StateGraph:
         }
     )
 
-    # After tools, loop back to generate_response
-    workflow.add_edge("tools", "generate_response")
+    # After tools, loop back to trim_messages (not generate_response directly)
+    # This ensures we trim before every LLM call
+    workflow.add_edge("tools", "trim_messages")
 
     logger.info("[Graph] Stateless nutrition graph structure created with 4 nodes + conditional routing")
 

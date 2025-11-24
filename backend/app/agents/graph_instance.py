@@ -45,9 +45,15 @@ async def initialize_nutrition_graph():
 
     try:
         # Create MongoDB checkpointer for conversation state persistence
-        client = get_mongo_sync_client()
-        _checkpointer = MongoDBSaver(client=client, db_name=settings.mongodb_db)
-        logger.info("[GraphInit] ✅ MongoDB checkpointer created")
+        try:
+            client = get_mongo_sync_client()
+            _checkpointer = MongoDBSaver(client=client, db_name=settings.mongodb_db)
+            logger.info("[GraphInit] ✅ MongoDB checkpointer created")
+        except Exception as mongo_error:
+            logger.error(f"[GraphInit] ❌ MongoDB connection failed: {mongo_error}")
+            logger.warning("[GraphInit] ⚠️ Proceeding WITHOUT checkpointer (stateless mode)")
+            logger.warning("[GraphInit] ⚠️ Conversations will NOT persist across sessions")
+            _checkpointer = None  # Graph will work but won't persist conversations
 
         # Import here to avoid circular dependency
         from app.agents.nutrition_graph import create_nutrition_graph_structure
@@ -56,14 +62,16 @@ async def initialize_nutrition_graph():
         workflow = create_nutrition_graph_structure()
         logger.info("[GraphInit] ✅ Graph structure created")
 
-        # Compile graph with checkpointer
+        # Compile graph with checkpointer (if available)
         # This is the expensive operation we do ONCE instead of per-request
-        # Note: Message trimming is implemented directly in generate_response_node
-        # (pre_model_hook only works with create_react_agent, not StateGraph)
-        _compiled_graph = workflow.compile(
-            checkpointer=_checkpointer
-        )
-        logger.info("[GraphInit] ✅ Graph compiled successfully (message trimming in node)")
+        # Note: Message trimming implemented directly in generate_response_node
+        # (StateGraph doesn't support pre_model_hook - that's only for create_react_agent)
+        if _checkpointer:
+            _compiled_graph = workflow.compile(checkpointer=_checkpointer)
+            logger.info("[GraphInit] ✅ Graph compiled successfully WITH checkpointer")
+        else:
+            _compiled_graph = workflow.compile()
+            logger.info("[GraphInit] ✅ Graph compiled successfully WITHOUT checkpointer (stateless mode)")
         logger.info("[GraphInit] 🎉 Nutrition graph ready for requests")
 
         yield  # Application runs here
@@ -108,3 +116,13 @@ def is_initialized() -> bool:
         bool: True if graph is ready, False otherwise
     """
     return _compiled_graph is not None
+
+
+def has_checkpointer() -> bool:
+    """
+    Check if the graph has a MongoDB checkpointer (conversation persistence).
+
+    Returns:
+        bool: True if checkpointer is available, False if running in stateless mode
+    """
+    return _checkpointer is not None
