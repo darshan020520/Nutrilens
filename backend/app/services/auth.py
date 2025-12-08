@@ -56,36 +56,35 @@ def verify_token(token: str) -> Optional[dict]:
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """Authenticate a user by email and password"""
-    user = db.query(User).filter(User.email == email).first()
+    from app.repositories.auth_repository import AuthRepository
+    auth_repo = AuthRepository(db)
+    user = auth_repo.get_by_email(email)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
 def create_user(db: Session, user_create: UserCreate) -> User:
     """Create a new user"""
+    from app.repositories.auth_repository import AuthRepository
+    auth_repo = AuthRepository(db)
     hashed_password = get_password_hash(user_create.password)
-    user = User(
-        email=user_create.email,
-        hashed_password=hashed_password
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    create_default_notification_preferences(db, user.id)
+    user = auth_repo.create(user_create.email, hashed_password)
+    auth_repo.create_notification_preferences(user.id)
     return user
 
 def get_current_user(db: Session, token: str) -> Optional[User]:
     """Get current user from JWT token"""
+    from app.repositories.auth_repository import AuthRepository
+    auth_repo = AuthRepository(db)
     payload = verify_token(token)
     if not payload:
         return None
-    
+
     user_id = payload.get("sub")
     if not user_id:
         return None
-    
-    user = db.query(User).filter(User.id == int(user_id)).first()
+
+    user = auth_repo.get_by_id(int(user_id))
     return user
 
 
@@ -108,30 +107,15 @@ def get_current_user_dependency(
     return user
 
 def create_default_notification_preferences(db: Session, user_id: int):
-    """Create default notification preferences for new user"""
-    try:
-        
-        
-        # Check if preferences already exist
-        existing = db.query(NotificationPreference).filter(
-            NotificationPreference.user_id == user_id
-        ).first()
-        
-        if not existing:
-            # Create default preferences
-            preferences = NotificationPreference(
-                user_id=user_id,
-                enabled_providers=["email"],  # Start with email
-                enabled_types=["inventory_alert", "achievement"],  # Essential notifications
-                quiet_hours_start=22,
-                quiet_hours_end=7
-            )
-            db.add(preferences)
-            db.commit()
-            logger.info(f"Created default notification preferences for user {user_id}")
-    
-    except Exception as e:
-        logger.error(f"Error creating default notification preferences: {str(e)}")
+    """
+    Create default notification preferences for new user.
+
+    DEPRECATED: This function is now handled by AuthRepository.
+    Kept for backward compatibility with old code.
+    """
+    from app.repositories.auth_repository import AuthRepository
+    auth_repo = AuthRepository(db)
+    auth_repo.create_notification_preferences(user_id)
 # ADD this helper function
 def _calculate_onboarding_status(user: User) -> dict:
     """Calculate user's onboarding status and redirect"""

@@ -1,7 +1,8 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from app.models.database import UserProfile, UserGoal, UserPath, UserPreference
 from app.schemas.user import GoalType, PathType, ActivityLevel
 from sqlalchemy.orm import Session
+from app.repositories.onboarding_repository import OnboardingRepository
 import math
 
 class OnboardingService:
@@ -109,122 +110,92 @@ class OnboardingService:
    
     def complete_profile(self, db: Session, user_id: int, profile_data: dict) -> UserProfile:
        """Complete user profile with calculations"""
-       # Calculate BMR
+       repo = OnboardingRepository(db)
+
+       # Calculate BMR (business logic - stays in service)
        bmr = self.calculate_bmr(
            profile_data['weight_kg'],
            profile_data['height_cm'],
            profile_data['age'],
            profile_data['sex']
        )
-       
-       # Calculate TDEE
+
+       # Calculate TDEE (business logic - stays in service)
        tdee = self.calculate_tdee(bmr, profile_data['activity_level'])
        print("tdee", tdee)
-       
-       # Create or update profile
-       profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-       if not profile:
-           profile = UserProfile(user_id=user_id)
-       
-       # Update profile fields
-       for key, value in profile_data.items():
-           setattr(profile, key, value)
-       
-       profile.bmr = bmr
-       profile.tdee = tdee
-       
-       if not profile.id:
-           db.add(profile)
-       db.commit()
-       db.refresh(profile)
+
+       # Add calculated values to profile data
+       profile_data['bmr'] = bmr
+       profile_data['tdee'] = tdee
+
+       # Create or update profile using repository
+       profile = repo.create_or_update_profile(user_id, profile_data)
 
        print("profile", profile.tdee)
-       
+
        return profile
    
     def set_user_goal(self, db: Session, user_id: int, goal_data: dict) -> UserGoal:
        """Set user goal with macro targets"""
-       # Get user profile for TDEE
-       profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+       repo = OnboardingRepository(db)
+
+       # Get user profile for TDEE using repository
+       profile = repo.get_profile(user_id)
        if not profile:
            raise ValueError("Profile must be completed first")
-       
-       # Calculate goal calories
+
+       # Calculate goal calories (business logic - stays in service)
        goal_calories = self.calculate_goal_calories(
            profile.tdee,
            goal_data['goal_type']
        )
-       
-       # Update profile with goal calories
-       profile.goal_calories = goal_calories
-       
-       # Get default macros if not provided
+
+       # Update profile with goal calories using repository
+       repo.update_profile_goal_calories(user_id, goal_calories)
+
+       # Get default macros if not provided (business logic - stays in service)
        if 'macro_targets' not in goal_data:
            goal_data['macro_targets'] = self.get_macro_targets(goal_data['goal_type'])
-       
-       # Create or update goal
-       goal = db.query(UserGoal).filter(UserGoal.user_id == user_id).first()
-       if not goal:
-           goal = UserGoal(user_id=user_id)
-       
-       for key, value in goal_data.items():
-           setattr(goal, key, value)
-       
-       if not goal.id:
-           db.add(goal)
-       db.commit()
-       db.refresh(goal)
-       
+
+       # Create or update goal using repository
+       goal = repo.create_or_update_goal(user_id, goal_data)
+
        return goal
    
     def set_user_path(self, db: Session, user_id: int, path_data: dict) -> UserPath:
        """Set user eating path with meal windows"""
-       # Get meal windows
+       repo = OnboardingRepository(db)
+
+       # Get meal windows (business logic - stays in service)
        meal_windows = path_data.get('custom_windows') or self.get_meal_windows(path_data['path_type'])
        meals_per_day = len(meal_windows)
-       
-       # Create or update path
-       path = db.query(UserPath).filter(UserPath.user_id == user_id).first()
-       if not path:
-           path = UserPath(user_id=user_id)
-       
-       path.path_type = path_data['path_type']
-       path.meal_windows = meal_windows
-       path.meals_per_day = meals_per_day
-       
-       if not path.id:
-           db.add(path)
-       db.commit()
-       db.refresh(path)
-       
+
+       # Create or update path using repository
+       path = repo.create_or_update_path(user_id, path_data['path_type'], meal_windows, meals_per_day)
+
        return path
    
     def set_user_preferences(self, db: Session, user_id: int, pref_data: dict) -> UserPreference:
        """Set user dietary preferences"""
-       # Create or update preferences
-       preferences = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
-       if not preferences:
-           preferences = UserPreference(user_id=user_id)
-       
-       for key, value in pref_data.items():
-           setattr(preferences, key, value)
-       
-       if not preferences.id:
-           db.add(preferences)
-       db.commit()
-       db.refresh(preferences)
-       
+       repo = OnboardingRepository(db)
+
+       # Create or update preferences using repository
+       preferences = repo.create_or_update_preferences(user_id, pref_data)
+
        return preferences
    
     def get_calculated_targets(self, db: Session, user_id: int) -> dict:
        """Get all calculated nutritional targets for user"""
-       profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-       goal = db.query(UserGoal).filter(UserGoal.user_id == user_id).first()
-       path = db.query(UserPath).filter(UserPath.user_id == user_id).first()
-       
+       repo = OnboardingRepository(db)
+
+       # Get all onboarding data using repository
+       profile = repo.get_profile(user_id)
+       goal = repo.get_goal(user_id)
+       path = repo.get_path(user_id)
+
        if not all([profile, goal, path]):
            raise ValueError("Onboarding incomplete")
-       
+
        return {
            "bmr": profile.bmr,
            "tdee": profile.tdee,

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.api import auth, onboarding, recipes, inventory, meal_plan, notifications, tracking, websocket, dashboard, receipt, orchestrator, nutrition_chat
+from app.api import auth, auth_v2, onboarding, onboarding_v2, recipes, recipes_v2, inventory, inventory_v2, meal_plan, meal_plan_v2, notifications, tracking, tracking_v2, websocket, dashboard, dashboard_v2, receipt, receipt_v2, orchestrator, nutrition_chat
 from app.core.config import settings
 from app.services.websocket_manager import websocket_manager
 from app.core.events import event_bus
@@ -56,15 +56,23 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
+app.include_router(auth_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(onboarding.router, prefix="/api")
+app.include_router(onboarding_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(recipes.router, prefix="/api")
+app.include_router(recipes_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(inventory.router, prefix="/api")
+app.include_router(inventory_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(meal_plan.router, prefix="/api")
+app.include_router(meal_plan_v2.router_v2, prefix="/api")  # V2 endpoint (new architecture)
 app.include_router(tracking.router, prefix="/api")
+app.include_router(tracking_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(websocket.router)
 app.include_router(notifications.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(dashboard_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(receipt.router, prefix="/api")
+app.include_router(receipt_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
 app.include_router(orchestrator.router, prefix="/api")
 app.include_router(nutrition_chat.router, prefix="/api")
 
