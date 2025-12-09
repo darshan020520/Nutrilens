@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 
 interface MealLog {
   meal_type: string;
@@ -53,7 +53,7 @@ export function MealHistory() {
   const { data: historyData, isLoading, error } = useQuery<HistoryData>({
     queryKey: ["tracking", "history", days],
     queryFn: async () => {
-      const response = await api.get("/tracking/history", {
+      const response = await api.get(getEndpoint("/tracking/history"), {
         params: { days },
       });
       return response.data;

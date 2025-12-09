@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Search, Clock, Utensils, ChevronLeft, ChevronRight } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 
 interface Recipe {
   id: number;
@@ -90,7 +90,7 @@ export function RecipeBrowser() {
       if (filters.meal_time) params.meal_time = filters.meal_time;
       if (filters.max_prep_time) params.max_prep_time = parseInt(filters.max_prep_time);
 
-      const response = await api.get("/recipes/", { params });
+      const response = await api.get(getEndpoint("/recipes/"), { params });
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -101,7 +101,7 @@ export function RecipeBrowser() {
     queryKey: ["recipe", selectedRecipe?.id],
     queryFn: async () => {
       if (!selectedRecipe?.id) return null;
-      const response = await api.get(`/recipes/${selectedRecipe.id}`);
+      const response = await api.get(getEndpoint(`/recipes/${selectedRecipe.id}`));
       return response.data;
     },
     enabled: !!selectedRecipe?.id,

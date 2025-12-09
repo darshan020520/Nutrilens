@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 import {
   ReceiptUploadResult,
@@ -20,7 +20,7 @@ export function useUploadReceipt() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await api.post("/receipt/upload", formData, {
+      const response = await api.post(getEndpoint("/receipt/upload"), formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -50,7 +50,9 @@ export function useReceiptPendingItems(receiptId: number | null) {
     queryKey: ["receipt", receiptId, "pending"],
     queryFn: async () => {
       if (!receiptId) throw new Error("Receipt ID is required");
-      const response = await api.get(`/receipt/${receiptId}/pending`);
+      const response = await api.get(getEndpoint(`/receipt/pending`), {
+        params: { receipt_id: receiptId }
+      });
       return response.data;
     },
     enabled: !!receiptId,
@@ -63,7 +65,7 @@ export function usePendingItems() {
   return useQuery<{ count: number; items: PendingItem[] }>({
     queryKey: ["receipt", "pending"],
     queryFn: async () => {
-      const response = await api.get("/receipt/pending");
+      const response = await api.get(getEndpoint("/receipt/pending"));
       return response.data;
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -85,7 +87,7 @@ export function useConfirmAndSeedItems() {
     }
   >({
     mutationFn: async (data) => {
-      const response = await api.post("/receipt/confirm-and-seed", data);
+      const response = await api.post(getEndpoint("/receipt/confirm-and-seed"), data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -125,7 +127,7 @@ export function useConfirmReceiptItems() {
     }
   >({
     mutationFn: async (data) => {
-      const response = await api.post("/receipt/confirm", data);
+      const response = await api.post(getEndpoint("/receipt/confirm"), data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -147,7 +149,7 @@ export function useReceiptHistory(limit: number = 10) {
   return useQuery({
     queryKey: ["receipt", "history", limit],
     queryFn: async () => {
-      const response = await api.get(`/receipt/history?limit=${limit}`);
+      const response = await api.get(`${getEndpoint("/receipt/history")}?limit=${limit}`);
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes

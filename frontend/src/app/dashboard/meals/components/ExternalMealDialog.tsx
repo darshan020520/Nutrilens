@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, UtensilsCrossed, AlertCircle, CheckCircle2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 
 interface ExternalMealDialogProps {
@@ -73,7 +73,7 @@ export default function ExternalMealDialog({
   // Get nutrition estimate from LLM
   const estimateMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post("/tracking/estimate-external-meal", {
+      const response = await api.post(getEndpoint("/tracking/estimate-external-meal"), {
         dish_name: dishName,
         portion_size: portionSize,
         restaurant_name: restaurantName || null,
@@ -99,7 +99,7 @@ export default function ExternalMealDialog({
   // Log the external meal
   const logMealMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post("/tracking/log-external-meal", {
+      const response = await api.post(getEndpoint("/tracking/log-external-meal"), {
         dish_name: dishName,
         portion_size: portionSize,
         restaurant_name: restaurantName || null,

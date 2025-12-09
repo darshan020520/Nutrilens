@@ -19,7 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Check, Clock, XCircle, Utensils, UtensilsCrossed } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 import ExternalMealDialog from "./ExternalMealDialog";
 
@@ -68,7 +68,7 @@ export function TodayView() {
   // Fetch today's meals and progress
   const { data: todayData, isLoading, error } = useQuery<TodayData>({
     queryKey: ["tracking", "today"],
-    queryFn: async () => (await api.get("/tracking/today")).data,
+    queryFn: async () => (await api.get(getEndpoint("/tracking/today"))).data,
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });
@@ -76,7 +76,7 @@ export function TodayView() {
   // Log meal mutation
   const logMealMutation = useMutation({
     mutationFn: async (mealId: number) => {
-      const response = await api.post("/tracking/log-meal", {
+      const response = await api.post(getEndpoint("/tracking/log-meal"), {
         meal_log_id: mealId,
         consumed_datetime: new Date().toISOString(),
         portion_multiplier: 1.0,
@@ -103,7 +103,7 @@ export function TodayView() {
       mealLogId: number;
       reason: string;
     }) => {
-      const response = await api.post("/tracking/skip-meal", {
+      const response = await api.post(getEndpoint("/tracking/skip-meal"), {
         meal_log_id: mealLogId,
         skip_reason: reason,
       });

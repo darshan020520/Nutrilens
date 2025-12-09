@@ -24,7 +24,7 @@ import {
   XCircle,
   ChevronRight
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 import SwapMealDialog from "./SwapMealDialog";
 import RecipeDetailsDialog from "./RecipeDetailsDialog";
@@ -81,7 +81,7 @@ export function WeekView() {
   const { data: weekPlan, isLoading, error } = useQuery<WeekPlan>({
     queryKey: ["meal-plan", "current"],
     queryFn: async () => {
-        const response = await api.get("/meal-plans/current/with-status");
+        const response = await api.get(getEndpoint("/meal-plans/current/with-status"));
         const data = response.data;
 
         // Handle case where no plan exists for current week
@@ -163,7 +163,7 @@ export function WeekView() {
     queryKey: ["meal-plan", weekPlan?.id, "grocery-list"],
     queryFn: async () => {
       if (!weekPlan?.id) return null;
-      const response = await api.get(`/meal-plans/${weekPlan.id}/grocery-list`);
+      const response = await api.get(getEndpoint(`/meal-plans/${weekPlan.id}/grocery-list`));
       return response.data;
     },
     enabled: !!weekPlan?.id && weekPlan?.has_plan,
@@ -172,7 +172,7 @@ export function WeekView() {
   // Regenerate meal plan mutation
   const regenerateMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post("/meal-plans/generate", {
+      const response = await api.post(getEndpoint("/meal-plans/generate"), {
         start_date: new Date().toISOString(),
         days: 7,
         preferences: {},
@@ -202,7 +202,7 @@ export function WeekView() {
       mealType: string;
       newRecipeId: number;
     }) => {
-      const response = await api.post(`/meal-plans/${weekPlan?.id}/swap-meal`, {
+      const response = await api.post(getEndpoint(`/meal-plans/${weekPlan?.id}/swap-meal`), {
         day,
         meal_type: mealType,
         new_recipe_id: newRecipeId,

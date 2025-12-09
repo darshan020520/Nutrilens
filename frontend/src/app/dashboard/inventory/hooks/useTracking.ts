@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { ExpiringItem, RestockList } from "../types";
 
 // Get expiring items with recipe suggestions
@@ -16,7 +16,7 @@ export function useExpiringItems(days: number = 3) {
   }>({
     queryKey: ["tracking", "expiring-items", days],
     queryFn: async () => {
-      const response = await api.get(`/tracking/expiring-items?days=${days}`);
+      const response = await api.get(`${getEndpoint("/tracking/inventory-status")}?days=${days}`);
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -29,7 +29,7 @@ export function useRestockList() {
   return useQuery<RestockList>({
     queryKey: ["tracking", "restock-list"],
     queryFn: async () => {
-      const response = await api.get("/tracking/restock-list");
+      const response = await api.get(getEndpoint("/tracking/restock-list"));
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -41,7 +41,7 @@ export function useInventoryStatusTracking() {
   return useQuery({
     queryKey: ["tracking", "inventory-status"],
     queryFn: async () => {
-      const response = await api.get("/tracking/inventory-status");
+      const response = await api.get(getEndpoint("/tracking/inventory-status"));
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 
 interface RecipeDetails {
   id: number;
@@ -65,7 +65,7 @@ export default function RecipeDetailsDialog({
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/recipes/${recipeId}`);
+      const response = await api.get(getEndpoint(`/recipes/${recipeId}`));
       setRecipe(response.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load recipe details");

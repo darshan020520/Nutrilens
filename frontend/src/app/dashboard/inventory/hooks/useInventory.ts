@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 import {
   InventoryStatus,
@@ -15,7 +15,7 @@ export function useInventoryStatus() {
   return useQuery<InventoryStatus>({
     queryKey: ["inventory", "status"],
     queryFn: async () => {
-      const response = await api.get("/inventory/status");
+      const response = await api.get(getEndpoint("/inventory/status"));
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -40,7 +40,7 @@ export function useInventoryItems(filters: FilterOptions) {
         params.append("expiring_soon", "true");
       }
 
-      const response = await api.get(`/inventory/items?${params.toString()}`);
+      const response = await api.get(`${getEndpoint("/inventory/items")}?${params.toString()}`);
       return response.data;
     },
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -53,7 +53,7 @@ export function useAddItems() {
 
   return useMutation<AddItemsResult, Error, { text_input: string }>({
     mutationFn: async (data) => {
-      const response = await api.post("/inventory/add-items", data);
+      const response = await api.post(getEndpoint("/inventory/add-items"), data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -87,7 +87,7 @@ export function useConfirmItem() {
     { original_text: string; item_id: number; quantity_grams: number }
   >({
     mutationFn: async (data) => {
-      const response = await api.post("/inventory/confirm-item", data);
+      const response = await api.post(getEndpoint("/inventory/confirm-item"), data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -106,7 +106,7 @@ export function useDeleteItem() {
 
   return useMutation<any, Error, number>({
     mutationFn: async (inventoryId) => {
-      const response = await api.delete(`/inventory/item/${inventoryId}`);
+      const response = await api.delete(getEndpoint(`/inventory/item/${inventoryId}`));
       return response.data;
     },
     onSuccess: () => {
@@ -124,7 +124,7 @@ export function useMakeableRecipes(limit: number = 10) {
   return useQuery({
     queryKey: ["inventory", "makeable-recipes", limit],
     queryFn: async () => {
-      const response = await api.get(`/inventory/makeable-recipes?limit=${limit}`);
+      const response = await api.get(`${getEndpoint("/inventory/makeable-recipes")}?limit=${limit}`);
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

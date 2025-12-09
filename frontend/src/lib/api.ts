@@ -2,6 +2,84 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api';
 
+// ============================================================
+// FEATURE FLAG: Toggle between v1 and v2 endpoints
+// ============================================================
+// Set to true to use new clean architecture v2 endpoints
+// Set to false to use legacy v1 endpoints
+const USE_V2_ENDPOINTS = true;
+// ============================================================
+
+/**
+ * Helper function to get the correct endpoint based on feature flag
+ * Maps v1 endpoints to their v2 equivalents
+ */
+export function getEndpoint(v1Path: string): string {
+  if (!USE_V2_ENDPOINTS) {
+    return v1Path;
+  }
+
+  // Mapping of v1 endpoints to v2 endpoints
+  const endpointMap: Record<string, string> = {
+    // Auth endpoints
+    '/auth/register': '/auth/v2/register',
+    '/auth/login': '/auth/v2/login',
+    '/auth/me': '/auth/v2/me',
+    '/auth/refresh': '/auth/v2/refresh',
+
+    // Onboarding endpoints
+    '/onboarding/basic-info': '/onboarding/v2/basic-info',
+    '/onboarding/goal-selection': '/onboarding/v2/goal-selection',
+    '/onboarding/path-selection': '/onboarding/v2/path-selection',
+    '/onboarding/preferences': '/onboarding/v2/preferences',
+    '/onboarding/calculated-targets': '/onboarding/v2/calculated-targets',
+
+    // Inventory endpoints
+    '/inventory/add-items': '/inventory/v2/add-items',
+    '/inventory/confirm-item': '/inventory/v2/confirm-item',
+    '/inventory/status': '/inventory/v2/status',
+    '/inventory/items': '/inventory/v2/items',
+    '/inventory/makeable-recipes': '/inventory/v2/makeable-recipes',
+    '/inventory/item/': '/inventory/v2/item/',
+
+    // Receipt endpoints
+    '/receipt/upload': '/receipt/v2/upload',
+    '/receipt/pending': '/receipt/v2/pending',
+    '/receipt/confirm-and-seed': '/receipt/v2/confirm-and-seed',
+
+    // Recipes endpoints
+    '/recipes/': '/recipes/v2/',
+
+    // Meal Plan endpoints
+    '/meal-plans/generate': '/meal-plans/v2/generate',
+    '/meal-plans/current/with-status': '/meal-plans/v2/current/with-status',
+
+    // Tracking endpoints
+    '/tracking/log-meal': '/tracking/v2/log-meal',
+    '/tracking/log-external-meal': '/tracking/v2/log-external-meal',
+    '/tracking/skip-meal': '/tracking/v2/skip-meal',
+    '/tracking/today': '/tracking/v2/today',
+    '/tracking/history': '/tracking/v2/history',
+    '/tracking/estimate-external-meal': '/tracking/v2/estimate-external-meal',
+    '/tracking/inventory-status': '/tracking/v2/inventory-status',
+    '/tracking/restock-list': '/tracking/v2/restock-list',
+
+    // Dashboard endpoints
+    '/dashboard/summary': '/dashboard/v2/summary',
+    '/dashboard/recent-activity': '/dashboard/v2/recent-activity',
+  };
+
+  // Handle dynamic paths (e.g., /inventory/item/:id)
+  for (const [v1, v2] of Object.entries(endpointMap)) {
+    if (v1Path.startsWith(v1)) {
+      return v1Path.replace(v1, v2);
+    }
+  }
+
+  // If no mapping found, return original path
+  return v1Path;
+}
+
 // Create axios instance
 export const api = axios.create({
   baseURL: API_URL,
@@ -40,7 +118,7 @@ api.interceptors.response.use(
 // Auth API calls
 export const authAPI = {
   register: async (email: string, password: string) => {
-    const response = await api.post('/auth/register', { email, password });
+    const response = await api.post(getEndpoint('/auth/register'), { email, password });
     return response.data;
   },
 
@@ -48,8 +126,8 @@ export const authAPI = {
     const formData = new FormData();
     formData.append('username', email);  // FastAPI OAuth2PasswordRequestForm uses 'username'
     formData.append('password', password);
-    
-    const response = await api.post('/auth/login', formData, {
+
+    const response = await api.post(getEndpoint('/auth/login'), formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -58,7 +136,7 @@ export const authAPI = {
   },
 
   getMe: async () => {
-    const response = await api.get('/auth/me');
+    const response = await api.get(getEndpoint('/auth/me'));
     return response.data;
   },
 };
@@ -66,22 +144,27 @@ export const authAPI = {
 // Onboarding API calls
 export const onboardingAPI = {
   submitBasicInfo: async (data: any) => {
-    const response = await api.post('/onboarding/basic-info', data);
+    const response = await api.post(getEndpoint('/onboarding/basic-info'), data);
     return response.data;
   },
 
   submitGoal: async (data: any) => {
-    const response = await api.post('/onboarding/goal-selection', data);
+    const response = await api.post(getEndpoint('/onboarding/goal-selection'), data);
     return response.data;
   },
 
   submitPath: async (data: any) => {
-    const response = await api.post('/onboarding/path-selection', data);
+    const response = await api.post(getEndpoint('/onboarding/path-selection'), data);
     return response.data;
   },
 
   submitPreferences: async (data: any) => {
-    const response = await api.post('/onboarding/preferences', data);
+    const response = await api.post(getEndpoint('/onboarding/preferences'), data);
+    return response.data;
+  },
+
+  getCalculatedTargets: async () => {
+    const response = await api.get(getEndpoint('/onboarding/calculated-targets'));
     return response.data;
   },
 };

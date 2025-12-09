@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 
 interface MealsCardData {
   meals_planned: number;
@@ -70,7 +70,7 @@ export function useDashboard() {
   } = useQuery<DashboardSummary>({
     queryKey: ["dashboard-summary"],
     queryFn: async () => {
-      const response = await api.get("/dashboard/summary");
+      const response = await api.get(getEndpoint("/dashboard/summary"));
       return response.data;
     },
     refetchInterval: 60000, // Refetch every minute
@@ -86,7 +86,7 @@ export function useDashboard() {
   } = useQuery<RecentActivityData>({
     queryKey: ["dashboard-activity"],
     queryFn: async () => {
-      const response = await api.get("/dashboard/recent-activity", {
+      const response = await api.get(getEndpoint("/dashboard/recent-activity"), {
         params: { limit: 5 },
       });
       return response.data;

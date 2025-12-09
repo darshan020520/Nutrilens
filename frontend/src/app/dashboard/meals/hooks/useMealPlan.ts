@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 
 // Fetch alternative recipes for swapping
@@ -10,7 +10,7 @@ export function useRecipeAlternatives(planId: number, recipeId: number | null, c
     queryKey: ["meal-plan", planId, "alternatives", recipeId, count],
     queryFn: async () => {
       if (!recipeId) return null;
-      const response = await api.get(`/meal-plans/${planId}/alternatives/${recipeId}?count=${count}`);
+      const response = await api.get(`${getEndpoint(`/meal-plans/${planId}/alternatives/${recipeId}`)}?count=${count}`);
       return response.data;
     },
     enabled: !!recipeId && !!planId,
@@ -32,7 +32,7 @@ export function useSwapMeal(planId: number) {
       mealType: string;
       newRecipeId: number;
     }) => {
-      const response = await api.post(`/meal-plans/${planId}/swap-meal`, {
+      const response = await api.post(getEndpoint(`/meal-plans/${planId}/swap-meal`), {
         day,
         meal_type: mealType,
         new_recipe_id: newRecipeId,
