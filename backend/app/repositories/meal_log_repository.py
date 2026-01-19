@@ -363,3 +363,71 @@ class MealLogRepository(IMealLogRepository):
                 MealLog.planned_datetime < end_datetime
             )
         ).all()
+
+    async def get_upcoming_meals_for_today(
+        self,
+        user_id: int,
+        current_datetime: datetime
+    ) -> List[MealLog]:
+        """
+        Get upcoming meals for today (not consumed, not skipped, planned after current time).
+
+        MOVED FROM: dashboard_orchestrator.py:220-233
+
+        Args:
+            user_id: User ID
+            current_datetime: Current datetime to compare against
+
+        Returns:
+            List of MealLog entities ordered by planned_datetime
+        """
+        from sqlalchemy import and_, func
+        from datetime import date
+
+        today = current_datetime.date()
+
+        # Query meal logs for today that are upcoming
+        return self.db.query(MealLog).filter(
+            and_(
+                MealLog.user_id == user_id,
+                func.date(MealLog.planned_datetime) == today,
+                MealLog.consumed_datetime.is_(None),
+                MealLog.was_skipped == False,
+                MealLog.planned_datetime > current_datetime
+            )
+        ).order_by(MealLog.planned_datetime).all()
+
+    async def get_upcoming_meals_in_time_window(
+        self,
+        start_datetime: datetime,
+        end_datetime: datetime
+    ) -> List[MealLog]:
+        """
+        Get upcoming meals in a specific time window for meal reminders.
+
+        Uses joinedload for user and recipe to prevent N+1 queries.
+        Only returns meals for active users.
+
+        Args:
+            start_datetime: Start of time window
+            end_datetime: End of time window
+
+        Returns:
+            List of MealLog entities with user and recipe eagerly loaded
+        """
+        from app.models.database import User
+
+        return self.db.query(MealLog).options(
+            joinedload(MealLog.recipe),
+            joinedload(MealLog.user)
+        ).join(
+            User, MealLog.user_id == User.id
+        ).filter(
+            and_(
+                MealLog.planned_datetime >= start_datetime,
+                MealLog.planned_datetime <= end_datetime,
+                MealLog.consumed_datetime.is_(None),
+                MealLog.was_skipped == False,
+                User.is_active == True
+            )
+        ).all()

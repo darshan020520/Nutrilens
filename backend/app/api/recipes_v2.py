@@ -13,9 +13,8 @@ from pydantic import BaseModel
 import logging
 
 from app.models.database import User
-from app.services.auth import get_current_user_dependency as get_current_user
 from app.repositories.recipe_repository import RecipeRepository
-from app.dependencies import get_recipe_repository
+from app.dependencies import get_recipe_repository, get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/recipes/v2", tags=["recipes-v2"])

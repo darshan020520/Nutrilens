@@ -12,6 +12,7 @@ from app.repositories.interfaces.consumption_analytics_repository import IConsum
 from app.repositories.interfaces.auth_repository import IAuthRepository
 from app.repositories.interfaces.onboarding_repository import IOnboardingRepository
 from app.repositories.interfaces.receipt_repository import IReceiptRepository
+from app.repositories.interfaces.user_profile_repository import IUserProfileRepository
 
 __all__ = [
     "IRepository",
@@ -21,4 +22,5 @@ __all__ = [
     "IAuthRepository",
     "IOnboardingRepository",
     "IReceiptRepository",
+    "IUserProfileRepository",
 ]

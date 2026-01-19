@@ -1,38 +1,20 @@
-"""
-Onboarding API Endpoints V2 - Clean Architecture
-
-Provides user onboarding endpoints using repository pattern.
-
-MIGRATED FROM: onboarding.py
-USES: Clean architecture with OnboardingRepository + OnboardingService
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 import logging
 
-from app.models.database import get_db, User
+from app.models.database import User
 from app.schemas.user import (
     ProfileCreate, ProfileResponse,
     GoalCreate, PathSelection, PreferenceCreate,
     OnboardingTargets, BasicInfoResponse
 )
-from app.services.auth import get_current_user_dependency as get_current_user
 from app.services.onboarding import OnboardingService
-from app.repositories.onboarding_repository import OnboardingRepository
-from app.dependencies import get_onboarding_repository
+from app.dependencies import get_onboarding_service, get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/onboarding/v2", tags=["onboarding-v2"])
 
-# Singleton onboarding service
-onboarding_service = OnboardingService()
-
-
-# ===== RESPONSE SCHEMAS (IDENTICAL TO V1) =====
 
 class StepResponse(BaseModel):
     """Generic step completion response"""
@@ -46,39 +28,25 @@ class StepResponse(BaseModel):
         orm_mode = True
 
 
-# ===== ENDPOINTS =====
-
 @router.post("/basic-info", response_model=BasicInfoResponse)
 async def submit_basic_info(
     profile_data: ProfileCreate,
     current_user: User = Depends(get_current_user),
-    onboarding_repo: OnboardingRepository = Depends(get_onboarding_repository),
-    db: Session = Depends(get_db)
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     """
     Submit basic user information.
 
     MIGRATED FROM: onboarding.py:27-55
 
-    Uses:
-    - OnboardingService for profile creation (with calculations - now uses repo internally)
-    - OnboardingRepository for updating user's onboarding tracking fields
+    Architecture: API → OnboardingService → OnboardingRepository → Database
     """
-    # Complete profile using service (which uses repository internally)
-    print("going to create profile")
-    profile = onboarding_service.complete_profile(
-        db,
+    # Service handles profile creation and onboarding tracking
+    profile = onboarding_service.complete_basic_info(
         current_user.id,
-        profile_data.dict()
+        profile_data.dict(),
+        current_user.onboarding_started_at
     )
-
-    # Update onboarding tracking using repository
-    step_updates = {
-        "onboarding_started_at": datetime.utcnow() if not current_user.onboarding_started_at else current_user.onboarding_started_at,
-        "basic_info_completed": True,
-        "onboarding_current_step": 2
-    }
-    onboarding_repo.update_user_onboarding_step(current_user.id, step_updates)
 
     return {
         "success": True,
@@ -92,17 +60,14 @@ async def submit_basic_info(
 async def select_goal(
     goal_data: GoalCreate,
     current_user: User = Depends(get_current_user),
-    onboarding_repo: OnboardingRepository = Depends(get_onboarding_repository),
-    db: Session = Depends(get_db)
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     """
     Select fitness goal.
 
     MIGRATED FROM: onboarding.py:57-95
 
-    Uses:
-    - OnboardingService for goal creation (with calculations - now uses repo internally)
-    - OnboardingRepository for updating user's onboarding tracking fields
+    Architecture: API → OnboardingService → OnboardingRepository → Database
     """
     # Validate prerequisite
     if not current_user.basic_info_completed:
@@ -115,19 +80,11 @@ async def select_goal(
             }
         )
 
-    # Set goal using service (which uses repository internally)
-    goal = onboarding_service.set_user_goal(
-        db,
+    # Service handles goal setting and onboarding tracking
+    goal = onboarding_service.complete_goal_selection(
         current_user.id,
         goal_data.dict()
     )
-
-    # Update onboarding tracking using repository
-    step_updates = {
-        "goal_selection_completed": True,
-        "onboarding_current_step": 3
-    }
-    onboarding_repo.update_user_onboarding_step(current_user.id, step_updates)
 
     return StepResponse(
         success=True,
@@ -144,17 +101,14 @@ async def select_goal(
 async def select_path(
     path_data: PathSelection,
     current_user: User = Depends(get_current_user),
-    onboarding_repo: OnboardingRepository = Depends(get_onboarding_repository),
-    db: Session = Depends(get_db)
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     """
     Select eating path/strategy.
 
     MIGRATED FROM: onboarding.py:97-136
 
-    Uses:
-    - OnboardingService for path creation (now uses repo internally)
-    - OnboardingRepository for updating user's onboarding tracking fields
+    Architecture: API → OnboardingService → OnboardingRepository → Database
     """
     # Validate prerequisite
     if not current_user.goal_selection_completed:
@@ -167,19 +121,11 @@ async def select_path(
             }
         )
 
-    # Set path using service (which uses repository internally)
-    path = onboarding_service.set_user_path(
-        db,
+    # Service handles path selection and onboarding tracking
+    path = onboarding_service.complete_path_selection(
         current_user.id,
         path_data.dict()
     )
-
-    # Update onboarding tracking using repository
-    step_updates = {
-        "path_selection_completed": True,
-        "onboarding_current_step": 4
-    }
-    onboarding_repo.update_user_onboarding_step(current_user.id, step_updates)
 
     return StepResponse(
         success=True,
@@ -197,17 +143,14 @@ async def select_path(
 async def set_preferences(
     pref_data: PreferenceCreate,
     current_user: User = Depends(get_current_user),
-    onboarding_repo: OnboardingRepository = Depends(get_onboarding_repository),
-    db: Session = Depends(get_db)
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     """
     Set dietary preferences.
 
     MIGRATED FROM: onboarding.py:138-177
 
-    Uses:
-    - OnboardingService for preferences creation (now uses repo internally)
-    - OnboardingRepository for updating user's onboarding tracking fields
+    Architecture: API → OnboardingService → OnboardingRepository → Database
     """
     # Validate prerequisite
     if not current_user.path_selection_completed:
@@ -220,20 +163,11 @@ async def set_preferences(
             }
         )
 
-    # Set preferences using service (which uses repository internally)
-    preferences = onboarding_service.set_user_preferences(
-        db,
+    # Service handles preferences and onboarding completion
+    preferences = onboarding_service.complete_preferences(
         current_user.id,
         pref_data.dict()
     )
-
-    # Complete onboarding using repository
-    step_updates = {
-        "preferences_completed": True,
-        "onboarding_completed": True,
-        "onboarding_completed_at": datetime.utcnow()
-    }
-    onboarding_repo.update_user_onboarding_step(current_user.id, step_updates)
 
     return StepResponse(
         success=True,
@@ -249,18 +183,17 @@ async def set_preferences(
 @router.get("/calculated-targets", response_model=OnboardingTargets)
 async def get_calculated_targets(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     """
     Get calculated nutritional targets after onboarding.
 
     MIGRATED FROM: onboarding.py:179-191
 
-    Uses:
-    - OnboardingService for retrieving targets (now uses repo internally)
+    Architecture: API → OnboardingService → OnboardingRepository → Database
     """
     try:
-        targets = onboarding_service.get_calculated_targets(db, current_user.id)
+        targets = onboarding_service.get_calculated_targets(current_user.id)
         return targets
     except ValueError as e:
         raise HTTPException(

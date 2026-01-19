@@ -10,30 +10,64 @@ USES:
 - S3Service, ReceiptItemEnricher, EmbeddingService for business logic
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-import httpx
 import uuid
-import os
-import tempfile
 from typing import List, Dict
 from datetime import datetime
 from pydantic import BaseModel
 import logging
 
-from app.models.database import get_db, User, Item, ReceiptPendingItem
+from app.models.database import get_db, User, Item
 from app.services.inventory_service import IntelligentInventoryService
 from app.services.s3_service import S3Service
-from app.services.auth import get_current_user_dependency as get_current_user
 from app.core.config import settings
 from app.repositories.receipt_repository import ReceiptRepository
-from app.dependencies import get_receipt_repository
+from app.dependencies import (
+    get_receipt_repository,
+    get_current_user,
+    get_s3_service,
+    get_receipt_processing_service
+)
+from app.services.receipt_processing_service import ReceiptProcessingService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/receipt/v2", tags=["receipt-v2"])
 
 
-# ===== REQUEST/RESPONSE SCHEMAS (IDENTICAL TO V1) =====
+# ===== REQUEST/RESPONSE SCHEMAS =====
+
+class InitiateUploadRequest(BaseModel):
+    """Request for initiating receipt upload"""
+    filename: str
+    content_type: str = "image/jpeg"
+
+
+class InitiateUploadResponse(BaseModel):
+    """Response for initiate upload"""
+    receipt_id: int
+    presigned_url: str
+    s3_key: str
+    expires_in: int
+
+
+class ProcessReceiptRequest(BaseModel):
+    """Request for processing uploaded receipt"""
+    receipt_id: int
+    s3_key: str
+
+
+class ProcessReceiptResponse(BaseModel):
+    """Response for process receipt"""
+    receipt_id: int
+    status: str
+    image_url: str
+    total_items: int
+    auto_added_count: int
+    auto_added: List[Dict]
+    needs_confirmation_count: int
+    needs_confirmation: List[Dict]
+
 
 class ConfirmItemsRequest(BaseModel):
     """Request for confirming enriched items"""
@@ -42,196 +76,91 @@ class ConfirmItemsRequest(BaseModel):
 
 # ===== ENDPOINTS =====
 
-@router.post("/upload")
-async def upload_receipt(
-    file: UploadFile = File(...),
+@router.post("/initiate", response_model=InitiateUploadResponse)
+async def initiate_receipt_upload(
+    request: InitiateUploadRequest,
     current_user: User = Depends(get_current_user),
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository),
-    db: Session = Depends(get_db)
+    s3_service: S3Service = Depends(get_s3_service)
 ):
     """
-    Complete receipt processing flow:
-    1. Upload image to S3
-    2. Call receipt scanner microservice
-    3. Normalize items with LLM
-    4. Add to inventory / pending review
+    Step 1: Generate presigned URL for client-side upload.
 
-    MIGRATED FROM: receipt.py:28-202
+    Client will upload file directly to S3 using the presigned URL,
+    then call /process endpoint to trigger processing.
 
-    Uses:
-    - ReceiptRepository for ReceiptScan and ReceiptPendingItem data access
-    - S3Service for image upload (business logic)
-    - Receipt scanner microservice integration (business logic)
-    - IntelligentInventoryService for item normalization (business logic)
-    - ReceiptItemEnricher for item enrichment (business logic)
+    Args:
+        request: Upload initiation request with filename and content type
+        current_user: Authenticated user
+        receipt_repo: Receipt repository (injected)
+        s3_service: S3 service (injected)
 
     Returns:
-        {
-            "receipt_id": int,
-            "status": "success",
-            "image_url": str,
-            "total_items": int,
-            "auto_added_count": int,
-            "auto_added": [...],
-            "needs_confirmation_count": int,
-            "needs_confirmation": [...]
-        }
+        InitiateUploadResponse with presigned URL and receipt ID
     """
     try:
-        # Step 1: Save temp file
-        tmp_dir = tempfile.gettempdir()
-        file_extension = os.path.splitext(file.filename)[1] or ".jpg"
-        temp_filename = f"{uuid.uuid4()}{file_extension}"
-        temp_path = os.path.join(tmp_dir, temp_filename)
-
-        with open(temp_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
-
-        logger.info(f"Receipt image saved temporarily: {temp_path}")
-
-        # Step 2: Upload to S3
-        s3_service = S3Service()
+        # Generate unique S3 key
         s3_key = f"receipts/user_{current_user.id}/{uuid.uuid4()}.jpg"
-        s3_url = s3_service.upload_file(temp_path, s3_key)
-        presigned_url = s3_service.generate_presigned_url(s3_key, expiration=3600)
-        print(f"Presigned URL: {presigned_url}")
 
-        # Clean up temp file
-        os.remove(temp_path)
-        logger.info(f"Receipt uploaded to S3: {s3_url}")
-
-        # Step 3: Create receipt_scan record - using repository
+        # Create receipt record with status 'uploading'
+        s3_url = f"https://{settings.s3_bucket}.s3.{settings.s3_region}.amazonaws.com/{s3_key}"
         receipt_scan = receipt_repo.create_receipt_scan(
             user_id=current_user.id,
             s3_url=s3_url,
-            status='processing'
+            status='uploading'
         )
 
-        try:
-            # Step 4: Call receipt scanner microservice
-            print(f"Calling receipt scanner microservice at {settings.receipt_scanner_url}/scan")
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    f"{settings.receipt_scanner_url}/scan",
-                    json={"image_url": presigned_url}
-                )
-                print("response for receipt endpoint", response)
-                response.raise_for_status()
-                scanner_result = response.json()
+        # Generate presigned URL for client upload
+        presigned_url = s3_service.generate_presigned_upload_url(
+            s3_key=s3_key,
+            content_type=request.content_type,
+            expiration=3600
+        )
 
-            receipt_items = scanner_result.get("items", [])
-            print(receipt_items)
-            logger.info(f"Receipt scanner found {len(receipt_items)} items")
+        logger.info(f"Initiated receipt upload {receipt_scan.id} for user {current_user.id}")
 
-            # Step 5: Normalize items with LLM - using inventory service
-            inventory_service = IntelligentInventoryService(db)
-            process_result = await inventory_service.process_receipt_items(
-                user_id=current_user.id,
-                receipt_items=receipt_items,
-                auto_add_threshold=settings.receipt_auto_add_threshold
-            )
-
-            auto_added = process_result["auto_added"]
-            needs_confirmation = process_result["needs_confirmation"]
-
-            logger.info(f"Auto-added: {len(auto_added)}, Needs confirmation: {len(needs_confirmation)}")
-
-            # Step 6: Enrich items that need confirmation
-            if needs_confirmation:
-                logger.info(f"Enriching {len(needs_confirmation)} unmatched items...")
-                from app.services.receipt_item_enricher import ReceiptItemEnricher
-
-                items_list = db.query(Item).all()
-                enricher = ReceiptItemEnricher(
-                    openai_api_key=settings.openai_api_key,
-                    existing_items=items_list
-                )
-
-                # Extract item names for enrichment
-                item_names = [item.get("original_input", item.get("item_name", "")) for item in needs_confirmation]
-
-                # Batch enrich
-                enriched_items = await enricher.enrich_batch(item_names)
-
-                # Create pending items with enrichment data - using repository
-                pending_items_to_create = []
-                for idx, item_data in enumerate(needs_confirmation):
-                    enriched = enriched_items[idx] if idx < len(enriched_items) else {}
-
-                    pending_item = ReceiptPendingItem(
-                        receipt_scan_id=receipt_scan.id,
-                        item_name=item_data.get("original_input", item_data.get("item_name", "Unknown")),
-                        quantity=item_data.get("quantity", 0),
-                        unit=item_data.get("unit", "unit"),
-                        suggested_item_id=item_data.get("item_id"),
-                        confidence=item_data.get("confidence", 0),
-                        status='pending',
-                        # Enrichment data
-                        canonical_name=enriched.get("canonical_name"),
-                        category=enriched.get("category"),
-                        fdc_id=enriched.get("fdc_id"),
-                        nutrition_data=enriched.get("nutrition_per_100g"),
-                        enrichment_confidence=enriched.get("confidence"),
-                        enrichment_reasoning=enriched.get("reasoning")
-                    )
-                    pending_items_to_create.append(pending_item)
-
-                # Bulk create pending items - using repository
-                receipt_repo.bulk_create_pending_items(pending_items_to_create)
-                logger.info(f"Enriched and saved {len(needs_confirmation)} pending items")
-            else:
-                logger.info("No items need enrichment")
-
-            # Step 7: Update receipt_scan status - using repository
-            receipt_scan = receipt_repo.update_receipt_scan_status(
-                receipt_id=receipt_scan.id,
-                status='completed',
-                items_count=len(receipt_items),
-                auto_added_count=len(auto_added),
-                needs_confirmation_count=len(needs_confirmation)
-            )
-
-            return {
-                "receipt_id": receipt_scan.id,
-                "status": "success",
-                "image_url": s3_url,
-                "total_items": len(receipt_items),
-                "auto_added_count": len(auto_added),
-                "auto_added": auto_added,
-                "needs_confirmation_count": len(needs_confirmation),
-                "needs_confirmation": needs_confirmation
-            }
-
-        except httpx.HTTPError as e:
-            # Mark as failed - using repository
-            receipt_repo.update_receipt_scan_status(
-                receipt_id=receipt_scan.id,
-                status='failed',
-                error_message=f"Receipt scanner error: {str(e)}"
-            )
-
-            logger.error(f"Receipt scanner HTTP error: {e}")
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Receipt scanner failed: {str(e)}")
-
-        except Exception as e:
-            # Mark as failed - using repository
-            receipt_repo.update_receipt_scan_status(
-                receipt_id=receipt_scan.id,
-                status='failed',
-                error_message=str(e)
-            )
-
-            logger.error(f"Receipt processing error: {e}")
-            import traceback
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Receipt processing failed: {str(e)}")
+        return InitiateUploadResponse(
+            receipt_id=receipt_scan.id,
+            presigned_url=presigned_url,
+            s3_key=s3_key,
+            expires_in=3600
+        )
 
     except Exception as e:
-        logger.error(f"Receipt upload error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload receipt: {str(e)}")
+        logger.error(f"Error initiating receipt upload: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to initiate upload: {str(e)}"
+        )
+
+
+@router.post("/process", response_model=ProcessReceiptResponse)
+async def process_receipt(
+    request: ProcessReceiptRequest,
+    current_user: User = Depends(get_current_user),
+    receipt_service: ReceiptProcessingService = Depends(get_receipt_processing_service)
+):
+    """
+    Step 2: Process uploaded receipt after client has uploaded to S3.
+
+    Validates the receipt, calls scanner microservice, normalizes items,
+    and stores unknown items for admin enrichment.
+
+    Args:
+        request: Process request with receipt_id and s3_key
+        current_user: Authenticated user
+        receipt_service: Receipt processing service (injected)
+
+    Returns:
+        ProcessReceiptResponse with processing results
+    """
+    result = await receipt_service.process_receipt(
+        receipt_id=request.receipt_id,
+        s3_key=request.s3_key,
+        user_id=current_user.id
+    )
+
+    return ProcessReceiptResponse(**result)
 
 
 @router.get("/{receipt_id}/pending")

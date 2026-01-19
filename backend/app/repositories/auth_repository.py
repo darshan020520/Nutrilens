@@ -5,7 +5,7 @@ Handles database operations for authentication.
 """
 
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from loguru import logger
 
@@ -144,3 +144,15 @@ class AuthRepository(IAuthRepository):
             logger.error(f"Error creating default notification preferences: {str(e)}")
             self.db.rollback()
             raise
+
+    def get_all_active(self) -> List[User]:
+        """
+        Get all active users.
+
+        Used by notification worker to send scheduled notifications
+        to all active users (daily summaries, weekly reports, inventory alerts).
+
+        Returns:
+            List of User objects where is_active=True
+        """
+        return self.db.query(User).filter(User.is_active == True).all()

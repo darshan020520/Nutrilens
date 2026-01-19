@@ -1,22 +1,26 @@
-#/backend/services/auth.py
+"""
+Auth Service - Business Logic Layer
+
+Handles authentication, user creation, token management.
+Uses AuthRepository for database operations via dependency injection.
+"""
+
 from loguru import logger
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from app.models.database import User,get_db
-from app.models.database import NotificationPreference
+
+from app.models.database import User
 from app.schemas.user import UserCreate
 from app.core.config import settings
+from app.repositories.interfaces.auth_repository import IAuthRepository
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 
 
-# OAuth2 password flow
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-
+# ===== CONFIGURATION =====
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -26,101 +30,37 @@ SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
+# ===== UTILITY FUNCTIONS (Pure functions, no dependencies) =====
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hashed password"""
     return pwd_context.verify(plain_password, hashed_password)
 
+
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token"""
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def verify_token(token: str) -> Optional[dict]:
-    """Verify and decode a JWT token"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
         return None
 
-def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    """Authenticate a user by email and password"""
-    from app.repositories.auth_repository import AuthRepository
-    auth_repo = AuthRepository(db)
-    user = auth_repo.get_by_email(email)
-    if not user or not verify_password(password, user.hashed_password):
-        return None
-    return user
 
-def create_user(db: Session, user_create: UserCreate) -> User:
-    """Create a new user"""
-    from app.repositories.auth_repository import AuthRepository
-    auth_repo = AuthRepository(db)
-    hashed_password = get_password_hash(user_create.password)
-    user = auth_repo.create(user_create.email, hashed_password)
-    auth_repo.create_notification_preferences(user.id)
-    return user
-
-def get_current_user(db: Session, token: str) -> Optional[User]:
-    """Get current user from JWT token"""
-    from app.repositories.auth_repository import AuthRepository
-    auth_repo = AuthRepository(db)
-    payload = verify_token(token)
-    if not payload:
-        return None
-
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-
-    user = auth_repo.get_by_id(int(user_id))
-    return user
-
-
-# ADD this new function for FastAPI dependencies
-def get_current_user_dependency(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-) -> User:
-    """
-    FastAPI dependency version of get_current_user
-    Use this in API endpoints with Depends()
-    """
-    user = get_current_user(db, token)  # Call the existing function
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-def create_default_notification_preferences(db: Session, user_id: int):
-    """
-    Create default notification preferences for new user.
-
-    DEPRECATED: This function is now handled by AuthRepository.
-    Kept for backward compatibility with old code.
-    """
-    from app.repositories.auth_repository import AuthRepository
-    auth_repo = AuthRepository(db)
-    auth_repo.create_notification_preferences(user_id)
-# ADD this helper function
-def _calculate_onboarding_status(user: User) -> dict:
-    """Calculate user's onboarding status and redirect"""
-    
-    # If onboarding complete
+def calculate_onboarding_status(user: User) -> dict:
     if user.onboarding_completed:
         return {
             "completed": True,
@@ -129,8 +69,7 @@ def _calculate_onboarding_status(user: User) -> dict:
             "redirect_to": "/dashboard",
             "next_step_name": None
         }
-    
-    # Calculate completed steps
+
     completed_steps = []
     if user.basic_info_completed:
         completed_steps.append(1)
@@ -140,7 +79,7 @@ def _calculate_onboarding_status(user: User) -> dict:
         completed_steps.append(3)
     if user.preferences_completed:
         completed_steps.append(4)
-    
+
     # Determine next step
     current_step = user.onboarding_current_step
     step_names = {
@@ -149,10 +88,10 @@ def _calculate_onboarding_status(user: User) -> dict:
         3: "path-selection",
         4: "preferences"
     }
-    
+
     next_step_name = step_names.get(current_step, "basic-info")
     redirect_to = f"/onboarding/{next_step_name}"
-    
+
     return {
         "completed": False,
         "current_step": current_step,
@@ -162,24 +101,53 @@ def _calculate_onboarding_status(user: User) -> dict:
     }
 
 
+class AuthService:
 
+    def __init__(self, auth_repo: IAuthRepository):
+        self.auth_repo = auth_repo
 
-def get_current_user_websocket(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-) -> User:
-    """
-    FastAPI dependency version of get_current_user
-    Use this in API endpoints with Depends()
-    """
-    user = get_current_user(db, token)  # Call the existing function
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
+    def authenticate_user(self, email: str, password: str) -> Optional[User]:
+        user = self.auth_repo.get_by_email(email)
+        if not user or not verify_password(password, user.hashed_password):
+            return None
+        return user
 
-# For convenience, create an alias
-get_current_user_for_api = get_current_user_dependency
+    def register_user(self, user_create: UserCreate) -> User:
+
+        existing_user = self.auth_repo.get_by_email(user_create.email)
+        if existing_user:
+            raise ValueError("Email already registered")
+
+        hashed_password = get_password_hash(user_create.password)
+
+        # Create user
+        user = self.auth_repo.create(user_create.email, hashed_password)
+
+        # Create default notification preferences
+        self.auth_repo.create_notification_preferences(user.id)
+
+        return user
+
+    def get_user_from_token(self, token: str) -> Optional[User]:
+        payload = verify_token(token)
+        if not payload:
+            return None
+
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+
+        user = self.auth_repo.get_by_id(int(user_id))
+        return user
+
+    def update_last_login(self, user_id: int) -> Optional[User]:
+        """
+        Update user's last login timestamp.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Updated user object, None if user not found
+        """
+        return self.auth_repo.update_last_login(user_id)

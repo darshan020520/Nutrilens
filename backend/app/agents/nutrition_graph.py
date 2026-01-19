@@ -25,6 +25,7 @@ import operator
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.prebuilt import ToolNode
+from langgraph.types import interrupt
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
@@ -53,6 +54,12 @@ class NutritionState(TypedDict):
     Agent state - persisted to MongoDB via checkpointing.
 
     Follows LangGraph best practice: Simple state with only essential data.
+
+    REFACTORED (2025-01): Added fields for:
+    - Pre-fetched data (replaces read tool calls)
+    - HITL confirmation workflow
+    - Clarification mode
+    - Structured error handling
     """
     # Messages (automatically appended by operator.add)
     messages: Annotated[Sequence[BaseMessage], operator.add]
@@ -76,6 +83,22 @@ class NutritionState(TypedDict):
     # Metrics
     processing_time_ms: float
     cost_usd: float
+
+    # === NEW FIELDS (Refactoring 2025-01) ===
+
+    # Pre-fetched data based on intent (replaces read tool calls)
+    fetched_data: Dict[str, Any]
+
+    # Human-in-the-loop fields for write operations
+    pending_tool_call: Optional[Dict[str, Any]]  # {name, args, id, message}
+    requires_confirmation: bool
+    user_confirmation: Optional[str]  # Response from interrupt ("approved"/"declined")
+
+    # Clarification mode (when intent confidence is low)
+    clarification_mode: bool
+
+    # Error context for friendly error messages
+    fetch_error: Optional[Dict[str, Any]]  # {source, error_type, message}
 
 
 # ============================================================================
@@ -525,6 +548,204 @@ Respond with ONLY valid JSON (no markdown, no extra text):
         return {"intent": "error", "confidence": 0.0, "entities": {}}
 
 
+# ============================================================================
+# CONFIDENCE ROUTING & CLARIFICATION
+# ============================================================================
+
+def route_by_confidence(state: NutritionState) -> Literal["clarify", "fetch"]:
+    """
+    Conditional edge after classify_intent.
+
+    Routes to:
+    - "clarify" if confidence < 0.6 OR intent == "unknown"/"error"
+    - "fetch" if confidence >= 0.6
+
+    Research basis: Low confidence queries benefit from natural LLM clarification
+    rather than guessing (see: Johns Hopkins interruption handling research).
+    """
+    confidence = state.get("confidence", 0.0)
+    intent = state.get("intent", "unknown").lower()
+
+    if confidence < 0.6 or intent in ["unknown", "error"]:
+        logger.info(f"[Edge:route_by_confidence] Low confidence ({confidence:.2f}), routing to clarification")
+        return "clarify"
+    else:
+        logger.info(f"[Edge:route_by_confidence] High confidence ({confidence:.2f}), routing to fetch")
+        return "fetch"
+
+
+def set_clarification_mode_node(state: NutritionState) -> Dict[str, Any]:
+    """
+    Node: Set clarification mode flag.
+
+    When intent confidence is low, this flag tells generate_response_node
+    to ask clarifying questions instead of guessing.
+    """
+    logger.info("[Node:set_clarification_mode] Setting clarification mode")
+    return {"clarification_mode": True}
+
+
+# ============================================================================
+# DATA PRE-FETCHING (Replaces Read Tools)
+# ============================================================================
+
+def fetch_data_node(state: NutritionState) -> Dict[str, Any]:
+    """
+    Node: Pre-fetch data based on classified intent.
+
+    Eliminates tool call overhead (~1,400-3,500 tokens for tool schemas)
+    by deterministically fetching required data based on intent.
+
+    Intent -> Data Mapping:
+    - STATS/WHAT_IF -> nutrition stats (consumed, targets, remaining)
+    - INVENTORY -> inventory_summary + makeable_recipes
+    - MEAL_PLAN -> upcoming meals + today's consumption
+    - MEAL_SUGGESTION -> inventory + goal_aligned_recipes + makeable_recipes
+    - CONVERSATIONAL -> no additional data (profile already in context)
+
+    Research basis: Pre-fetching adds ~0.24ms/token input overhead vs
+    200-400ms per tool call round-trip (OpenAI latency optimization guide).
+    """
+    from app.models.database import SessionLocal
+
+    intent = state.get("intent", "").lower()
+    user_id = state["user_id"]
+
+    logger.info(f"[Node:fetch_data] Intent={intent}, user_id={user_id}")
+
+    # Skip if in clarification mode
+    if state.get("clarification_mode"):
+        logger.info("[Node:fetch_data] Skipping - clarification mode")
+        return {"fetched_data": {}, "fetch_error": None}
+
+    db = SessionLocal()
+    try:
+        context_builder = UserContext(db, user_id)
+        fetched_data = {}
+        fetch_error = None
+
+        try:
+            if intent in ["stats", "what_if"]:
+                # Nutrition statistics - most common query
+                user_context = context_builder.build_context(minimal=True)
+                fetched_data = {
+                    "nutrition_stats": {
+                        "consumed": user_context["today"]["consumed"],
+                        "targets": user_context["targets"],
+                        "remaining": user_context["today"]["remaining"],
+                        "compliance_rate": user_context["today"].get("compliance_rate", 0),
+                        "meals_consumed": user_context["today"].get("meals_consumed", 0),
+                        "meals_pending": user_context["today"].get("meals_pending", 0)
+                    }
+                }
+
+            elif intent == "inventory":
+                # Inventory + makeable recipes
+                user_context = context_builder.build_context(minimal=True)
+                makeable = context_builder.get_makeable_recipes(limit=10)
+                fetched_data = {
+                    "inventory_summary": user_context["inventory_summary"],
+                    "makeable_recipes": makeable
+                }
+
+            elif intent == "meal_plan":
+                # Upcoming meals with full context
+                user_context = context_builder.build_context(minimal=False)
+                fetched_data = {
+                    "upcoming_meals": user_context.get("upcoming", []),
+                    "today_consumption": user_context["today"]
+                }
+
+            elif intent == "meal_suggestion":
+                # Full context for meal suggestions
+                user_context = context_builder.build_context(minimal=True)
+                makeable = context_builder.get_makeable_recipes(limit=10)
+                goal_aligned = context_builder.get_goal_aligned_recipes(count=10)
+                fetched_data = {
+                    "inventory_summary": user_context["inventory_summary"],
+                    "makeable_recipes": makeable,
+                    "goal_aligned_recipes": goal_aligned,
+                    "remaining": user_context["today"]["remaining"]
+                }
+
+            elif intent == "conversational":
+                # General questions - profile already loaded in user_context
+                fetched_data = {}
+
+            else:
+                # Unknown intent fallback - fetch basic stats
+                user_context = context_builder.build_context(minimal=True)
+                fetched_data = {
+                    "nutrition_stats": {
+                        "consumed": user_context["today"]["consumed"],
+                        "targets": user_context["targets"],
+                        "remaining": user_context["today"]["remaining"]
+                    }
+                }
+
+        except Exception as e:
+            logger.error(f"[Node:fetch_data] Error fetching for intent={intent}: {e}")
+            fetch_error = {
+                "source": "fetch_data_node",
+                "error_type": type(e).__name__,
+                "message": str(e),
+                "intent": intent
+            }
+
+        logger.info(f"[Node:fetch_data] Fetched {len(fetched_data)} data categories")
+
+        return {
+            "fetched_data": fetched_data,
+            "fetch_error": fetch_error
+        }
+
+    finally:
+        db.close()
+
+
+# ============================================================================
+# WRITE-ONLY TOOLS (For HITL Confirmation)
+# ============================================================================
+
+def create_write_tools_only() -> List:
+    """
+    Create only write tools for LLM function calling.
+
+    Read tools have been replaced by fetch_data_node.
+    These tools require HITL confirmation before execution.
+    """
+    @tool
+    def log_meal_consumption(user_id: int, meal_log_id: int, portions: float = 1.0) -> str:
+        """Log a planned meal as consumed.
+
+        Args:
+            user_id: User ID performing the action
+            meal_log_id: ID of the meal log to mark as consumed
+            portions: Number of portions consumed (default 1.0)
+
+        Returns:
+            Confirmation message (requires user approval before execution)
+        """
+        # Tool definition only - actual execution in execute_write_node
+        return "PENDING_CONFIRMATION"
+
+    @tool
+    def swap_meal_recipe(user_id: int, meal_log_id: int, new_recipe_id: int) -> str:
+        """Swap a planned meal with a different recipe.
+
+        Args:
+            user_id: User ID performing the action
+            meal_log_id: ID of the meal log to swap
+            new_recipe_id: ID of the new recipe to use
+
+        Returns:
+            Confirmation message (requires user approval before execution)
+        """
+        return "PENDING_CONFIRMATION"
+
+    return [log_meal_consumption, swap_meal_recipe]
+
+
 async def trim_messages_node(state: NutritionState) -> Dict[str, Any]:
     """
     Trim messages to fit context window (official LangGraph pattern).
@@ -573,148 +794,335 @@ async def trim_messages_node(state: NutritionState) -> Dict[str, Any]:
 
 async def generate_response_node(state: NutritionState) -> Dict[str, Any]:
     """
-    Node 3: Generate response using LLM with tools.
+    Node: Generate response using LLM.
 
-    The LLM decides whether to:
-    - Call tools to get data
-    - Respond directly
+    REFACTORED (2025-01):
+    - Uses pre-fetched data from fetch_data_node instead of read tool calls
+    - Only write tools (log_meal_consumption, swap_meal_recipe) available
+    - Handles clarification mode and errors gracefully
+    - Improved uncertainty handling in system prompt
     """
-    logger.info(f"[Node:generate_response] Intent={state.get('intent')}")
+    logger.info(f"[Node:generate_response] Intent={state.get('intent')}, clarification={state.get('clarification_mode')}")
 
     try:
-        # Create stateless tools (no db/user_id needed)
-        tools = create_nutrition_tools_v2()
+        # Get context and state
+        context = state.get("user_context", {})
+        fetched_data = state.get("fetched_data", {})
+        clarification_mode = state.get("clarification_mode", False)
+        fetch_error = state.get("fetch_error")
 
-        # Create LLM with tools bound
+        # Create LLM with only write tools bound (read tools removed)
+        write_tools = create_write_tools_only()
         llm = ChatOpenAI(
             model="gpt-4o",
             temperature=0.7,
             openai_api_key=settings.openai_api_key
-        ).bind_tools(tools)
+        ).bind_tools(write_tools)
 
-        # Build rich system prompt with context
-        context = state.get("user_context", {})
-        profile = context.get("profile", {})
-        today = context.get("today", {})
-        consumed = today.get("consumed", {})
-        targets = context.get("targets", {})
-        remaining = today.get("remaining", {})
-        inventory = context.get("inventory_summary", {})
+        # Build system prompt based on mode
+        if clarification_mode:
+            # Low confidence - ask for clarification
+            system_prompt = f"""You are a nutrition AI assistant for NutriLens. Today is {context.get('current_date', 'unknown')} at {context.get('current_time', 'unknown')}.
 
-        # DEBUG: Log FULL context data
-        import json
-        context_json = json.dumps(context, default=str, indent=2)
-        print(f"\n{'='*100}")
-        print(f"[1] FULL CONTEXT DICTIONARY SENT TO LLM:")
-        print(f"{'='*100}")
-        print(context_json)
-        print(f"{'='*100}\n")
+User {context.get('user_id')} | Goal: {context.get('goal_type', 'general_health')} | Activity: {context.get('activity_level', 'moderate')}
 
-        # OPTIMIZED: Minimal system prompt (~50 tokens)
-        # Tool definitions are sent automatically by OpenAI API - no need to duplicate
-        system_prompt = f"""You are a nutrition AI assistant. Today is {context['current_date']} at {context['current_time']}.
+CLARIFICATION MODE: The user's query was unclear or ambiguous.
 
-User {context['user_id']} | Goal: {context['goal_type']} | Activity: {context['activity_level']}
-{f"Restrictions: {', '.join(context['dietary_restrictions'])}" if context['dietary_restrictions'] else ""}
+YOUR TASK:
+1. Politely acknowledge you're not sure what they meant
+2. Ask a clarifying question
+3. Offer 2-3 specific options they might mean:
+   - Check nutrition stats (calories, protein, etc.)
+   - View meal plan or suggestions
+   - Check inventory or what they can cook
+   - General nutrition advice
 
-Use available tools to fetch current data when needed. Always pass user_id={context['user_id']}.
-Be helpful and conversational.
+Do NOT guess or make assumptions. Be friendly and helpful.
+
+Session: {state.get('session_id')}
+"""
+
+        elif fetch_error:
+            # Data fetch failed - apologize gracefully
+            system_prompt = f"""You are a nutrition AI assistant for NutriLens. Today is {context.get('current_date', 'unknown')} at {context.get('current_time', 'unknown')}.
+
+User {context.get('user_id')} | Goal: {context.get('goal_type', 'general_health')}
+
+NOTE: There was an issue fetching your data. Error type: {fetch_error.get('error_type', 'unknown')}
+
+YOUR TASK:
+1. Apologize briefly for the technical difficulty
+2. Explain you're having trouble accessing the requested information
+3. Offer to help with something else
+
+Do NOT expose technical error details. Be helpful and reassuring.
+
+Session: {state.get('session_id')}
+"""
+
+        else:
+            # Normal mode - use pre-fetched data
+            fetched_data_json = json.dumps(fetched_data, indent=2, default=str) if fetched_data else "{}"
+
+            system_prompt = f"""You are a nutrition AI assistant for NutriLens. Today is {context.get('current_date', 'unknown')} at {context.get('current_time', 'unknown')}.
+
+User {context.get('user_id')} | Goal: {context.get('goal_type', 'general_health')} | Activity: {context.get('activity_level', 'moderate')}
+
+=== YOUR AVAILABLE DATA ===
+{fetched_data_json}
+
+=== INSTRUCTIONS ===
+1. Answer based ONLY on the data provided above
+2. If the data doesn't contain what you need, say "I don't have that information right now"
+3. NEVER hallucinate or make up nutrition numbers, recipes, or meal data
+4. For medical/health advice questions, recommend consulting a healthcare professional
+5. Be conversational and helpful
+
+=== AVAILABLE ACTIONS ===
+You can help the user:
+- log_meal_consumption: Mark a meal as eaten (requires user confirmation)
+- swap_meal_recipe: Change a planned meal to a different recipe (requires user confirmation)
+
+When calling these tools, always include user_id={context.get('user_id')}.
 
 Session: {state.get('session_id')}
 """
 
         # Get conversation messages
-        # Use trimmed messages if available (from previous invocation), otherwise use full history
         conversation_messages = state.get("llm_input_messages", state.get("messages", []))
-        original_count = len(state.get("messages", []))
-
-        print(f"\n{'='*80}")
-        print(f"[TRIM] Messages in state: {original_count}")
-        print(f"[TRIM] Using: {'llm_input_messages' if 'llm_input_messages' in state else 'messages'}")
-        print(f"{'='*80}\n")
 
         # Build final messages list for LLM
         messages = [SystemMessage(content=system_prompt)] + list(conversation_messages)
 
-        # DEBUG: Log FULL system prompt sent to LLM
-        print(f"\n{'='*100}")
-        print(f"[2] COMPLETE SYSTEM PROMPT SENT TO LLM:")
-        print(f"{'='*100}")
-        print(system_prompt)
-        print(f"{'='*100}")
-        print(f"Prompt size: {len(system_prompt)} chars, ~{len(system_prompt)//4} tokens\n")
-
-        # DEBUG: Log conversation messages
-        print(f"\n{'='*100}")
-        print(f"[3] CONVERSATION MESSAGES ({len(conversation_messages)}/{original_count}):")
-        print(f"{'='*100}")
-        for i, msg in enumerate(messages):
-            print(f"Message {i+1} ({type(msg).__name__}):")
-            print(f"  Content: {str(msg.content)[:200]}..." if len(str(msg.content)) > 200 else f"  Content: {msg.content}")
-            print()
-        print(f"{'='*100}\n")
-
-        print(f"[4] CALLING LLM (GPT-4o)...")
+        logger.info(f"[Node:generate_response] Calling LLM with {len(messages)} messages")
         response = await llm.ainvoke(messages)
-        print(f"[4] LLM RESPONDED!")
 
-        # Get ACTUAL token usage from OpenAI API response
+        # Log token usage if available
         if hasattr(response, 'response_metadata') and 'token_usage' in response.response_metadata:
             token_usage = response.response_metadata['token_usage']
-            print(f"\n{'='*80}")
-            print(f"[ACTUAL_TOKENS_FROM_OPENAI_API]")
-            print(f"  Prompt tokens:     {token_usage.get('prompt_tokens', 0):,}")
-            print(f"  Completion tokens: {token_usage.get('completion_tokens', 0):,}")
-            print(f"  Total tokens:      {token_usage.get('total_tokens', 0):,}")
-            print(f"{'='*80}\n")
+            logger.info(f"[Node:generate_response] Tokens: prompt={token_usage.get('prompt_tokens', 0)}, completion={token_usage.get('completion_tokens', 0)}")
 
-        tool_calls_count = len(response.tool_calls) if hasattr(response, 'tool_calls') else 0
-        print(f"[Node:generate_response] Response generated, tool_calls={tool_calls_count}")
-
-        # DEBUG: Log LLM response details
-        print(f"\n{'='*100}")
-        print(f"[5] LLM RESPONSE:")
-        print(f"{'='*100}")
-        print(f"Response type: {type(response)}")
-        print(f"Response content: {response.content[:500]}..." if len(str(response.content)) > 500 else f"Response content: {response.content}")
-        print(f"Tool calls: {tool_calls_count}")
+        # Check for write tool calls - set up for HITL confirmation
+        tool_calls_count = len(response.tool_calls) if hasattr(response, 'tool_calls') and response.tool_calls else 0
+        logger.info(f"[Node:generate_response] Response generated, tool_calls={tool_calls_count}")
 
         if tool_calls_count > 0:
-            print(f"\n⚠️  TOOL CALLS DETECTED:")
-            for tc in response.tool_calls:
-                print(f"  - Tool: {tc.get('name', 'unknown')}")
-                print(f"    Args: {tc.get('args', {})}")
-            print(f"\nQUESTION: {state.get('messages', [])[-1].content if state.get('messages') else 'unknown'}")
-        else:
-            print(f"\n✅ NO TOOL CALLS - LLM used context data directly")
+            # Write tool called - set up for HITL confirmation
+            tool_call = response.tool_calls[0]  # Handle first tool call
+            logger.info(f"[Node:generate_response] Write tool called: {tool_call['name']}, setting up for confirmation")
 
-        print(f"{'='*100}\n")
+            return {
+                "messages": [response],
+                "pending_tool_call": {
+                    "name": tool_call["name"],
+                    "args": tool_call["args"],
+                    "id": tool_call["id"]
+                },
+                "requires_confirmation": True
+            }
 
+        # No tool calls - direct response
         return {"messages": [response]}
 
     except Exception as e:
         logger.error(f"[Node:generate_response] Error: {e}", exc_info=True)
-        error_msg = AIMessage(content=f"I encountered an error: {str(e)}")
+        error_msg = AIMessage(content="I'm sorry, I encountered an issue processing your request. Could you please try again?")
         return {"messages": [error_msg]}
 
 
-def should_use_tools(state: NutritionState) -> Literal["tools", "end"]:
+# ============================================================================
+# HITL (Human-in-the-Loop) NODES
+# ============================================================================
+
+def route_after_response(state: NutritionState) -> Literal["confirm", "end"]:
     """
-    Conditional edge: Check if LLM wants to call tools.
+    Conditional edge after generate_response.
 
     Routes to:
-    - "tools" if LLM made tool calls
-    - "end" if LLM responded directly
+    - "confirm" if a write tool was called and needs confirmation
+    - "end" if no tool calls (direct response)
+    """
+    if state.get("requires_confirmation") and state.get("pending_tool_call"):
+        logger.info("[Edge:route_after_response] Write tool pending, routing to confirmation")
+        return "confirm"
+    else:
+        logger.info("[Edge:route_after_response] No confirmation needed, ending")
+        return "end"
+
+
+def confirm_write_node(state: NutritionState) -> Dict[str, Any]:
+    """
+    Node: Request human confirmation for write operations.
+
+    Uses LangGraph's interrupt() to pause execution and wait for user confirmation.
+    The graph will resume when the API calls Command(resume=...).
+
+    Research basis: HITL confirmation for write operations prevents accidental
+    data modifications (LangChain HITL best practices).
+    """
+    pending_tool = state.get("pending_tool_call")
+
+    if not pending_tool:
+        logger.warning("[Node:confirm_write] No pending tool call")
+        return {"user_confirmation": None}
+
+    tool_name = pending_tool["name"]
+    tool_args = pending_tool["args"]
+
+    # Build human-readable confirmation message
+    if tool_name == "log_meal_consumption":
+        message = f"Log meal (ID: {tool_args.get('meal_log_id')}) as consumed with {tool_args.get('portions', 1.0)} portion(s)?"
+    elif tool_name == "swap_meal_recipe":
+        message = f"Swap meal (ID: {tool_args.get('meal_log_id')}) to recipe ID {tool_args.get('new_recipe_id')}?"
+    else:
+        message = f"Execute {tool_name}?"
+
+    logger.info(f"[Node:confirm_write] Requesting confirmation: {message}")
+
+    # interrupt() pauses execution and returns when resumed via Command(resume=...)
+    user_response = interrupt({
+        "action": tool_name,
+        "params": tool_args,
+        "message": message,
+        "confirmation_required": True
+    })
+
+    # This code runs AFTER the user resumes with Command(resume=...)
+    logger.info(f"[Node:confirm_write] User response: {user_response}")
+
+    return {"user_confirmation": user_response}
+
+
+def execute_write_node(state: NutritionState) -> Dict[str, Any]:
+    """
+    Node: Execute write tool after user confirmation.
+
+    Only executes if user approved. Otherwise returns cancellation message.
+    """
+    from langchain_core.messages import ToolMessage
+    from app.models.database import SessionLocal
+
+    pending_tool = state.get("pending_tool_call")
+    user_confirmation = state.get("user_confirmation")
+
+    if not pending_tool:
+        return {"messages": [AIMessage(content="No action was pending.")]}
+
+    # Check if user approved
+    approved_values = ["approved", "yes", "confirm", "ok", "sure", True]
+    is_approved = user_confirmation in approved_values or (
+        isinstance(user_confirmation, str) and user_confirmation.lower() in approved_values
+    )
+
+    if not is_approved:
+        logger.info(f"[Node:execute_write] User declined: {user_confirmation}")
+        return {
+            "messages": [AIMessage(content="Okay, I've cancelled that action. Is there anything else I can help with?")],
+            "pending_tool_call": None,
+            "requires_confirmation": False
+        }
+
+    # Execute the tool
+    db = SessionLocal()
+    try:
+        tool_name = pending_tool["name"]
+        tool_args = pending_tool["args"]
+        user_id = state["user_id"]
+
+        logger.info(f"[Node:execute_write] Executing {tool_name} with args {tool_args}")
+
+        if tool_name == "log_meal_consumption":
+            service = ConsumptionService(db)
+            result = service.log_meal_consumption(
+                user_id=user_id,
+                meal_data={
+                    "meal_log_id": tool_args.get("meal_log_id"),
+                    "portion_multiplier": tool_args.get("portions", 1.0)
+                }
+            )
+            result_json = json.dumps(result, indent=2, default=str)
+
+        elif tool_name == "swap_meal_recipe":
+            service = MealPlanService(db)
+            result = service.swap_meal(
+                meal_log_id=tool_args.get("meal_log_id"),
+                new_recipe_id=tool_args.get("new_recipe_id")
+            )
+            result_json = json.dumps(result, indent=2, default=str)
+
+        else:
+            result_json = json.dumps({"error": f"Unknown tool: {tool_name}"})
+
+        db.commit()
+        logger.info(f"[Node:execute_write] Executed {tool_name} successfully")
+
+        # Return ToolMessage for LLM to synthesize response
+        tool_message = ToolMessage(
+            content=result_json,
+            tool_call_id=pending_tool.get("id", "unknown")
+        )
+
+        return {
+            "messages": [tool_message],
+            "pending_tool_call": None,
+            "requires_confirmation": False
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Node:execute_write] Error: {e}", exc_info=True)
+        return {
+            "messages": [AIMessage(content=f"Sorry, the action couldn't be completed. Please try again.")],
+            "pending_tool_call": None,
+            "requires_confirmation": False
+        }
+    finally:
+        db.close()
+
+
+async def synthesize_response_node(state: NutritionState) -> Dict[str, Any]:
+    """
+    Node: Generate final response after tool execution.
+
+    Takes the tool result and has LLM create a friendly, conversational response.
     """
     messages = state.get("messages", [])
-    last_message = messages[-1] if messages else None
 
-    if last_message and hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        logger.info(f"[Edge:should_use_tools] Tools requested: {len(last_message.tool_calls)}")
-        return "tools"
+    # Check if last message is a ToolMessage (successful execution)
+    if messages and hasattr(messages[-1], 'content'):
+        last_content = messages[-1].content
+        try:
+            # Try to parse tool result
+            tool_result = json.loads(last_content) if isinstance(last_content, str) else last_content
+        except json.JSONDecodeError:
+            tool_result = {"raw": last_content}
     else:
-        logger.info("[Edge:should_use_tools] No tools needed, ending")
-        return "end"
+        tool_result = {}
+
+    llm = ChatOpenAI(
+        model="gpt-4o",
+        temperature=0.7,
+        openai_api_key=settings.openai_api_key
+    )
+
+    system_prompt = """You are a nutrition assistant. A user action was just completed successfully.
+
+Summarize the result in a friendly, conversational way:
+- Be concise (1-2 sentences)
+- Confirm what was done
+- Optionally mention any relevant follow-up info
+
+Do NOT include technical details or raw JSON."""
+
+    context = state.get("user_context", {})
+    user_message = f"Action completed. Result: {json.dumps(tool_result, default=str)[:500]}"
+
+    response = await llm.ainvoke([
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_message)
+    ])
+
+    return {"messages": [response]}
 
 
 # ============================================================================
@@ -723,53 +1131,78 @@ def should_use_tools(state: NutritionState) -> Literal["tools", "end"]:
 
 def create_nutrition_graph_structure() -> StateGraph:
     """
-    Create the stateless LangGraph workflow structure.
+    Create the refactored LangGraph workflow structure.
 
-    This function is called ONCE at startup to create the graph structure.
-    Tools and nodes are stateless - they get user_id from state and create
-    their own database sessions.
+    REFACTORED (2025-01):
+    - Read tools replaced by deterministic fetch_data_node
+    - Confidence-based routing for clarification
+    - HITL (Human-in-the-Loop) for write operations via interrupt()
 
-    Flow:
-    1. load_context → Fetch user data
-    2. classify_intent → Classify query
-    3. generate_response → LLM with tools
-    4. [Conditional] → Tools if needed, else end
-    5. [Loop] → Back to generate_response after tools
+    NEW FLOW:
+    load_context → classify_intent → [confidence check]
+                                        ↓ (low confidence)
+                                  set_clarification_mode → trim → generate → END
+                                        ↓ (high confidence)
+                                  fetch_data → trim → generate
+                                                        ↓ [has write tool?]
+                                                        ↓ (yes)
+                                  confirm_write (interrupt) → execute_write → synthesize → END
+                                                        ↓ (no)
+                                                       END
     """
-    # Create stateless tools (no db/user_id needed - tools accept user_id as parameter)
-    tools = create_nutrition_tools_v2()
-
     # Create graph
     workflow = StateGraph(NutritionState)
 
-    # Add nodes (all stateless - get data from state)
+    # Add all nodes
     workflow.add_node("load_context", load_context_node)
     workflow.add_node("classify_intent", classify_intent_node)
-    workflow.add_node("trim_messages", trim_messages_node)  # Trim before LLM call
+    workflow.add_node("set_clarification_mode", set_clarification_mode_node)
+    workflow.add_node("fetch_data", fetch_data_node)
+    workflow.add_node("trim_messages", trim_messages_node)
     workflow.add_node("generate_response", generate_response_node)
-    workflow.add_node("tools", ToolNode(tools))
+    workflow.add_node("confirm_write", confirm_write_node)
+    workflow.add_node("execute_write", execute_write_node)
+    workflow.add_node("synthesize_response", synthesize_response_node)
 
-    # Define flow
+    # Define entry point
     workflow.set_entry_point("load_context")
+
+    # Initial flow: load_context → classify_intent
     workflow.add_edge("load_context", "classify_intent")
-    workflow.add_edge("classify_intent", "trim_messages")  # Trim before generating response
+
+    # Confidence-based routing after classify_intent
+    workflow.add_conditional_edges(
+        "classify_intent",
+        route_by_confidence,
+        {
+            "clarify": "set_clarification_mode",
+            "fetch": "fetch_data"
+        }
+    )
+
+    # Clarification path: set_clarification_mode → trim → generate → END
+    workflow.add_edge("set_clarification_mode", "trim_messages")
+
+    # Normal path: fetch_data → trim → generate
+    workflow.add_edge("fetch_data", "trim_messages")
     workflow.add_edge("trim_messages", "generate_response")
 
-    # Conditional edge: tools or end
+    # After generate_response: check for write tool calls
     workflow.add_conditional_edges(
         "generate_response",
-        should_use_tools,
+        route_after_response,
         {
-            "tools": "tools",
+            "confirm": "confirm_write",
             "end": END
         }
     )
 
-    # After tools, loop back to trim_messages (not generate_response directly)
-    # This ensures we trim before every LLM call
-    workflow.add_edge("tools", "trim_messages")
+    # HITL write confirmation flow
+    workflow.add_edge("confirm_write", "execute_write")
+    workflow.add_edge("execute_write", "synthesize_response")
+    workflow.add_edge("synthesize_response", END)
 
-    logger.info("[Graph] Stateless nutrition graph structure created with 4 nodes + conditional routing")
+    logger.info("[Graph] Refactored nutrition graph created with HITL support (9 nodes)")
 
     return workflow
 

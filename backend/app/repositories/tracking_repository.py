@@ -38,6 +38,34 @@ class TrackingRepository(ITrackingRepository):
     # BASIC CRUD OPERATIONS
     # =========================================================================
 
+    async def get_all(self, limit: int = 100, offset: int = 0) -> List[MealLog]:
+        """
+        Get all meal logs with pagination (across all users).
+
+        Note: This method is required by IRepository interface.
+        For user-specific logs, use get_all_for_user() instead.
+
+        Args:
+            limit: Maximum number of items to return
+            offset: Number of items to skip
+
+        Returns:
+            List of meal logs ordered by ID
+        """
+        try:
+            meal_logs = self.db.query(MealLog).options(
+                joinedload(MealLog.recipe),
+                joinedload(MealLog.user)
+            ).order_by(
+                MealLog.id
+            ).limit(limit).offset(offset).all()
+
+            return meal_logs
+
+        except Exception as e:
+            logger.error(f"Error getting all meal logs: {e}")
+            raise
+
     async def get_by_id(
         self,
         meal_log_id: int,
@@ -1196,4 +1224,49 @@ class TrackingRepository(ITrackingRepository):
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error bulk deleting meal logs: {e}")
+            raise
+
+    async def count_consumed_meals_in_range(
+        self,
+        user_id: int,
+        start_date: date,
+        end_date: date
+    ) -> int:
+        """Count consumed meals in date range"""
+        try:
+            start_datetime = datetime.combine(start_date, datetime.min.time())
+            end_datetime = datetime.combine(end_date, datetime.max.time())
+
+            count = self.db.query(func.count(MealLog.id)).filter(
+                and_(
+                    MealLog.user_id == user_id,
+                    MealLog.consumed_datetime >= start_datetime,
+                    MealLog.consumed_datetime <= end_datetime,
+                    MealLog.consumed_datetime.isnot(None)
+                )
+            ).scalar()
+
+            return count or 0
+
+        except Exception as e:
+            logger.error(f"Error counting consumed meals in range: {e}")
+            raise
+
+    async def count_consumed_meals_today(self, user_id: int) -> int:
+        """Count consumed meals today"""
+        try:
+            today = datetime.utcnow().date()
+
+            count = self.db.query(func.count(MealLog.id)).filter(
+                and_(
+                    MealLog.user_id == user_id,
+                    func.date(MealLog.consumed_datetime) == today,
+                    MealLog.consumed_datetime.isnot(None)
+                )
+            ).scalar()
+
+            return count or 0
+
+        except Exception as e:
+            logger.error(f"Error counting consumed meals today: {e}")
             raise

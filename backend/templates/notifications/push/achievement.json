@@ -1,0 +1,13 @@
+{
+  "title": "🏆 Achievement Unlocked!",
+  "body": "{{ message }}",
+  "icon": "achievement_icon",
+  "badge": 1,
+  "sound": "achievement.wav",
+  "click_action": "OPEN_ACHIEVEMENTS",
+  "data": {
+    "achievement_type": "{{ achievement_type }}",
+    "notification_type": "achievement",
+    "action_url": "/achievements"
+  }
+}

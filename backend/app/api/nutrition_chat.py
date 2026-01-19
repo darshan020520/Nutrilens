@@ -12,7 +12,7 @@ Created: 2025-11-10
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 from pydantic import BaseModel
 import logging
 
@@ -20,12 +20,13 @@ from app.models.database import get_db, User
 from app.services.auth import get_current_user_dependency as get_current_user
 from app.agents.nutrition_intelligence import NutritionIntelligence
 from app.agents.nutrition_context import UserContext
-from app.agents.graph_instance import get_compiled_graph
+from app.agents.graph_instance import get_compiled_graph, has_checkpointer
 from app.agents.nutrition_graph import NutritionState
 from app.services.llm_client import LLMClient
 from app.core.config import settings
 from app.core.mongodb import save_chat_message
 from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.types import Command
 import uuid
 import time
 
@@ -61,6 +62,8 @@ class ChatResponse(BaseModel):
     processing_time_ms: Optional[int] = None
     cost_usd: Optional[float] = None
     session_id: Optional[str] = None  # For LangGraph v2 (conversation tracking)
+    requires_confirmation: Optional[bool] = None  # True if write action pending (HITL)
+    pending_action: Optional[Dict[str, Any]] = None  # Details of pending action
 
     class Config:
         json_schema_extra = {
@@ -74,7 +77,9 @@ class ChatResponse(BaseModel):
                 },
                 "processing_time_ms": 245,
                 "cost_usd": 0.0005,
-                "session_id": "abc-123-def"
+                "session_id": "abc-123-def",
+                "requires_confirmation": False,
+                "pending_action": None
             }
         }
 
@@ -91,6 +96,42 @@ class ContextResponse(BaseModel):
                 "success": True,
                 "context": {"user_id": 223, "targets": {}, "today": {}},
                 "context_size_chars": 1250
+            }
+        }
+
+
+class ResumeRequest(BaseModel):
+    """Request to resume an interrupted HITL session"""
+    session_id: str
+    confirmation: Literal["approved", "declined"]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "session_id": "abc-123-def",
+                "confirmation": "approved"
+            }
+        }
+
+
+class SessionStatusResponse(BaseModel):
+    """Response for session status check"""
+    session_id: str
+    status: Literal["awaiting_confirmation", "active", "not_found"]
+    pending_action: Optional[Dict[str, Any]] = None
+    message: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "session_id": "abc-123-def",
+                "status": "awaiting_confirmation",
+                "pending_action": {
+                    "action": "log_meal_consumption",
+                    "params": {"meal_log_id": 123, "portions": 1.0},
+                    "message": "Log meal (ID: 123) as consumed with 1.0 portion(s)?"
+                },
+                "message": "Session is waiting for user confirmation"
             }
         }
 
@@ -381,4 +422,214 @@ async def chat_with_langgraph(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process query: {str(e)}"
+        )
+
+
+# ==================== HITL (Human-in-the-Loop) Endpoints ====================
+
+@router.post("/chat/v2/resume", response_model=ChatResponse)
+async def resume_interrupted_session(
+    request: ResumeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Resume an interrupted chat session with user confirmation.
+
+    **When to use:**
+    When the chat returns a response indicating a write action is pending
+    (e.g., logging a meal, swapping a recipe), the session is paused.
+    Use this endpoint to approve or decline the action.
+
+    **How it works:**
+    1. The `/chat/v2` endpoint may pause (interrupt) when a write tool is called
+    2. The response will include `requires_confirmation: true` in the data
+    3. Call this endpoint with `confirmation: "approved"` or `"declined"`
+    4. The graph resumes and returns the final response
+
+    **Example flow:**
+    ```
+    POST /chat/v2 {"query": "log my lunch"}
+    → Response: "I'll log your lunch. Please confirm..." (session interrupted)
+
+    POST /chat/v2/resume {"session_id": "abc-123", "confirmation": "approved"}
+    → Response: "Done! Your lunch has been logged."
+    ```
+    """
+    start_time = time.time()
+
+    try:
+        session_id = request.session_id
+        confirmation = request.confirmation
+
+        logger.info(f"[V2/Resume] Resuming session={session_id}, user={current_user.id}, confirmation={confirmation}")
+
+        # Validate checkpointer is available (required for interrupt/resume)
+        if not has_checkpointer():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Session persistence not available. Cannot resume interrupted sessions."
+            )
+
+        # Get pre-compiled graph singleton
+        app = get_compiled_graph()
+
+        # Configure with thread_id for state retrieval
+        config = {"configurable": {"thread_id": session_id}}
+
+        # Resume the interrupted graph with user's confirmation
+        # Command(resume=...) continues execution from the interrupt() point
+        result = await app.ainvoke(
+            Command(resume=confirmation),
+            config=config
+        )
+
+        # Extract response from result
+        messages = result.get("messages", [])
+        assistant_messages = [msg for msg in messages if isinstance(msg, AIMessage)]
+        last_message = assistant_messages[-1] if assistant_messages else None
+
+        if last_message:
+            response_text = last_message.content
+            intent = result.get("intent", "unknown")
+        else:
+            response_text = "Action processed." if confirmation == "approved" else "Action cancelled."
+            intent = "action_response"
+
+        # Calculate metrics
+        processing_time = int((time.time() - start_time) * 1000)
+
+        # Save to chat history
+        await save_chat_message(
+            user_id=current_user.id,
+            session_id=session_id,
+            role="system",
+            content=f"User {confirmation} the action"
+        )
+
+        await save_chat_message(
+            user_id=current_user.id,
+            session_id=session_id,
+            role="assistant",
+            content=response_text,
+            intent=intent
+        )
+
+        return ChatResponse(
+            success=True,
+            response=response_text,
+            intent=intent,
+            data={"confirmation": confirmation, "resumed": True},
+            processing_time_ms=processing_time,
+            cost_usd=result.get("cost_usd", 0.0),
+            session_id=session_id
+        )
+
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(f"Error resuming session: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resume session: {str(e)}"
+        )
+
+
+@router.get("/chat/v2/status/{session_id}", response_model=SessionStatusResponse)
+async def get_session_status(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Check if a chat session is awaiting user confirmation.
+
+    **Use case:**
+    When a client reconnects or wants to check if there's a pending action
+    before sending a new message.
+
+    **Response statuses:**
+    - `awaiting_confirmation`: Session has a pending write action (use /resume)
+    - `active`: Session exists but no pending action
+    - `not_found`: Session doesn't exist or has expired
+
+    **Example:**
+    ```
+    GET /chat/v2/status/abc-123
+    → {
+        "session_id": "abc-123",
+        "status": "awaiting_confirmation",
+        "pending_action": {
+            "action": "log_meal_consumption",
+            "message": "Log meal (ID: 123) as consumed?"
+        }
+      }
+    ```
+    """
+    try:
+        logger.info(f"[V2/Status] Checking session={session_id}, user={current_user.id}")
+
+        # Validate checkpointer is available
+        if not has_checkpointer():
+            return SessionStatusResponse(
+                session_id=session_id,
+                status="not_found",
+                message="Session persistence not available"
+            )
+
+        # Get pre-compiled graph singleton
+        app = get_compiled_graph()
+
+        # Configure with thread_id for state retrieval
+        config = {"configurable": {"thread_id": session_id}}
+
+        # Get current state from checkpointer
+        try:
+            state = await app.aget_state(config)
+        except Exception as e:
+            logger.warning(f"[V2/Status] Failed to get state for session={session_id}: {e}")
+            return SessionStatusResponse(
+                session_id=session_id,
+                status="not_found",
+                message="Session not found or expired"
+            )
+
+        if state is None or state.values is None:
+            return SessionStatusResponse(
+                session_id=session_id,
+                status="not_found",
+                message="Session not found"
+            )
+
+        # Check if session has pending confirmation
+        state_values = state.values
+        pending_tool = state_values.get("pending_tool_call")
+        requires_confirmation = state_values.get("requires_confirmation", False)
+
+        # Also check if graph is in interrupted state via state.next
+        is_interrupted = bool(state.next)  # Non-empty next indicates interrupted state
+
+        if requires_confirmation and pending_tool and is_interrupted:
+            return SessionStatusResponse(
+                session_id=session_id,
+                status="awaiting_confirmation",
+                pending_action={
+                    "action": pending_tool.get("name"),
+                    "params": pending_tool.get("args"),
+                    "message": pending_tool.get("message", f"Confirm {pending_tool.get('name')}?")
+                },
+                message="Session is waiting for user confirmation. Use /chat/v2/resume to respond."
+            )
+
+        return SessionStatusResponse(
+            session_id=session_id,
+            status="active",
+            message="Session is active with no pending actions"
+        )
+
+    except Exception as e:
+        logger.error(f"Error checking session status: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check session status: {str(e)}"
         )

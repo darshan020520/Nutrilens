@@ -1,12 +1,14 @@
 from typing import Dict, List, Optional
+from datetime import datetime
 from app.models.database import UserProfile, UserGoal, UserPath, UserPreference
 from app.schemas.user import GoalType, PathType, ActivityLevel
-from sqlalchemy.orm import Session
-from app.repositories.onboarding_repository import OnboardingRepository
+from app.repositories.interfaces.onboarding_repository import IOnboardingRepository
 import math
 
 class OnboardingService:
-    """Service for user onboarding and nutritional calculations"""
+
+    def __init__(self, onboarding_repo: IOnboardingRepository):
+        self.onboarding_repo = onboarding_repo
     
     # Activity level multipliers for TDEE calculation
     ACTIVITY_MULTIPLIERS = {
@@ -108,10 +110,22 @@ class OnboardingService:
        """Get number of meals per day based on path"""
        return len(OnboardingService.MEAL_WINDOWS[path_type])
    
-    def complete_profile(self, db: Session, user_id: int, profile_data: dict) -> UserProfile:
-       """Complete user profile with calculations"""
-       repo = OnboardingRepository(db)
+    def complete_profile(self, user_id: int, profile_data: dict) -> UserProfile:
+       """
+       Complete user profile with calculations.
 
+       Business logic:
+       1. Calculate BMR using Mifflin-St Jeor formula
+       2. Calculate TDEE based on activity level
+       3. Store profile with calculated values
+
+       Args:
+           user_id: User ID
+           profile_data: Profile data (weight, height, age, sex, activity_level)
+
+       Returns:
+           Created or updated UserProfile
+       """
        # Calculate BMR (business logic - stays in service)
        bmr = self.calculate_bmr(
            profile_data['weight_kg'],
@@ -122,25 +136,38 @@ class OnboardingService:
 
        # Calculate TDEE (business logic - stays in service)
        tdee = self.calculate_tdee(bmr, profile_data['activity_level'])
-       print("tdee", tdee)
 
        # Add calculated values to profile data
        profile_data['bmr'] = bmr
        profile_data['tdee'] = tdee
 
-       # Create or update profile using repository
-       profile = repo.create_or_update_profile(user_id, profile_data)
-
-       print("profile", profile.tdee)
+       # Create or update profile using injected repository
+       profile = self.onboarding_repo.create_or_update_profile(user_id, profile_data)
 
        return profile
    
-    def set_user_goal(self, db: Session, user_id: int, goal_data: dict) -> UserGoal:
-       """Set user goal with macro targets"""
-       repo = OnboardingRepository(db)
+    def set_user_goal(self, user_id: int, goal_data: dict) -> UserGoal:
+       """
+       Set user goal with macro targets.
 
+       Business logic:
+       1. Validate profile exists
+       2. Calculate goal calories based on TDEE
+       3. Set default macro targets if not provided
+       4. Store goal
+
+       Args:
+           user_id: User ID
+           goal_data: Goal data (goal_type, optional macro_targets)
+
+       Returns:
+           Created or updated UserGoal
+
+       Raises:
+           ValueError: If profile not completed
+       """
        # Get user profile for TDEE using repository
-       profile = repo.get_profile(user_id)
+       profile = self.onboarding_repo.get_profile(user_id)
        if not profile:
            raise ValueError("Profile must be completed first")
 
@@ -151,47 +178,75 @@ class OnboardingService:
        )
 
        # Update profile with goal calories using repository
-       repo.update_profile_goal_calories(user_id, goal_calories)
+       self.onboarding_repo.update_profile_goal_calories(user_id, goal_calories)
 
        # Get default macros if not provided (business logic - stays in service)
        if 'macro_targets' not in goal_data:
            goal_data['macro_targets'] = self.get_macro_targets(goal_data['goal_type'])
 
-       # Create or update goal using repository
-       goal = repo.create_or_update_goal(user_id, goal_data)
+       # Create or update goal using injected repository
+       goal = self.onboarding_repo.create_or_update_goal(user_id, goal_data)
 
        return goal
    
-    def set_user_path(self, db: Session, user_id: int, path_data: dict) -> UserPath:
-       """Set user eating path with meal windows"""
-       repo = OnboardingRepository(db)
+    def set_user_path(self, user_id: int, path_data: dict) -> UserPath:
+       """
+       Set user eating path with meal windows.
 
+       Business logic:
+       1. Determine meal windows (custom or default by path type)
+       2. Calculate meals per day
+       3. Store path
+
+       Args:
+           user_id: User ID
+           path_data: Path data (path_type, optional custom_windows)
+
+       Returns:
+           Created or updated UserPath
+       """
        # Get meal windows (business logic - stays in service)
        meal_windows = path_data.get('custom_windows') or self.get_meal_windows(path_data['path_type'])
        meals_per_day = len(meal_windows)
 
-       # Create or update path using repository
-       path = repo.create_or_update_path(user_id, path_data['path_type'], meal_windows, meals_per_day)
+       # Create or update path using injected repository
+       path = self.onboarding_repo.create_or_update_path(user_id, path_data['path_type'], meal_windows, meals_per_day)
 
        return path
    
-    def set_user_preferences(self, db: Session, user_id: int, pref_data: dict) -> UserPreference:
-       """Set user dietary preferences"""
-       repo = OnboardingRepository(db)
+    def set_user_preferences(self, user_id: int, pref_data: dict) -> UserPreference:
+       """
+       Set user dietary preferences.
 
-       # Create or update preferences using repository
-       preferences = repo.create_or_update_preferences(user_id, pref_data)
+       Args:
+           user_id: User ID
+           pref_data: Preference data (dietary_type, allergies, etc.)
+
+       Returns:
+           Created or updated UserPreference
+       """
+       # Create or update preferences using injected repository
+       preferences = self.onboarding_repo.create_or_update_preferences(user_id, pref_data)
 
        return preferences
    
-    def get_calculated_targets(self, db: Session, user_id: int) -> dict:
-       """Get all calculated nutritional targets for user"""
-       repo = OnboardingRepository(db)
+    def get_calculated_targets(self, user_id: int) -> dict:
+       """
+       Get all calculated nutritional targets for user.
 
-       # Get all onboarding data using repository
-       profile = repo.get_profile(user_id)
-       goal = repo.get_goal(user_id)
-       path = repo.get_path(user_id)
+       Args:
+           user_id: User ID
+
+       Returns:
+           Dict with BMR, TDEE, goal calories, macros, meal windows
+
+       Raises:
+           ValueError: If onboarding not complete
+       """
+       # Get all onboarding data using injected repository
+       profile = self.onboarding_repo.get_profile(user_id)
+       goal = self.onboarding_repo.get_goal(user_id)
+       path = self.onboarding_repo.get_path(user_id)
 
        if not all([profile, goal, path]):
            raise ValueError("Onboarding incomplete")
@@ -204,3 +259,188 @@ class OnboardingService:
            "meal_windows": path.meal_windows,
            "meals_per_day": path.meals_per_day
        }
+
+    # ===== STEP COMPLETION METHODS (with onboarding tracking) =====
+
+    def complete_basic_info(self, user_id: int, profile_data: dict, onboarding_started_at: Optional[datetime]) -> UserProfile:
+        """
+        Complete basic info step with onboarding tracking.
+
+        Business logic:
+        1. Create/update profile with BMR/TDEE calculations
+        2. Update onboarding tracking fields
+
+        Args:
+            user_id: User ID
+            profile_data: Profile data
+            onboarding_started_at: When user started onboarding (None if first time)
+
+        Returns:
+            Created or updated UserProfile
+        """
+        # Create profile with calculations
+        profile = self.complete_profile(user_id, profile_data)
+
+        # Update onboarding tracking
+        step_updates = {
+            "onboarding_started_at": onboarding_started_at or datetime.utcnow(),
+            "basic_info_completed": True,
+            "onboarding_current_step": 2
+        }
+        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
+
+        return profile
+
+    def complete_goal_selection(self, user_id: int, goal_data: dict) -> UserGoal:
+        """
+        Complete goal selection with onboarding tracking.
+
+        Business logic:
+        1. Set user goal with macro calculations
+        2. Update onboarding tracking fields
+
+        Args:
+            user_id: User ID
+            goal_data: Goal data
+
+        Returns:
+            Created or updated UserGoal
+        """
+        # Set goal with calculations
+        goal = self.set_user_goal(user_id, goal_data)
+
+        # Update onboarding tracking
+        step_updates = {
+            "goal_selection_completed": True,
+            "onboarding_current_step": 3
+        }
+        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
+
+        return goal
+
+    def complete_path_selection(self, user_id: int, path_data: dict) -> UserPath:
+        """
+        Complete path selection with onboarding tracking.
+
+        Business logic:
+        1. Set user eating path with meal windows
+        2. Update onboarding tracking fields
+
+        Args:
+            user_id: User ID
+            path_data: Path data
+
+        Returns:
+            Created or updated UserPath
+        """
+        # Set path with meal windows
+        path = self.set_user_path(user_id, path_data)
+
+        # Update onboarding tracking
+        step_updates = {
+            "path_selection_completed": True,
+            "onboarding_current_step": 4
+        }
+        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
+
+        return path
+
+    def complete_preferences(self, user_id: int, pref_data: dict) -> UserPreference:
+        """
+        Complete preferences and finish onboarding.
+
+        Business logic:
+        1. Set dietary preferences
+        2. Mark onboarding as complete
+
+        Args:
+            user_id: User ID
+            pref_data: Preference data
+
+        Returns:
+            Created or updated UserPreference
+        """
+        # Set preferences
+        preferences = self.set_user_preferences(user_id, pref_data)
+
+        # Complete onboarding
+        step_updates = {
+            "preferences_completed": True,
+            "onboarding_completed": True,
+            "onboarding_completed_at": datetime.utcnow()
+        }
+        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
+
+        return preferences
+
+    async def get_goal_progress(self, user_id: int, current_streak: int) -> Dict[str, Any]:
+        """
+        Get goal progress data for dashboard.
+
+        MOVED FROM: dashboard_orchestrator.py:203-272
+
+        Business logic:
+        1. Get user profile and goal from repository
+        2. Extract weight and goal data with defaults
+        3. Calculate progress percentage based on goal type
+        4. Return formatted goal progress data
+
+        Args:
+            user_id: User ID
+            current_streak: Current streak count (from consumption service)
+
+        Returns:
+            Dictionary with goal progress data
+        """
+        try:
+            # Get user profile and goal from repository
+            user_profile = self.onboarding_repo.get_profile(user_id)
+            user_goal = self.onboarding_repo.get_goal(user_id)
+
+            # Extract data with defaults
+            current_weight = user_profile.weight_kg if user_profile else 70.0
+            target_weight = getattr(user_goal, 'target_weight', None) if user_goal else None
+            if target_weight is None:
+                target_weight = current_weight
+            goal_type = user_goal.goal_type if user_goal else "maintain_weight"
+
+            # Calculate weight change
+            weight_change = target_weight - current_weight
+
+            # Calculate progress percentage based on goal type
+            if goal_type in ["lose_weight", "LOSE_WEIGHT", "fat_loss", "FAT_LOSS"]:
+                starting_weight = getattr(user_goal, 'starting_weight', current_weight) if user_goal else current_weight
+                total_to_lose = starting_weight - target_weight
+                already_lost = starting_weight - current_weight
+                progress_pct = (already_lost / total_to_lose * 100) if total_to_lose > 0 else 0
+            elif goal_type in ["gain_weight", "GAIN_WEIGHT", "muscle_gain", "MUSCLE_GAIN"]:
+                starting_weight = getattr(user_goal, 'starting_weight', current_weight) if user_goal else current_weight
+                total_to_gain = target_weight - starting_weight
+                already_gained = current_weight - starting_weight
+                progress_pct = (already_gained / total_to_gain * 100) if total_to_gain > 0 else 0
+            else:
+                # Maintain weight
+                progress_pct = 100.0 if abs(current_weight - target_weight) < 2 else 0
+
+            return {
+                "goal_type": goal_type,
+                "current_weight": round(current_weight, 1),
+                "target_weight": round(target_weight, 1),
+                "weight_change": round(weight_change, 1),
+                "current_streak": current_streak,
+                "goal_progress_percentage": round(max(0, min(100, progress_pct)), 1)
+            }
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error getting goal progress: {str(e)}")
+            # Return defaults on error
+            return {
+                "goal_type": "maintain_weight",
+                "current_weight": 70.0,
+                "target_weight": 70.0,
+                "weight_change": 0.0,
+                "current_streak": current_streak,
+                "goal_progress_percentage": 0.0
+            }

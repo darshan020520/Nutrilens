@@ -38,6 +38,33 @@ class InventoryRepository(IInventoryRepository):
     # BASIC CRUD OPERATIONS
     # =========================================================================
 
+    async def get_all(self, limit: int = 100, offset: int = 0) -> List[UserInventory]:
+        """
+        Get all inventory items with pagination (across all users).
+
+        Note: This method is required by IRepository interface.
+        For user-specific inventory, use get_all_for_user() instead.
+
+        Args:
+            limit: Maximum number of items to return
+            offset: Number of items to skip
+
+        Returns:
+            List of inventory items ordered by ID
+        """
+        try:
+            inventory_items = self.db.query(UserInventory).options(
+                joinedload(UserInventory.item)
+            ).order_by(
+                UserInventory.id
+            ).limit(limit).offset(offset).all()
+
+            return inventory_items
+
+        except Exception as e:
+            logger.error(f"Error getting all inventory: {e}")
+            raise
+
     async def get_by_id(
         self,
         inventory_id: int,
@@ -116,6 +143,11 @@ class InventoryRepository(IInventoryRepository):
         """
         Get inventory record for a specific item.
 
+        LIMITATION: Returns only ONE UserInventory record.
+        If multiple records exist (different expiry dates), behavior is undefined.
+
+        For FIFO inventory with multiple expiry dates, use get_all_inventory_for_item() instead.
+
         Source: backend/app/services/inventory_service.py (pattern)
 
         Args:
@@ -141,55 +173,147 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error getting inventory for item {item_id}: {e}")
             raise
 
+    async def get_all_inventory_for_item(
+        self,
+        user_id: int,
+        item_id: int,
+        order_by_expiry_desc: bool = True
+    ) -> List[UserInventory]:
+        """
+        Get ALL inventory records for a specific user and item.
+
+        Supports multiple inventory records per item (different expiry dates).
+        This enables FIFO (First In, First Out) inventory management.
+
+        Args:
+            user_id: User ID
+            item_id: Item ID
+            order_by_expiry_desc: If True, orders by expiry_date DESC (newest first)
+                                  If False, orders by expiry_date ASC (oldest first)
+
+        Returns:
+            List of inventory records for the item, ordered by expiry date.
+            Returns empty list if no records found.
+        """
+        try:
+            query = self.db.query(UserInventory).options(
+                joinedload(UserInventory.item)
+            ).filter(
+                and_(
+                    UserInventory.user_id == user_id,
+                    UserInventory.item_id == item_id
+                )
+            )
+
+            # Apply ordering
+            if order_by_expiry_desc:
+                query = query.order_by(UserInventory.expiry_date.desc())
+            else:
+                query = query.order_by(UserInventory.expiry_date.asc())
+
+            return query.all()
+
+        except Exception as e:
+            logger.error(f"Error getting all inventory for item {item_id}: {e}")
+            raise
+
+    async def get_by_item_ids(
+        self,
+        user_id: int,
+        item_ids: List[int]
+    ) -> Dict[int, UserInventory]:
+        """
+        BATCH OPERATION: Get inventory for multiple items in ONE query.
+
+        Solves N+1 query problem by using WHERE item_id IN (...).
+
+        Args:
+            user_id: User ID
+            item_ids: List of item IDs to fetch inventory for
+
+        Returns:
+            Dict mapping item_id to UserInventory
+        """
+        try:
+            # Early exit for empty list
+            if not item_ids:
+                return {}
+
+            # ONE QUERY: Fetch all inventory for all items
+            # SQL: SELECT * FROM user_inventory WHERE user_id = X AND item_id IN (1, 2, 3, ...)
+            inventory_list = self.db.query(UserInventory).options(
+                joinedload(UserInventory.item)
+            ).filter(
+                and_(
+                    UserInventory.user_id == user_id,
+                    UserInventory.item_id.in_(item_ids)
+                )
+            ).all()
+
+            # Convert to dict mapping item_id -> UserInventory
+            result = {inv.item_id: inv for inv in inventory_list}
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting inventory for items {item_ids}: {e}")
+            raise
+
     async def create(self, inventory: UserInventory) -> UserInventory:
         """
         Create new inventory record.
+
+        NOTE: Does NOT commit - caller (service layer) controls transaction.
+        Uses flush() to generate ID without committing.
 
         Args:
             inventory: UserInventory entity to create
 
         Returns:
-            Created inventory with ID populated
+            Created inventory with ID populated (transaction still open)
         """
         try:
             self.db.add(inventory)
-            self.db.commit()
+            self.db.flush()  # ✅ Generate ID without committing transaction
             self.db.refresh(inventory)
 
-            logger.info(f"Created inventory {inventory.id} for user {inventory.user_id}")
+            logger.info(f"Created inventory {inventory.id} for user {inventory.user_id} (pending commit)")
             return inventory
 
         except Exception as e:
-            self.db.rollback()
             logger.error(f"Error creating inventory: {e}")
-            raise
+            raise  # ✅ Service layer will handle rollback
 
     async def update(self, inventory: UserInventory) -> UserInventory:
         """
         Update existing inventory record.
 
+        NOTE: Does NOT commit - caller (service layer) controls transaction.
+        Does NOT modify entity fields - service layer should set all fields.
+
         Args:
             inventory: UserInventory entity to update (must have ID)
 
         Returns:
-            Updated inventory
+            Updated inventory (transaction still open)
         """
         try:
-            inventory.last_updated = datetime.utcnow()
-            self.db.commit()
+            # ✅ Service layer should set last_updated, not repository
+            self.db.flush()  # ✅ Flush changes without committing transaction
             self.db.refresh(inventory)
 
-            logger.info(f"Updated inventory {inventory.id}")
+            logger.info(f"Updated inventory {inventory.id} (pending commit)")
             return inventory
 
         except Exception as e:
-            self.db.rollback()
             logger.error(f"Error updating inventory {inventory.id}: {e}")
-            raise
+            raise  # ✅ Service layer will handle rollback
 
     async def delete(self, inventory_id: int, user_id: int) -> bool:
         """
         Delete inventory record by ID with user validation.
+
+        NOTE: Does NOT commit - caller (service layer) controls transaction.
 
         Args:
             inventory_id: ID of inventory to delete
@@ -206,17 +330,16 @@ class InventoryRepository(IInventoryRepository):
                 )
             ).delete()
 
-            self.db.commit()
+            self.db.flush()  # ✅ Flush deletion without committing
 
             if result > 0:
-                logger.info(f"Deleted inventory {inventory_id}")
+                logger.info(f"Deleted inventory {inventory_id} (pending commit)")
                 return True
             else:
                 logger.warning(f"Inventory {inventory_id} not found for deletion")
                 return False
 
         except Exception as e:
-            self.db.rollback()
             logger.error(f"Error deleting inventory {inventory_id}: {e}")
             raise
 

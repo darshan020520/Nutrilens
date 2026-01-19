@@ -1,15 +1,20 @@
 """
-Embedding Service - Converts text to vector embeddings using OpenAI
+OpenAI Embedding Service - Converts text to vector embeddings using OpenAI API
+
+This is the OpenAI-specific implementation of IEmbeddingService.
+To use a different provider (Anthropic, Cohere, etc.), create a new class
+that implements IEmbeddingService.
 """
-import openai
+from openai import AsyncOpenAI
 from typing import List
 import json
 import logging
+from app.infrastructure.normalization.interfaces import IEmbeddingService
 
 logger = logging.getLogger(__name__)
 
 
-class EmbeddingService:
+class OpenAIEmbeddingService(IEmbeddingService):
     """
     Service for generating text embeddings using OpenAI's API
 
@@ -19,15 +24,15 @@ class EmbeddingService:
     - Cost-efficient operations
     """
 
-    def __init__(self, api_key: str, model: str = "text-embedding-3-small"):
+    def __init__(self, client: AsyncOpenAI, model: str = "text-embedding-3-small"):
         """
         Initialize embedding service
 
         Args:
-            api_key: OpenAI API key
+            client: Singleton AsyncOpenAI client instance
             model: Embedding model to use (default: text-embedding-3-small)
         """
-        self.client = openai.OpenAI(api_key=api_key)
+        self.client = client
         self.model = model
         self.dimension = 1536  # text-embedding-3-small dimension
 

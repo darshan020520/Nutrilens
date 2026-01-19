@@ -2,16 +2,13 @@
 # COMPLETE FIXED VERSION - Addresses all issues from testing
 
 import pulp
-import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 import logging
 from collections import defaultdict
-from sqlalchemy.orm import Session
-import random
-from app.models.database import UserProfile, UserGoal, UserPath, UserPreference, Recipe
-from app.models.database import UserGoal, UserInventory, RecipeIngredient
-from sqlalchemy import cast, String, func
+from app.repositories.interfaces.recipe_repository import IRecipeRepository
+from app.repositories.interfaces.inventory_repository import IInventoryRepository
+from app.repositories.interfaces.user_profile_repository import IUserProfileRepository
 
 
 logger = logging.getLogger(__name__)
@@ -65,16 +62,33 @@ class RecipeScore:
 
 class MealPlanOptimizer:
     """Fixed Linear Programming based meal plan optimizer"""
-    
-    def __init__(self, db_session: Session = None):
-        self.db = db_session
+
+    def __init__(
+        self,
+        recipe_repo: IRecipeRepository,
+        inventory_repo: IInventoryRepository,
+        user_profile_repo: IUserProfileRepository
+    ):
+        """
+        Initialize optimizer with repositories.
+
+        REFACTORED: Now uses repository pattern instead of raw DB session.
+
+        Args:
+            recipe_repo: Recipe repository for recipe queries
+            inventory_repo: Inventory repository for user inventory
+            user_profile_repo: User profile repository for user data
+        """
+        self.recipe_repo = recipe_repo
+        self.inventory_repo = inventory_repo
+        self.user_profile_repo = user_profile_repo
         self.problem = None
         self.x = {}  # Decision variables
         self.recipes = []
         self.days = 0
         self.meals_per_day = 0
         
-    def optimize(
+    async def optimize(
         self,
         user_id: int,
         days: int = 7,
@@ -83,22 +97,25 @@ class MealPlanOptimizer:
         available_recipes: List[Dict] = None,
         inventory: Dict[int, float] = None
     ) -> Optional[Dict]:
-        """Main optimization with proper constraint handling"""
+        """
+        Main optimization with proper constraint handling.
+
+        REFACTORED: Now async to support repository operations.
+        """
         
         try:
             self.days = days
             self.meals_per_day = constraints.meals_per_day if constraints else 3
-            
-            if not constraints:
-                constraints = self._get_user_constraints(user_id)
-            
+
+            # REMOVED: Dead code - constraints are ALWAYS passed from orchestrator
+            # if not constraints:
+            #     constraints = self._get_user_constraints(user_id)
+
             # Get recipes - FIXED to have appropriate calorie ranges
             if available_recipes:
                 self.recipes = available_recipes
             else:
-                print("user_id", user_id)
-                print("constraints", constraints)
-                self.recipes = self._get_filtered_recipes_fixed(user_id, constraints)
+                self.recipes = await self._get_filtered_recipes_fixed(user_id, constraints)
             
             # Filter recipes to those that can help meet constraints
             self.recipes = self._filter_recipes_by_calories(self.recipes, constraints)
@@ -531,79 +548,30 @@ class MealPlanOptimizer:
         
         return meal_plan
     
-    def _get_filtered_recipes_fixed(self, user_id: int, constraints: OptimizationConstraints) -> List[Dict]:
-        """Get actual recipes from database"""
+    async def _get_filtered_recipes_fixed(self, user_id: int, constraints: OptimizationConstraints) -> List[Dict]:
+        """
+        Get actual recipes from database using repositories.
 
-        print("\n" + "="*80)
-        print("DEBUG: _get_filtered_recipes_fixed()")
-        print("="*80)
+        REFACTORED: Now uses recipe_repo and user_profile_repo instead of raw DB queries.
+        """
 
-        # Get user's goal to filter recipes
-        goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+        # REFACTORED: Use user_profile_repo instead of DB query
+        goal = await self.user_profile_repo.get_active_goal(user_id)
         goal_str = goal.goal_type.value.lower() if goal else None
 
-        print(f"User goal: {goal_str}")
-        print(f"Constraints: daily_cal={constraints.daily_calories_min}-{constraints.daily_calories_max}, meals/day={constraints.meals_per_day}")
-        print(f"Dietary restrictions: {constraints.dietary_restrictions}")
-        print(f"Max prep time: {constraints.max_prep_time_minutes}")
+        # Extract dietary type from constraints (it's a list, take first one if exists)
+        dietary_type = constraints.dietary_restrictions[0] if constraints.dietary_restrictions else None
 
-        # Start with all recipes
-        print("\n1. Starting with all recipes in database...")
-        total_recipes = self.db.query(Recipe).count()
-        print(f"   Total recipes in DB: {total_recipes}")
-
-        query = self.db.query(Recipe)
-
-        # Filter by goal if user has one
-        if goal:
-            print(f"\n2. Filtering by goal: {goal_str}")
-            query = query.filter(cast(Recipe.goals, String).contains(goal_str))
-            count_after_goal = query.count()
-            print(f"   Recipes after goal filter: {count_after_goal}")
-
-            # Show sample of filtered recipes
-            sample = query.limit(5).all()
-            print(f"   Sample recipes that passed goal filter:")
-            for r in sample:
-                print(f"     - ID {r.id}: {r.title[:40]} | goals={r.goals} | source={r.source}")
-
-        # Filter by dietary restrictions
-        if constraints.dietary_restrictions:
-            print(f"\n3. Filtering by dietary restrictions: {constraints.dietary_restrictions}")
-            for restriction in constraints.dietary_restrictions:
-                if restriction == 'vegetarian':
-                    query = query.filter(cast(Recipe.dietary_tags, String).contains('vegetarian'))
-                elif restriction == 'vegan':
-                    query = query.filter(cast(Recipe.dietary_tags, String).contains('vegan'))
-            count_after_dietary = query.count()
-            print(f"   Recipes after dietary filter: {count_after_dietary}")
-
-        # Filter by prep time
-        if constraints.max_prep_time_minutes:
-            print(f"\n4. Filtering by prep time: <= {constraints.max_prep_time_minutes} min")
-            query = query.filter(
-                (Recipe.prep_time_min + Recipe.cook_time_min) <= constraints.max_prep_time_minutes
-            )
-            count_after_time = query.count()
-            print(f"   Recipes after prep time filter: {count_after_time}")
-
-        # Execute query
-        print("\n5. Executing query to get all filtered recipes...")
-        recipes_from_db = query.all()
-        print(f"   Total recipes from DB query: {len(recipes_from_db)}")
-
-        # Count by source
-        source_counts = {}
-        for r in recipes_from_db:
-            source = r.source or 'unknown'
-            source_counts[source] = source_counts.get(source, 0) + 1
-        print(f"   Breakdown by source: {source_counts}")
+        recipes_from_db = await self.recipe_repo.get_filtered_recipes(
+            goal_type=goal_str,
+            dietary_type=dietary_type,
+            exclude_allergens=constraints.allergens if constraints.allergens else None,
+            max_prep_time=constraints.max_prep_time_minutes
+        )
 
         # Convert to dict format expected by optimizer
-        print("\n6. Applying calorie range filter...")
         min_cal_per_meal = constraints.daily_calories_min / constraints.meals_per_day * 0.5
         max_cal_per_meal = constraints.daily_calories_max / constraints.meals_per_day * 1.5
-        print(f"   Calorie range per meal: {min_cal_per_meal:.1f} - {max_cal_per_meal:.1f} cal")
 
         recipes = []
         filtered_out_by_calories = []
@@ -633,33 +601,8 @@ class MealPlanOptimizer:
                     'calories': calories
                 })
 
-        print(f"   Recipes passing calorie filter: {len(recipes)}")
-        print(f"   Recipes filtered out by calories: {len(filtered_out_by_calories)}")
-
-        if filtered_out_by_calories:
-            print(f"\n   Sample of recipes filtered out by calorie range:")
-            for r in filtered_out_by_calories[:5]:
-                print(f"     - ID {r['id']}: {r['title']} | {r['calories']:.0f} cal | source={r['source']}")
-
-        # Count by source after calorie filter
-        source_counts_after_cal = {}
-        for r in recipes:
-            source = r.get('source', 'unknown')
-            source_counts_after_cal[source] = source_counts_after_cal.get(source, 0) + 1
-        print(f"\n   Final recipes by source: {source_counts_after_cal}")
-
-        # Show sample of LLM recipes that made it through
-        llm_recipes = [r for r in recipes if r.get('source') == 'llm_generated']
-        print(f"   LLM recipes that passed all filters: {len(llm_recipes)}")
-        if llm_recipes:
-            print(f"   Sample LLM recipes:")
-            for r in llm_recipes[:5]:
-                print(f"     - ID {r['id']}: {r['title'][:40]} | {r['macros_per_serving']['calories']:.0f} cal")
-
         # If we don't have enough recipes, relax the calorie constraints
         if len(recipes) < constraints.meals_per_day * 3:
-            print(f"\n7. NOT ENOUGH RECIPES! Relaxing calorie constraints...")
-            print(f"   Need at least {constraints.meals_per_day * 3} recipes, have {len(recipes)}")
             recipes = []
             for recipe in recipes_from_db:
                 recipes.append({
@@ -674,11 +617,6 @@ class MealPlanOptimizer:
                     'cook_time_min': recipe.cook_time_min or 0,
                     'ingredients': []
                 })
-            print(f"   After relaxing: {len(recipes)} recipes available")
-
-        print("\n" + "="*80)
-        print(f"FINAL: Returning {len(recipes)} recipes to optimizer")
-        print("="*80 + "\n")
 
         return recipes
     
@@ -767,31 +705,39 @@ class MealPlanOptimizer:
         }
     
     # Include all other helper methods from original...
-    def _score_recipes(self, recipes, constraints, inventory, user_id):
-        """Score recipes based on actual user data and inventory"""
-        
-        
-        # Get user's goal
-        goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
+    async def _score_recipes(self, recipes, constraints, inventory, user_id):
+        """
+        Score recipes based on actual user data and inventory.
+
+        REFACTORED: Now uses repositories instead of direct DB queries.
+        """
+
+        # REFACTORED: Use user_profile_repo instead of DB query
+        goal = await self.user_profile_repo.get_active_goal(user_id)
         user_goal_type = goal.goal_type.value if goal else 'general_health'
-        
-        # Get user's current inventory as a dict {item_id: quantity}
+
+        # REFACTORED: Use inventory_repo instead of DB query
         user_inventory = {}
         if inventory:
             user_inventory = inventory
         else:
-            inventory_items = self.db.query(UserInventory).filter_by(user_id=user_id).all()
+            inventory_items = await self.inventory_repo.get_all_for_user(user_id)
             for item in inventory_items:
                 user_inventory[item.item_id] = item.quantity_grams
         
         scored = {}
-        
+
+        # BATCH FETCH: Prevent N+1 query problem
+        # Fetch ALL ingredients for ALL recipes in ONE database query
+        recipe_ids = [r['id'] for r in recipes]
+        all_ingredients_map = await self.recipe_repo.get_ingredients_for_recipes(recipe_ids) if recipe_ids else {}
+
         # Target macros per meal
         target_cal_per_meal = ((constraints.daily_calories_min + constraints.daily_calories_max) / 2) / constraints.meals_per_day
         target_protein_per_meal = constraints.daily_protein_min / constraints.meals_per_day
         target_carbs_per_meal = (constraints.daily_carbs_min + constraints.daily_carbs_max) / 2 / constraints.meals_per_day
         target_fat_per_meal = (constraints.daily_fat_min + constraints.daily_fat_max) / 2 / constraints.meals_per_day
-        
+
         for recipe in recipes:
             score = RecipeScore(recipe_id=recipe['id'])
             
@@ -843,8 +789,8 @@ class MealPlanOptimizer:
             
             # 5. Inventory coverage (0-100) - what % of ingredients are available
             if user_inventory:
-                # Get recipe ingredients
-                recipe_ingredients = self.db.query(RecipeIngredient).filter_by(recipe_id=recipe['id']).all()
+                # REFACTORED: Use pre-fetched ingredients (no DB query in loop!)
+                recipe_ingredients = all_ingredients_map.get(recipe['id'], [])
                 
                 if recipe_ingredients:
                     total_ingredients = len(recipe_ingredients)
@@ -877,59 +823,7 @@ class MealPlanOptimizer:
         return scored
     
     
-    def _get_user_constraints(self, user_id):
-        """Get user constraints from database"""
-        
-        
-        # Fetch all user data
-        profile = self.db.query(UserProfile).filter_by(user_id=user_id).first()
-        goal = self.db.query(UserGoal).filter_by(user_id=user_id, is_active=True).first()
-        path = self.db.query(UserPath).filter_by(user_id=user_id).first()
-        preferences = self.db.query(UserPreference).filter_by(user_id=user_id).first()
-        
-        # If no profile, return defaults
-        if not profile or not profile.goal_calories:
-            return OptimizationConstraints(
-                daily_calories_min=1800,
-                daily_calories_max=2200,
-                daily_protein_min=120,
-                meals_per_day=3,
-                max_recipe_repeat_in_days=2
-            )
-        
-        # Get macro ratios from UserGoal.macro_targets JSON
-        # Format: {"protein": 0.35, "carbs": 0.45, "fat": 0.20}
-        protein_ratio = 0.30  # defaults
-        carb_ratio = 0.40
-        fat_ratio = 0.30
-        
-        if goal and goal.macro_targets:
-            protein_ratio = goal.macro_targets.get('protein', 0.30)
-            carb_ratio = goal.macro_targets.get('carbs', 0.40)
-            fat_ratio = goal.macro_targets.get('fat', 0.30)
-        
-        # Convert ratios to grams using goal_calories
-        daily_protein_g = (profile.goal_calories * protein_ratio) / 4  # 4 cal per g protein
-        daily_carbs_g = (profile.goal_calories * carb_ratio) / 4      # 4 cal per g carbs
-        daily_fat_g = (profile.goal_calories * fat_ratio) / 9         # 9 cal per g fat
-        
-        # Get dietary restrictions - convert enum to string if needed
-        dietary_restrictions = []
-        if preferences and preferences.dietary_type:
-            dietary_restrictions = [preferences.dietary_type.value if hasattr(preferences.dietary_type, 'value') else preferences.dietary_type]
-        
-        return OptimizationConstraints(
-            daily_calories_min=profile.goal_calories * 0.95,
-            daily_calories_max=profile.goal_calories * 1.05,
-            daily_protein_min=daily_protein_g * 0.9,  # Allow 10% flexibility
-            daily_carbs_min=daily_carbs_g * 0.8,
-            daily_carbs_max=daily_carbs_g * 1.2,
-            daily_fat_min=daily_fat_g * 0.8,
-            daily_fat_max=daily_fat_g * 1.2,
-            daily_fiber_min=20,  # Standard recommendation
-            meals_per_day=path.meals_per_day if path else 3,
-            max_recipe_repeat_in_days=2,
-            max_prep_time_minutes=preferences.max_prep_time_weekday if preferences else 60,
-            dietary_restrictions=dietary_restrictions,
-            allergens=preferences.allergies if preferences and preferences.allergies else []
-        )
+    # DELETED: _get_user_constraints() method (lines 880-935)
+    # REASON: 100% DUPLICATE of ConstraintBuilderService.build_constraints()
+    # Constraints are now ALWAYS passed from the orchestrator (built by ConstraintBuilderService)
+    # This method was DEAD CODE - never called because constraints parameter is never None

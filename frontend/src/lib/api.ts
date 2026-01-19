@@ -42,10 +42,10 @@ export function getEndpoint(v1Path: string): string {
     '/inventory/makeable-recipes': '/inventory/v2/makeable-recipes',
     '/inventory/item/': '/inventory/v2/item/',
 
-    // Receipt endpoints
+    // Receipt endpoints (specific paths first, then generic)
     '/receipt/upload': '/receipt/v2/upload',
-    '/receipt/pending': '/receipt/v2/pending',
     '/receipt/confirm-and-seed': '/receipt/v2/confirm-and-seed',
+    '/receipt/': '/receipt/v2/',  // Handles dynamic paths like /receipt/123/pending
 
     // Recipes endpoints
     '/recipes/': '/recipes/v2/',

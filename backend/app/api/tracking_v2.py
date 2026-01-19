@@ -36,14 +36,14 @@ from datetime import datetime, date
 
 # Auth and User
 from app.models.database import User
-from app.services.auth import get_current_user_dependency as get_current_user
 
 # Dependencies (DI)
 from app.dependencies import (
     get_tracking_orchestrator,
     get_external_meal_service,
     get_inventory_management_service,
-    get_consumption_service_v2
+    get_consumption_service_v2,
+    get_current_user
 )
 
 # Orchestrator and Services
@@ -183,9 +183,9 @@ async def log_meal(
             notes=request.notes
         )
 
-        # Transform orchestrator response to match OLD API schema EXACTLY
-        # OLD schema from tracking.py:179-191
-        # Orchestrator wraps service result: result["meal_log"] contains the meal_tracking_service response
+        # Transform orchestrator response to match API schema
+        # Orchestrator returns: {meal_log: {...}, inventory_changes: [...], daily_summary: {...}, insights: [...], recommendations: [...]}
+        # meal_log contains the logged_meal dict from service
         meal_data = result["meal_log"]
 
         return LogMealResponse(
@@ -193,11 +193,11 @@ async def log_meal(
             meal_type=meal_data.get("meal_type", ""),
             recipe_name=meal_data.get("recipe", ""),  # Service returns "recipe" key, not "recipe_name"
             consumed_at=datetime.fromisoformat(meal_data.get("consumed_at")) if isinstance(meal_data.get("consumed_at"), str) else meal_data.get("consumed_at"),
-            macros_consumed=format_macro_nutrients(meal_data.get("macros_consumed", {})),
+            macros_consumed=format_macro_nutrients(meal_data.get("macros", {})),  # FIX: Service returns "macros" not "macros_consumed"
             portion_multiplier=request.portion_multiplier,
-            deducted_items=format_inventory_changes(meal_data.get("deducted_items", [])),
-            daily_totals=meal_data.get("daily_totals", {}),  # Service returns "daily_totals" key
-            remaining_targets=meal_data.get("daily_totals", {}).get("remaining_targets", {}),
+            deducted_items=format_inventory_changes(result.get("inventory_changes", [])),  # FIX: At orchestrator level, not in meal_data
+            daily_totals=result.get("daily_summary", {}),  # FIX: Orchestrator returns "daily_summary" not "daily_totals"
+            remaining_targets=result.get("daily_summary", {}).get("remaining_macros", {}),  # FIX: Use correct path and field name
             insights=format_insights(result.get("insights", [])),  # From orchestrator level
             recommendations=format_recommendations(result.get("recommendations", []))  # From orchestrator level
         )
@@ -252,9 +252,12 @@ async def skip_meal(
             success=True,
             meal_type=skip_data.get("meal_type", ""),
             recipe_name=skip_data.get("recipe_name", ""),
-            skip_reason=request.reason,
-            adherence_impact=skip_data.get("adherence_impact", {}),  # Service returns this directly
-            updated_adherence_rate=skip_data.get("updated_adherence_rate", 0.0)  # Service returns this directly
+            skip_reason=skip_data.get("reason"),
+            adherence_impact=skip_data.get("adherence_impact", {}),
+            updated_adherence_rate=skip_data.get("updated_adherence_rate", 0.0),
+            skip_patterns=skip_data.get("skip_patterns", {}),
+            insights=skip_data.get("insights", []),
+            recommendations=skip_data.get("recommendations", [])
         )
 
     except ValueError as e:
@@ -347,7 +350,8 @@ async def get_consumption_history(
         # Use consumption service to get historical data
         result = await consumption_service.get_consumption_history(
             user_id=current_user.id,
-            days=days
+            days=days,
+            include_details=True
         )
 
         # Transform service response to match OLD API schema EXACTLY
@@ -357,12 +361,12 @@ async def get_consumption_history(
         # daily_data is a LIST from repository, not a dict
         daily_data_list = result.get("daily_data", [])
 
-        # Build history array matching OLD format
+        # Build history array matching OLD format (service already returns correct structure)
         history = []
         for daily_item in daily_data_list:
             history.append({
                 "date": daily_item.get("date", ""),
-                "meals": daily_item.get("meals", [])  # Will be populated if service called with include_details
+                "meals": daily_item.get("meals", [])
             })
 
         # Build statistics from daily_data list
@@ -658,12 +662,25 @@ async def log_external_meal(
     Migrated to: Clean architecture with orchestrator pattern
     """
     try:
-        logger.info(f"POST /tracking/v2/log-external-meal - User {current_user.id}, Dish: {request.meal_data.get('dish_name')}")
+        logger.info(f"POST /tracking/v2/log-external-meal - User {current_user.id}, Dish: {request.dish_name}")
+
+        # Build meal_data dict from request fields (matching v1: tracking.py:936-947)
+        meal_data = {
+            "dish_name": request.dish_name,
+            "portion_size": request.portion_size,
+            "restaurant_name": request.restaurant_name,
+            "cuisine_type": request.cuisine_type,
+            "calories": request.calories,
+            "protein_g": request.protein_g,
+            "carbs_g": request.carbs_g,
+            "fat_g": request.fat_g,
+            "fiber_g": request.fiber_g
+        }
 
         # Use orchestrator for full external meal workflow
         result = await orchestrator.log_external_meal_workflow(
             user_id=current_user.id,
-            meal_data=request.meal_data,
+            meal_data=meal_data,
             meal_log_id_to_replace=request.meal_log_id_to_replace,
             meal_type=request.meal_type,
             notes=request.notes

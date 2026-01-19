@@ -75,12 +75,71 @@ class IInventoryRepository(IRepository[UserInventory]):
         """
         Get inventory record for a specific item.
 
+        LIMITATION: Returns only ONE UserInventory record.
+        If multiple records exist (different expiry dates), behavior is undefined.
+
+        For FIFO inventory with multiple expiry dates, use get_all_inventory_for_item() instead.
+
         Args:
             user_id: User ID
             item_id: Item ID
 
         Returns:
             UserInventory if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def get_all_inventory_for_item(
+        self,
+        user_id: int,
+        item_id: int,
+        order_by_expiry_desc: bool = True
+    ) -> List[UserInventory]:
+        """
+        Get ALL inventory records for a specific user and item.
+
+        Supports multiple inventory records per item (different expiry dates).
+        This enables FIFO (First In, First Out) inventory management.
+
+        Args:
+            user_id: User ID
+            item_id: Item ID
+            order_by_expiry_desc: If True, orders by expiry_date DESC (newest first)
+                                  If False, orders by expiry_date ASC (oldest first)
+
+        Returns:
+            List of inventory records for the item, ordered by expiry date.
+            Returns empty list if no records found.
+        """
+        pass
+
+    @abstractmethod
+    async def get_by_item_ids(
+        self,
+        user_id: int,
+        item_ids: List[int]
+    ) -> Dict[int, UserInventory]:
+        """
+        BATCH OPERATION: Get inventory for multiple items in ONE query.
+
+        Solves N+1 query problem - instead of N queries (one per item),
+        this does 1 query using WHERE item_id IN (...).
+
+        Args:
+            user_id: User ID
+            item_ids: List of item IDs to fetch inventory for
+
+        Returns:
+            Dict mapping item_id to UserInventory:
+            {
+                5: UserInventory(item_id=5, quantity_grams=500, ...),
+                12: UserInventory(item_id=12, quantity_grams=200, ...),
+                ...
+            }
+
+            If user has no inventory for an item, it won't be in the dict.
+            Returns empty dict if item_ids is empty or None.
         """
         pass
 

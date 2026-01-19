@@ -4,36 +4,44 @@ Dependency Injection Configuration
 Provides FastAPI dependencies for repositories, services, and orchestrators.
 """
 
-from fastapi import Depends
+import logging
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, UserPath
+logger = logging.getLogger(__name__)
 
-# Phase 1: Meal Planning (existing dependencies)
-from app.repositories.meal_plan_repository import MealPlanRepository
-from app.repositories.meal_log_repository import MealLogRepository
-from app.repositories.recipe_repository import RecipeRepository
+from app.models.database import get_db, User
+from app.core.config import settings
+from app.core.redis_client import get_redis_client
 from app.repositories.interfaces.meal_plan_repository import IMealPlanRepository
 from app.repositories.interfaces.meal_log_repository import IMealLogRepository
 from app.repositories.interfaces.recipe_repository import IRecipeRepository
+from app.repositories.interfaces import (
+    ITrackingRepository,
+    IInventoryRepository,
+    IConsumptionAnalyticsRepository,
+    IUserProfileRepository
+)
+
+from app.repositories.meal_plan_repository import MealPlanRepository
+from app.repositories.meal_log_repository import MealLogRepository
+from app.repositories.recipe_repository import RecipeRepository
+
 from app.services.meal_plan_service_v2 import MealPlanServiceV2
 from app.services.inventory_service import IntelligentInventoryService
+from app.services.intelligent_inventory_service_v2 import IntelligentInventoryServiceV2
 from app.services.final_meal_optimizer import MealPlanOptimizer
 from app.services.grocery_service import GroceryService
 from app.services.constraint_builder_service import ConstraintBuilderService
 from app.orchestrators.meal_plan_orchestrator import MealPlanOrchestrator
 from app.events.event_publisher import EventPublisher
 
-# Phase 2: Tracking (new dependencies)
-from app.repositories.interfaces import (
-    ITrackingRepository,
-    IInventoryRepository,
-    IConsumptionAnalyticsRepository
-)
+
 from app.repositories import (
     TrackingRepository,
     InventoryRepository,
-    ConsumptionAnalyticsRepository
+    ConsumptionAnalyticsRepository,
+    UserProfileRepository
 )
 from app.services.meal_tracking_service import MealTrackingService
 from app.services.external_meal_service import ExternalMealService
@@ -41,277 +49,293 @@ from app.services.inventory_management_service import InventoryManagementService
 from app.services.consumption_service_v2 import ConsumptionServiceV2
 from app.services.notification_service import NotificationService
 from app.orchestrators.meal_logging_orchestrator import MealLoggingOrchestrator
-from app.events.meal_events import MealEventPublisher
-
-# Phase 3: Dashboard (new dependencies)
 from app.repositories.activity_repository import ActivityRepository
 from app.orchestrators.dashboard_orchestrator import DashboardOrchestrator
 
-# Phase 5: Auth (new dependencies)
 from app.repositories.auth_repository import AuthRepository
 from app.repositories.interfaces.auth_repository import IAuthRepository
+from app.services.auth import AuthService
+from fastapi.security import OAuth2PasswordBearer
 
-# Phase 6: Onboarding (new dependencies)
 from app.repositories.onboarding_repository import OnboardingRepository
 from app.repositories.interfaces.onboarding_repository import IOnboardingRepository
-
-# Phase 8: Receipt (new dependencies)
+from app.services.onboarding import OnboardingService
 from app.repositories.receipt_repository import ReceiptRepository
 from app.repositories.interfaces.receipt_repository import IReceiptRepository
+from app.infrastructure.normalization.factory import create_normalizer
+from app.infrastructure.normalization.batch.batch_normalizer import BatchNormalizer
+from app.infrastructure.normalization.repositories.item_repository import ItemRepository
+from app.services.receipt_processing_service import ReceiptProcessingService
+from app.services.s3_service import S3Service
+from app.infrastructure.events.event_publisher import EventPublisher
+
+from app.infrastructure.normalization.interfaces import LLMTransport
+from app.infrastructure.normalization.adapters.openai_transport import OpenAITransport
+from app.core.llm_clients import get_openai_client
 
 
-# ===== Repository Dependencies =====
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-def get_meal_plan_repository(db: Session = Depends(get_db)) -> IMealPlanRepository:
+def get_auth_repository(db: Session = Depends(get_db)) -> IAuthRepository:
+    return AuthRepository(db)
+
+
+def get_auth_service(
+    auth_repo: IAuthRepository = Depends(get_auth_repository)
+) -> AuthService:
+    return AuthService(auth_repo=auth_repo)
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> User:
+
+    user = auth_service.get_user_from_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return user
+
+
+def get_onboarding_repository(db: Session = Depends(get_db)) -> IOnboardingRepository:
+    return OnboardingRepository(db)
+
+
+def get_onboarding_service(
+    onboarding_repo: IOnboardingRepository = Depends(get_onboarding_repository)
+) -> OnboardingService:
+    return OnboardingService(onboarding_repo=onboarding_repo)
+
+
+def get_receipt_repository(db: Session = Depends(get_db)) -> IReceiptRepository:
+    return ReceiptRepository(db)
+
+
+_s3_service = None
+
+
+def get_s3_service():
     """
-    Provide meal plan repository.
+    Get singleton S3Service instance.
 
-    Args:
-        db: Database session
+    Creates S3Service once on first call and reuses it for all subsequent calls.
+    Thread-safe: boto3 client is created once, avoiding concurrent creation issues.
 
     Returns:
-        Meal plan repository implementation
+        S3Service for S3 operations
     """
+    global _s3_service
+    if _s3_service is None:
+        from app.services.s3_service import S3Service
+        _s3_service = S3Service(
+            access_key=settings.s3_access_key,
+            secret_key=settings.s3_secret_key,
+            region=settings.s3_region,
+            bucket_name=settings.s3_bucket
+        )
+    return _s3_service
+
+
+def get_meal_plan_repository(db: Session = Depends(get_db)) -> IMealPlanRepository:
+
     return MealPlanRepository(db)
 
 
 def get_meal_log_repository(db: Session = Depends(get_db)) -> IMealLogRepository:
-    """
-    Provide meal log repository.
 
-    Args:
-        db: Database session
-
-    Returns:
-        Meal log repository implementation
-    """
     return MealLogRepository(db)
 
 
 def get_recipe_repository(db: Session = Depends(get_db)) -> IRecipeRepository:
-    """
-    Provide recipe repository.
 
-    Args:
-        db: Database session
-
-    Returns:
-        Recipe repository implementation
-    """
     return RecipeRepository(db)
 
 
 # ===== Service Dependencies =====
 
 def get_inventory_service(db: Session = Depends(get_db)) -> IntelligentInventoryService:
-    """
-    Provide inventory service.
 
-    Args:
-        db: Database session
-
-    Returns:
-        Inventory service
-    """
     return IntelligentInventoryService(db)
 
 
-def get_meal_plan_optimizer(db: Session = Depends(get_db)) -> MealPlanOptimizer:
-    """
-    Provide meal plan optimizer.
-
-    Args:
-        db: Database session
-
-    Returns:
-        Meal plan optimizer
-    """
-    return MealPlanOptimizer(db)
+def get_user_profile_repository(db: Session = Depends(get_db)) -> IUserProfileRepository:
+    """Get user profile repository instance"""
+    return UserProfileRepository(db)
 
 
-def get_grocery_service(db: Session = Depends(get_db)) -> GroceryService:
-    """
-    Provide grocery service.
-
-    Args:
-        db: Database session
-
-    Returns:
-        Grocery service
-    """
-    return GroceryService(db)
-
-
-def get_constraint_builder_service(db: Session = Depends(get_db)) -> ConstraintBuilderService:
-    """
-    Provide constraint builder service.
-
-    Args:
-        db: Database session
-
-    Returns:
-        Constraint builder service
-    """
-    return ConstraintBuilderService(db)
+def get_constraint_builder_service(
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository)
+) -> ConstraintBuilderService:
+    """Get constraint builder service with repository dependency"""
+    return ConstraintBuilderService(user_profile_repo)
 
 
 def get_meal_plan_service_v2(
     meal_plan_repo: IMealPlanRepository = Depends(get_meal_plan_repository),
     meal_log_repo: IMealLogRepository = Depends(get_meal_log_repository),
     recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
-    inventory_service: IntelligentInventoryService = Depends(get_inventory_service)
+    inventory_service: IntelligentInventoryService = Depends(get_inventory_service),
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository)
 ) -> MealPlanServiceV2:
     """
-    Provide meal plan service V2 with injected dependencies.
-
-    Args:
-        meal_plan_repo: Meal plan repository
-        meal_log_repo: Meal log repository
-        recipe_repo: Recipe repository
-        inventory_service: Inventory service
-
-    Returns:
-        Meal plan service V2
+    Get meal plan service with all repository dependencies.
+    REFACTORED: Added user_profile_repo for get_alternatives_for_meal()
     """
     return MealPlanServiceV2(
         meal_plan_repo=meal_plan_repo,
         meal_log_repo=meal_log_repo,
         recipe_repo=recipe_repo,
-        inventory_service=inventory_service
+        inventory_service=inventory_service,
+        user_profile_repo=user_profile_repo
     )
 
 
-# ===== Event Dependencies =====
-
-# Singleton event publisher (shared across app)
 _event_publisher = None
 
 
 def get_event_publisher() -> EventPublisher:
-    """
-    Provide event publisher singleton.
 
-    Returns:
-        Event publisher instance
-    """
     global _event_publisher
     if _event_publisher is None:
         _event_publisher = EventPublisher()
     return _event_publisher
 
 
-# ===== Orchestrator Dependencies =====
 
 def get_meal_plan_orchestrator(
     meal_plan_service: MealPlanServiceV2 = Depends(get_meal_plan_service_v2),
     optimizer: MealPlanOptimizer = Depends(get_meal_plan_optimizer),
     grocery_service: GroceryService = Depends(get_grocery_service),
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository),
     event_publisher: EventPublisher = Depends(get_event_publisher)
 ) -> MealPlanOrchestrator:
-    """
-    Provide meal plan orchestrator with all dependencies.
 
-    Args:
-        meal_plan_service: Meal plan service
-        optimizer: Meal plan optimizer
-        grocery_service: Grocery service
-        event_publisher: Event publisher
-
-    Returns:
-        Meal plan orchestrator
-    """
     return MealPlanOrchestrator(
         meal_plan_service=meal_plan_service,
         optimizer=optimizer,
         grocery_service=grocery_service,
+        user_profile_repo=user_profile_repo,
         event_publisher=event_publisher
     )
 
 
-# ===== Helper Dependencies =====
-
-def get_user_meal_windows(
-    user_id: int,
-    db: Session = Depends(get_db)
-) -> list:
-    """
-    Get user's meal timing windows.
-
-    COPY-PASTED FROM: planning_agent.py:1034-1035
-
-    Args:
-        user_id: User ID
-        db: Database session
-
-    Returns:
-        List of meal windows
-    """
-    # COPY-PASTED FROM planning_agent.py:1034-1035 - NO CHANGES
-    user_path = db.query(UserPath).filter_by(user_id=user_id).first()
-    meal_windows = user_path.meal_windows if user_path and user_path.meal_windows else []
-
-    return meal_windows
-
-
-# ===== Phase 2: Tracking Dependencies =====
-
-# Repository Dependencies (Phase 2)
-
 def get_tracking_repository(db: Session = Depends(get_db)) -> ITrackingRepository:
-    """
-    Provide tracking repository for Phase 2.
 
-    Args:
-        db: Database session
-
-    Returns:
-        Tracking repository implementation
-    """
     return TrackingRepository(db)
 
 
 def get_inventory_repository(db: Session = Depends(get_db)) -> IInventoryRepository:
-    """
-    Provide inventory repository for Phase 2.
 
-    Args:
-        db: Database session
-
-    Returns:
-        Inventory repository implementation
-    """
     return InventoryRepository(db)
+
+
+def get_grocery_service(
+    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
+    inventory_repo: IInventoryRepository = Depends(get_inventory_repository)
+) -> GroceryService:
+    """
+    Get grocery service instance with repository dependencies.
+    REFACTORED: Now injects repositories instead of raw DB session.
+    """
+    return GroceryService(
+        recipe_repo=recipe_repo,
+        inventory_repo=inventory_repo
+    )
+
+
+def get_meal_plan_optimizer(
+    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
+    inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository)
+) -> MealPlanOptimizer:
+    """
+    Get meal plan optimizer instance with repository dependencies.
+
+    REFACTORED: Now injects repositories instead of raw DB session.
+    """
+    return MealPlanOptimizer(
+        recipe_repo=recipe_repo,
+        inventory_repo=inventory_repo,
+        user_profile_repo=user_profile_repo
+    )
+
+
+def get_item_repository(db: Session = Depends(get_db)) -> ItemRepository:
+    """
+    Create ItemRepository instance for infrastructure layer access.
+
+    NOTE: This creates a new instance per request. The ItemRepository
+    inside the normalizer factory is a singleton, but this allows
+    the service layer to have direct access to Item queries when needed.
+    """
+    redis_client = get_redis_client()
+
+    from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
+    cache_adapter = RedisCacheAdapter(redis_client=redis_client)
+
+    return ItemRepository(db=db, cache_adapter=cache_adapter)
+
+
+async def get_intelligent_inventory_service_v2(
+    inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
+    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
+    item_repo: ItemRepository = Depends(get_item_repository),
+    db: Session = Depends(get_db)
+) -> IntelligentInventoryServiceV2:
+
+    # Get centralized Redis client
+    redis_client = get_redis_client()
+
+    # Create adapters with singleton clients (lightweight wrappers)
+    llm_orchestrator = await get_llm_orchestrator()
+    embedding_adapter = await get_openai_embedding_adapter()
+
+    # Create normalizer per-request (stateless wrapper around singletons)
+    normalizer = await create_normalizer(
+        db=db,
+        redis_client=redis_client,
+        llm_orchestrator=llm_orchestrator,
+        embedding_adapter=embedding_adapter
+    )
+
+    return IntelligentInventoryServiceV2(
+        inventory_repo=inventory_repo,
+        recipe_repo=recipe_repo,
+        normalizer=normalizer,
+        item_repo=item_repo,
+        db=db
+    )
+
+
+def get_receipt_processing_service(
+    receipt_repo: IReceiptRepository = Depends(get_receipt_repository),
+    s3_service: S3Service = Depends(get_s3_service),
+    inventory_service: IntelligentInventoryServiceV2 = Depends(get_intelligent_inventory_service_v2)
+) -> ReceiptProcessingService:
+    """Get receipt processing service with all dependencies"""
+    return ReceiptProcessingService(
+        receipt_repo=receipt_repo,
+        s3_service=s3_service,
+        inventory_service=inventory_service,
+        scanner_url=settings.receipt_scanner_url
+    )
 
 
 def get_consumption_analytics_repository(
     db: Session = Depends(get_db)
 ) -> IConsumptionAnalyticsRepository:
-    """
-    Provide consumption analytics repository for Phase 2.
 
-    Args:
-        db: Database session
-
-    Returns:
-        Consumption analytics repository implementation
-    """
     return ConsumptionAnalyticsRepository(db)
 
 
-# Service Dependencies (Phase 2)
 
-def get_notification_service() -> NotificationService:
-    """
-    Provide notification service.
+def get_notification_service(db: Session = Depends(get_db)) -> NotificationService:
 
-    Returns:
-        Notification service instance
-
-    Note:
-        NotificationService is stateless, so we create a new instance per request.
-        In production, you might want to use a singleton pattern with connection pooling.
-    """
-    return NotificationService()
+    return NotificationService(db)
 
 
 def get_meal_tracking_service(
@@ -320,18 +344,7 @@ def get_meal_tracking_service(
     analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
     notification_service: NotificationService = Depends(get_notification_service)
 ) -> MealTrackingService:
-    """
-    Provide meal tracking service with injected dependencies.
 
-    Args:
-        tracking_repo: Tracking repository
-        inventory_repo: Inventory repository
-        analytics_repo: Analytics repository
-        notification_service: Notification service
-
-    Returns:
-        Meal tracking service instance
-    """
     return MealTrackingService(
         tracking_repo=tracking_repo,
         inventory_repo=inventory_repo,
@@ -344,16 +357,7 @@ def get_external_meal_service(
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
     analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository)
 ) -> ExternalMealService:
-    """
-    Provide external meal service with injected dependencies.
 
-    Args:
-        tracking_repo: Tracking repository
-        analytics_repo: Analytics repository
-
-    Returns:
-        External meal service instance
-    """
     return ExternalMealService(
         tracking_repo=tracking_repo,
         analytics_repo=analytics_repo
@@ -365,17 +369,7 @@ def get_inventory_management_service(
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
     db: Session = Depends(get_db)
 ) -> InventoryManagementService:
-    """
-    Provide inventory management service with injected dependencies.
 
-    Args:
-        inventory_repo: Inventory repository
-        tracking_repo: Tracking repository
-        db: Database session (required by service for complex queries)
-
-    Returns:
-        Inventory management service instance
-    """
     return InventoryManagementService(
         inventory_repo=inventory_repo,
         tracking_repo=tracking_repo,
@@ -389,18 +383,7 @@ def get_consumption_service_v2(
     analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
     db: Session = Depends(get_db)
 ) -> ConsumptionServiceV2:
-    """
-    Provide consumption service V2 with injected dependencies.
 
-    Args:
-        tracking_repo: Tracking repository
-        inventory_repo: Inventory repository
-        analytics_repo: Analytics repository
-        db: Database session (for backward compatibility)
-
-    Returns:
-        Consumption service V2 instance
-    """
     return ConsumptionServiceV2(
         tracking_repo=tracking_repo,
         inventory_repo=inventory_repo,
@@ -409,62 +392,16 @@ def get_consumption_service_v2(
     )
 
 
-# Event Publisher Dependencies (Phase 2)
-
-# Singleton meal event publisher (shared across app)
-_meal_event_publisher = None
-
-
-def get_meal_event_publisher() -> MealEventPublisher:
-    """
-    Provide meal event publisher singleton.
-
-    Returns:
-        Meal event publisher instance
-
-    Note:
-        WebSocket manager and event bus are optional dependencies.
-        They can be injected here when those systems are implemented.
-    """
-    global _meal_event_publisher
-    if _meal_event_publisher is None:
-        # TODO: Inject WebSocket manager and event bus when available
-        _meal_event_publisher = MealEventPublisher(
-            websocket_manager=None,  # Placeholder
-            event_bus=None  # Placeholder
-        )
-    return _meal_event_publisher
-
-
-# Orchestrator Dependencies (Phase 2)
-
 def get_meal_logging_orchestrator(
     meal_tracking_service: MealTrackingService = Depends(get_meal_tracking_service),
     external_meal_service: ExternalMealService = Depends(get_external_meal_service),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
     consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
     notification_service: NotificationService = Depends(get_notification_service),
-    event_publisher: MealEventPublisher = Depends(get_meal_event_publisher),
+    event_publisher: EventPublisher = Depends(get_event_publisher),
     db: Session = Depends(get_db)
 ) -> MealLoggingOrchestrator:
-    """
-    Provide meal logging orchestrator with all dependencies.
-
-    This is the top-level orchestrator that coordinates all services
-    for meal logging workflows in Phase 2.
-
-    Args:
-        meal_tracking_service: Meal tracking service
-        external_meal_service: External meal service
-        inventory_service: Inventory management service
-        consumption_service: Consumption service V2
-        notification_service: Notification service
-        event_publisher: Meal event publisher
-        db: Database session (for transaction management)
-
-    Returns:
-        Meal logging orchestrator instance
-    """
+    """Get meal logging orchestrator with all dependencies including new EventPublisher"""
     return MealLoggingOrchestrator(
         meal_tracking_service=meal_tracking_service,
         external_meal_service=external_meal_service,
@@ -476,165 +413,346 @@ def get_meal_logging_orchestrator(
     )
 
 
-# Convenience Dependencies (Phase 2)
 
 def get_tracking_orchestrator(
     orchestrator: MealLoggingOrchestrator = Depends(get_meal_logging_orchestrator)
 ) -> MealLoggingOrchestrator:
-    """
-    Convenience dependency for endpoints that need the meal logging orchestrator.
 
-    This is the primary dependency that Phase 2 endpoints should use.
-
-    Args:
-        orchestrator: Orchestrator instance
-
-    Returns:
-        Meal logging orchestrator instance
-
-    Usage in endpoints:
-        @router.post("/log-meal")
-        async def log_meal(
-            orchestrator: MealLoggingOrchestrator = Depends(get_tracking_orchestrator),
-            ...
-        ):
-            return await orchestrator.log_planned_meal(...)
-    """
     return orchestrator
 
 
-# ===== Phase 3: Dashboard Dependencies =====
 
-# Repository Dependencies (Phase 3)
 
 def get_activity_repository(db: Session = Depends(get_db)) -> ActivityRepository:
-    """
-    Provide activity repository for Phase 3.
-
-    Args:
-        db: Database session
-
-    Returns:
-        Activity repository implementation
-    """
     return ActivityRepository(db)
 
 
-# Orchestrator Dependencies (Phase 3)
+
 
 def get_dashboard_orchestrator(
     consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
     meal_plan_service: MealPlanServiceV2 = Depends(get_meal_plan_service_v2),
-    activity_repo: ActivityRepository = Depends(get_activity_repository),
-    db: Session = Depends(get_db)
+    onboarding_service: OnboardingService = Depends(get_onboarding_service),
+    activity_repo: ActivityRepository = Depends(get_activity_repository)
 ) -> DashboardOrchestrator:
-    """
-    Provide dashboard orchestrator with all dependencies.
 
-    This orchestrator coordinates existing services from Phase 1 & 2
-    to build dashboard summary data.
-
-    Args:
-        consumption_service: Consumption service V2 (from Phase 2)
-        inventory_service: Inventory management service (from Phase 2)
-        meal_plan_service: Meal plan service V2 (from Phase 1)
-        activity_repo: Activity repository (new in Phase 3)
-        db: Database session (for direct queries)
-
-    Returns:
-        Dashboard orchestrator instance
-
-    Usage in endpoints:
-        @router.get("/summary")
-        async def get_dashboard_summary(
-            orchestrator: DashboardOrchestrator = Depends(get_dashboard_orchestrator),
-            ...
-        ):
-            return await orchestrator.get_dashboard_summary(...)
-    """
     return DashboardOrchestrator(
         consumption_service=consumption_service,
         inventory_service=inventory_service,
         meal_plan_service=meal_plan_service,
-        activity_repo=activity_repo,
-        db=db
+        onboarding_service=onboarding_service,
+        activity_repo=activity_repo
     )
 
 
-# ===== Phase 5: Auth Dependencies =====
+_event_publisher = None
+_websocket_observer = None
+_notification_observer = None
 
-# Repository Dependencies (Phase 5)
 
-def get_auth_repository(db: Session = Depends(get_db)) -> IAuthRepository:
+def create_achievement_service(db: Session):
     """
-    Provide auth repository for Phase 5.
+    Factory function to create AchievementService.
+    Used at STARTUP - does NOT use Depends().
 
     Args:
-        db: Database session
+        db: Database session (created manually at startup)
 
     Returns:
-        Auth repository implementation
-
-    Usage in endpoints:
-        @router.post("/register")
-        async def register(
-            auth_repo: AuthRepository = Depends(get_auth_repository),
-            ...
-        ):
-            existing_user = auth_repo.get_by_email(email)
-            ...
+        AchievementService instance
     """
-    return AuthRepository(db)
+    from app.services.achievement_service import AchievementService
+
+    tracking_repo = TrackingRepository(db)
+    user_profile_repo = UserProfileRepository(db)
+
+    return AchievementService(
+        tracking_repo=tracking_repo,
+        user_profile_repo=user_profile_repo
+    )
 
 
-# ===== Phase 6: Onboarding Dependencies =====
-
-# Repository Dependencies (Phase 6)
-
-def get_onboarding_repository(db: Session = Depends(get_db)) -> IOnboardingRepository:
+def create_notification_observer(db: Session):
     """
-    Provide onboarding repository for Phase 6.
+    Factory function to create NotificationObserver.
+    Used at STARTUP - does NOT use Depends().
 
     Args:
-        db: Database session
+        db: Database session (created manually at startup)
 
     Returns:
-        Onboarding repository implementation
-
-    Usage in endpoints:
-        @router.post("/basic-info")
-        async def submit_basic_info(
-            onboarding_repo: OnboardingRepository = Depends(get_onboarding_repository),
-            ...
-        ):
-            onboarding_repo.update_user_onboarding_step(user_id, updates)
-            ...
+        NotificationObserver instance with services injected
     """
-    return OnboardingRepository(db)
+    from app.infrastructure.observers.notification_observer import NotificationObserver
+
+    # Create services manually
+    achievement_service = create_achievement_service(db)
+    notification_service = NotificationService(db)
+
+    return NotificationObserver(
+        achievement_service=achievement_service,
+        notification_service=notification_service
+    )
 
 
-# ===== Phase 8: Receipt Dependencies =====
-
-# Repository Dependencies (Phase 8)
-
-def get_receipt_repository(db: Session = Depends(get_db)) -> IReceiptRepository:
+def create_websocket_observer():
     """
-    Provide receipt repository for Phase 8.
+    Factory function to create WebSocketObserver.
+    Used at STARTUP - does NOT use Depends().
+
+    Returns:
+        WebSocketObserver instance
+    """
+    from app.infrastructure.observers.websocket_observer import WebSocketObserver
+    from app.services.websocket_manager import websocket_manager
+
+    return WebSocketObserver(websocket_manager)
+
+
+def initialize_event_publisher(db: Session):
+    """
+    Initialize EventPublisher with observers attached.
+    Called ONCE at startup in main.py lifespan event.
 
     Args:
-        db: Database session
+        db: Database session (created manually at startup)
 
     Returns:
-        Receipt repository implementation
-
-    Usage in endpoints:
-        @router.post("/upload")
-        async def upload_receipt(
-            receipt_repo: ReceiptRepository = Depends(get_receipt_repository),
-            ...
-        ):
-            receipt_scan = receipt_repo.create_receipt_scan(user_id, s3_url)
-            ...
+        EventPublisher singleton with observers attached
     """
-    return ReceiptRepository(db)
+    global _event_publisher, _websocket_observer, _notification_observer
+
+    if _event_publisher is None:
+        _event_publisher = EventPublisher()
+
+        # Create observers using factory functions
+        _websocket_observer = create_websocket_observer()
+        _notification_observer = create_notification_observer(db)
+
+        # Attach observers
+        _event_publisher.attach(_websocket_observer)
+        _event_publisher.attach(_notification_observer)
+
+        logger.info("EventPublisher initialized with 2 observers attached")
+
+    return _event_publisher
+
+
+def get_event_publisher():
+    """
+    Get EventPublisher singleton.
+    Called from route handlers via Depends().
+
+    Returns:
+        EventPublisher singleton
+
+    Raises:
+        RuntimeError: If EventPublisher not initialized at startup
+    """
+    global _event_publisher
+    if _event_publisher is None:
+        raise RuntimeError(
+            "EventPublisher not initialized. "
+            "Call initialize_event_publisher() at startup."
+        )
+    return _event_publisher
+
+
+# ============================================================================
+# LLM ADAPTER DEPENDENCIES
+# ============================================================================
+
+async def get_openai_mini_adapter():
+    """
+    Get OpenAILLMAdapter configured for gpt-4o-mini model.
+
+    Used by:
+    - Normalizer (item matching, structure extraction, unit conversion)
+    - Receipt processing
+
+    Returns:
+        ILLMAdapter: Lightweight adapter wrapping singleton OpenAI client
+    """
+    from app.infrastructure.normalization.adapters.openai_llm_adapter import OpenAILLMAdapter
+    from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
+
+    redis_client = get_redis_client()  # Singleton Redis
+    cache_adapter = RedisCacheAdapter(redis_client=redis_client)
+
+    return OpenAILLMAdapter(
+        cache_adapter=cache_adapter,
+        model="gpt-4o-mini"
+    )
+
+
+async def get_openai_4o_adapter():
+    """
+    Get OpenAILLMAdapter configured for gpt-4o model.
+
+    Used by:
+    - Nutrition estimation (higher accuracy for macro calculations)
+
+    Returns:
+        ILLMAdapter: Lightweight adapter wrapping singleton OpenAI client
+    """
+    from app.infrastructure.normalization.adapters.openai_llm_adapter import OpenAILLMAdapter
+    from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
+
+    redis_client = get_redis_client()
+    cache_adapter = RedisCacheAdapter(redis_client=redis_client)
+
+    return OpenAILLMAdapter(
+        cache_adapter=cache_adapter,
+        model="gpt-4o"
+    )
+
+
+async def get_openai_structured_adapter():
+    """
+    Get OpenAILLMAdapter configured for gpt-4o-2024-08-06 model.
+
+    Used by:
+    - Recipe generation (structured outputs)
+    - Ingredient processing
+
+    Returns:
+        ILLMAdapter: Lightweight adapter wrapping singleton OpenAI client
+    """
+    from app.infrastructure.normalization.adapters.openai_llm_adapter import OpenAILLMAdapter
+    from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
+
+    redis_client = get_redis_client()
+    cache_adapter = RedisCacheAdapter(redis_client=redis_client)
+
+    return OpenAILLMAdapter(
+        cache_adapter=cache_adapter,
+        model="gpt-4o-2024-08-06"
+    )
+
+
+async def get_openai_embedding_adapter():
+    """Get EmbeddingAdapter configured for OpenAI text-embedding-3-small"""
+    from app.core.llm_clients import get_openai_client
+    from app.services.openai_embedding_service import OpenAIEmbeddingService
+    from app.infrastructure.normalization.adapters.embedding_adapter import EmbeddingAdapter
+    from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
+
+    openai_client = await get_openai_client()  # Singleton client
+    redis_client = get_redis_client()
+    cache_adapter = RedisCacheAdapter(redis_client=redis_client)
+
+    # Create embedding service with singleton client
+    embedding_service = OpenAIEmbeddingService(
+        client=openai_client,
+        model="text-embedding-3-small"
+    )
+
+    # Wrap with caching adapter
+    return EmbeddingAdapter(
+        embedding_service=embedding_service,
+        cache_adapter=cache_adapter
+    )
+
+async def get_openai_transport(
+) -> 'LLMTransport':
+
+    openai_client = await get_openai_client()  # Singleton client
+
+    return OpenAITransport(client=openai_client)
+
+
+# ============================================================================
+# LLM ORCHESTRATOR DEPENDENCIES (New Clean Architecture)
+# ============================================================================
+
+def get_prompt_registry():
+    """
+    Get MongoDB-based prompt registry.
+
+    Stateless wrapper around singleton MongoDB client.
+    Created per-request (lightweight, no connection overhead).
+
+    Returns:
+        IPromptRegistry: MongoDB prompt registry instance
+    """
+    from app.infrastructure.prompts import MongoPromptRegistry
+    from app.core.mongodb import get_mongo_async_client
+
+    client = get_mongo_async_client()
+    return MongoPromptRegistry(
+        client=client,
+        database=settings.mongodb_db,
+        collection="llm_prompts"
+    )
+
+
+def get_token_governor():
+    """
+    Get Redis-based token governor.
+
+    Stateless wrapper around singleton Redis client.
+    Created per-request (lightweight, no connection overhead).
+
+    Returns:
+        ITokenGovernor: Redis token governor instance
+    """
+    from app.core.token_governor import RedisTokenGovernor
+
+    return RedisTokenGovernor(ttl=86400)  # 24-hour budget window
+
+
+async def get_llm_adapter():
+    """
+    Get OpenAI LLM adapter.
+
+    Stateless wrapper around singleton OpenAI client.
+    Created per-request (lightweight, no connection overhead).
+
+    Returns:
+        ILLMAdapter: OpenAI adapter instance
+    """
+    from app.infrastructure.normalization.adapters.openai_llm_adapter import OpenAILLMAdapter
+
+    openai_client = await get_openai_client()
+    return OpenAILLMAdapter(client=openai_client)
+
+
+async def get_llm_orchestrator():
+    """
+    Get LLM Orchestrator - the single entry point for all LLM calls.
+
+    Wires together:
+    - PromptRegistry (MongoDB) - fetches and renders prompts
+    - TokenGovernor (Redis) - manages token budgets
+    - LLMAdapter (OpenAI) - executes LLM calls
+
+    Created per-request (all components are stateless wrappers).
+
+    Usage in routes:
+        @router.post("/normalize")
+        async def normalize_item(
+            orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
+        ):
+            result = await orchestrator.run(
+                user_id=user.id,
+                slug="verify_match",
+                variables={"user_text": "red capsicum", "candidates": "[...]"},
+                response_model=VerifyMatchResult
+            )
+
+    Returns:
+        LLMOrchestrator: Fully wired orchestrator instance
+    """
+    from app.core.llm_orchestrator import LLMOrchestrator
+
+    registry = get_prompt_registry()
+    governor = get_token_governor()
+    adapter = await get_llm_adapter()
+
+    return LLMOrchestrator(
+        registry=registry,
+        governor=governor,
+        adapter=adapter
+    )
+

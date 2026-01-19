@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Summary</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">📊 Daily Summary</h1>
+    </div>
+
+    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 18px; margin-top: 0;">Hi {{ user_name }},</p>
+
+        <p style="color: #555;">Here's your nutrition summary for today:</p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <div style="display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee;">
+                <span style="color: #666;">Meals Logged:</span>
+                <strong style="color: #333; font-size: 18px;">{{ meals_consumed }}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee;">
+                <span style="color: #666;">Compliance Rate:</span>
+                <strong style="color: {% if compliance_rate >= 90 %}#10b981{% elif compliance_rate >= 70 %}#f59e0b{% else %}#ef4444{% endif %}; font-size: 18px;">{{ compliance_rate | round }}%</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee;">
+                <span style="color: #666;">Calories:</span>
+                <strong style="color: #333; font-size: 18px;">{{ calories_consumed | round }} kcal</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 15px;">
+                <span style="color: #666;">Protein:</span>
+                <strong style="color: #333; font-size: 18px;">{{ protein_g | round }}g</strong>
+            </div>
+        </div>
+
+        {% if compliance_rate >= 90 %}
+        <p style="background: #d1fae5; color: #065f46; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+            🌟 Amazing! You're crushing your nutrition goals!
+        </p>
+        {% elif compliance_rate >= 70 %}
+        <p style="background: #fef3c7; color: #92400e; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+            👍 Good progress! Keep it up!
+        </p>
+        {% else %}
+        <p style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+            💪 Tomorrow is a new day! You've got this!
+        </p>
+        {% endif %}
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://app.nutrilens.com/dashboard"
+               style="display: inline-block; background-color: #4facfe; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                View Full Dashboard
+            </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">
+            Keep tracking your progress!<br>
+            The NutriLens Team
+        </p>
+    </div>
+
+    <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+        <p>Daily summaries are sent every evening at 9 PM.</p>
+        <p>
+            <a href="{{ unsubscribe_url }}" style="color: #4facfe; text-decoration: none;">Manage notification preferences</a>
+        </p>
+    </div>
+</body>
+</html>

@@ -215,3 +215,53 @@ class IMealLogRepository(ABC):
             List of MealLogs
         """
         pass
+
+    @abstractmethod
+    async def get_upcoming_meals_for_today(
+        self,
+        user_id: int,
+        current_datetime: datetime
+    ) -> List[Any]:
+        """
+        Get upcoming meals for today (not consumed, not skipped, planned after current time).
+
+        Domain operation for finding next meals to consume.
+        Used by: MealPlanServiceV2.get_next_meal()
+        Replaces: dashboard_orchestrator.py:220-233 (direct query)
+
+        Args:
+            user_id: User ID
+            current_datetime: Current datetime to compare against
+
+        Returns:
+            List of MealLog entities ordered by planned_datetime
+        """
+        pass
+
+    @abstractmethod
+    async def get_upcoming_meals_in_time_window(
+        self,
+        start_datetime: datetime,
+        end_datetime: datetime
+    ) -> List[Any]:
+        """
+        Get upcoming meals in a specific time window for meal reminders.
+
+        Returns meals that:
+        - Are planned between start_datetime and end_datetime
+        - Have not been consumed (consumed_datetime is None)
+        - Have not been skipped (was_skipped = False)
+
+        Uses joinedload for user and recipe to prevent N+1 queries.
+        Only returns meals for active users.
+
+        Used by: NotificationWorker for 30-minute meal reminders
+
+        Args:
+            start_datetime: Start of time window
+            end_datetime: End of time window
+
+        Returns:
+            List of MealLog entities with user and recipe eagerly loaded
+        """
+        pass

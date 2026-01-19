@@ -1,32 +1,18 @@
-"""
-Dashboard API Endpoints V2 - Clean Architecture
-
-Provides aggregated data for the Home Dashboard.
-
-MIGRATED FROM: dashboard.py
-USES: Clean architecture with DashboardOrchestrator
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
 
-from app.models.database import get_db, User
-from app.services.auth import get_current_user_dependency as get_current_user
+from app.models.database import User
 from app.orchestrators.dashboard_orchestrator import DashboardOrchestrator
-from app.dependencies import get_dashboard_orchestrator
+from app.dependencies import get_dashboard_orchestrator, get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard/v2", tags=["dashboard-v2"])
 
 
-# ===== RESPONSE SCHEMAS (IDENTICAL TO V1) =====
-
 class MealsCardData(BaseModel):
-    """Today's Meals Card"""
     meals_planned: int
     meals_consumed: int
     meals_skipped: int
@@ -35,7 +21,6 @@ class MealsCardData(BaseModel):
 
 
 class MacrosCardData(BaseModel):
-    """Macros Progress Card"""
     calories_consumed: float
     calories_target: float
     calories_percentage: float
@@ -51,7 +36,6 @@ class MacrosCardData(BaseModel):
 
 
 class InventoryCardData(BaseModel):
-    """Inventory Status Card"""
     expiring_soon_count: int
     low_stock_count: int
     out_of_stock_count: int
@@ -59,7 +43,6 @@ class InventoryCardData(BaseModel):
 
 
 class GoalCardData(BaseModel):
-    """Goal Progress Card"""
     goal_type: str
     current_weight: float
     target_weight: float
@@ -69,7 +52,6 @@ class GoalCardData(BaseModel):
 
 
 class DashboardSummary(BaseModel):
-    """Complete Dashboard Summary"""
     meals_card: MealsCardData
     macros_card: MacrosCardData
     inventory_card: InventoryCardData
@@ -77,7 +59,6 @@ class DashboardSummary(BaseModel):
 
 
 class ActivityItem(BaseModel):
-    """Recent Activity Item"""
     id: int
     type: str
     description: str
@@ -86,35 +67,17 @@ class ActivityItem(BaseModel):
 
 
 class RecentActivityResponse(BaseModel):
-    """Recent Activity Feed"""
     activities: List[ActivityItem]
     total_count: int
 
-
-# ===== ENDPOINTS =====
 
 @router.get("/summary", response_model=DashboardSummary)
 async def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
     orchestrator: DashboardOrchestrator = Depends(get_dashboard_orchestrator)
 ):
-    """
-    Get complete dashboard summary with all 4 card data.
 
-    SOURCE: dashboard.py:140-316
-    MIGRATED TO: Clean architecture with DashboardOrchestrator
-
-    Returns:
-        DashboardSummary with:
-        - meals_card: Today's meal status
-        - macros_card: Macro nutrient progress
-        - inventory_card: Inventory status counts
-        - goal_card: Goal progress and streak
-    """
     try:
-        logger.info(f"GET /dashboard/v2/summary - User {current_user.id}")
-
-        # Orchestrator coordinates all services and returns aggregated data
         summary = await orchestrator.get_dashboard_summary(current_user.id)
 
         return DashboardSummary(**summary)

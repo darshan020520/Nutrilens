@@ -16,7 +16,7 @@ export function useExpiringItems(days: number = 3) {
   }>({
     queryKey: ["tracking", "expiring-items", days],
     queryFn: async () => {
-      const response = await api.get(`${getEndpoint("/tracking/inventory-status")}?days=${days}`);
+      const response = await api.get(`${getEndpoint("/tracking/expiring-items")}?days=${days}`);
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

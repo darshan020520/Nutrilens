@@ -105,6 +105,23 @@ def init_mongodb_collections():
     sessions.create_index([("created_at", DESCENDING)])
     logger.info("Created indexes for 'sessions' collection")
 
+    # 4. LLM Prompts collection (for prompt registry)
+    try:
+        db.create_collection("llm_prompts")
+        logger.info("Created 'llm_prompts' collection")
+    except CollectionInvalid:
+        logger.info("'llm_prompts' collection already exists")
+
+    llm_prompts = db["llm_prompts"]
+    # Unique index on slug + version for versioned prompts
+    llm_prompts.create_index(
+        [("slug", ASCENDING), ("version", ASCENDING)],
+        unique=True
+    )
+    # Index for quick lookup of active prompts
+    llm_prompts.create_index([("slug", ASCENDING), ("active", ASCENDING)])
+    logger.info("Created indexes for 'llm_prompts' collection")
+
     logger.info("MongoDB initialization complete!")
 
 

@@ -1,0 +1,1 @@
+⚠️ {% if item_count == 1 %}{{ expiring_items[0].name }} expires in {{ days_until_expiry }} day{% if days_until_expiry != 1 %}s{% endif %}{% else %}{{ item_count }} items expiring soon{% endif %}! Check your inventory. - NutriLens

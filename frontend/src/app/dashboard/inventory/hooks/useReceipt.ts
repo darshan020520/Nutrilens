@@ -50,9 +50,7 @@ export function useReceiptPendingItems(receiptId: number | null) {
     queryKey: ["receipt", receiptId, "pending"],
     queryFn: async () => {
       if (!receiptId) throw new Error("Receipt ID is required");
-      const response = await api.get(getEndpoint(`/receipt/pending`), {
-        params: { receipt_id: receiptId }
-      });
+      const response = await api.get(getEndpoint(`/receipt/${receiptId}/pending`));
       return response.data;
     },
     enabled: !!receiptId,

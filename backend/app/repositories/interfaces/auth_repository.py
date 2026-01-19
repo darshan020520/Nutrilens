@@ -5,7 +5,7 @@ Defines contract for authentication data access operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 from app.models.database import User, NotificationPreference
 
 
@@ -89,5 +89,18 @@ class IAuthRepository(ABC):
 
         Returns:
             Created notification preferences
+        """
+        pass
+
+    @abstractmethod
+    def get_all_active(self) -> List[User]:
+        """
+        Get all active users.
+
+        Used by notification worker to send scheduled notifications
+        to all active users (daily summaries, weekly reports, inventory alerts).
+
+        Returns:
+            List of User objects where is_active=True
         """
         pass

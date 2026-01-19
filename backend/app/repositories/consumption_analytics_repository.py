@@ -163,9 +163,22 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             start_datetime = datetime.combine(target_date, datetime.min.time())
             end_datetime = datetime.combine(target_date, datetime.max.time())
 
-            # Get user targets
-            user = self.db.query(User).filter(User.id == user_id).first()
-            targets = user.nutrition_targets if user and user.nutrition_targets else {}
+            # Get user targets from UserGoal.macro_targets
+            user = self.db.query(User).options(
+                joinedload(User.goal)
+            ).filter(User.id == user_id).first()
+
+            targets = {}
+            if user and user.goal and user.goal.macro_targets:
+                targets = user.goal.macro_targets
+            else:
+                # Default targets if not set
+                targets = {
+                    "calories": 2000,
+                    "protein_g": 150,
+                    "carbs_g": 200,
+                    "fat_g": 65
+                }
 
             # Get all meals for today
             all_meals = self.db.query(MealLog).options(
@@ -199,51 +212,78 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
                 elif meal.was_skipped:
                     status = "skipped"
 
-                meal_calories = 0
+                # Calculate macros for ALL meals (matching v1: consumption_services.py:418)
                 meal_macros = {}
 
-                if meal.recipe and meal.consumed_datetime:
+                if meal.recipe:
                     macros = meal.recipe.macros_per_serving or {}
                     multiplier = meal.portion_multiplier or 1.0
 
-                    meal_calories = macros.get("calories", 0) * multiplier
                     meal_macros = {
+                        "calories": macros.get("calories", 0) * multiplier,
                         "protein_g": macros.get("protein_g", 0) * multiplier,
                         "carbs_g": macros.get("carbs_g", 0) * multiplier,
                         "fat_g": macros.get("fat_g", 0) * multiplier,
                         "fiber_g": macros.get("fiber_g", 0) * multiplier
                     }
 
-                    total_calories += meal_calories
-                    total_protein_g += meal_macros["protein_g"]
-                    total_carbs_g += meal_macros["carbs_g"]
-                    total_fat_g += meal_macros["fat_g"]
-                    total_fiber_g += meal_macros["fiber_g"]
+                    # Only add to totals if consumed
+                    if meal.consumed_datetime:
+                        total_calories += meal_macros["calories"]
+                        total_protein_g += meal_macros["protein_g"]
+                        total_carbs_g += meal_macros["carbs_g"]
+                        total_fat_g += meal_macros["fat_g"]
+                        total_fiber_g += meal_macros["fiber_g"]
 
-                elif meal.external_meal and meal.consumed_datetime:
+                elif meal.external_meal:
                     ext = meal.external_meal
-                    meal_calories = ext.get("calories", 0)
                     meal_macros = {
+                        "calories": ext.get("calories", 0),
                         "protein_g": ext.get("protein_g", 0),
                         "carbs_g": ext.get("carbs_g", 0),
                         "fat_g": ext.get("fat_g", 0),
                         "fiber_g": ext.get("fiber_g", 0)
                     }
 
-                    total_calories += meal_calories
-                    total_protein_g += meal_macros["protein_g"]
-                    total_carbs_g += meal_macros["carbs_g"]
-                    total_fat_g += meal_macros["fat_g"]
-                    total_fiber_g += meal_macros["fiber_g"]
+                    # Only add to totals if consumed
+                    if meal.consumed_datetime:
+                        total_calories += meal_macros["calories"]
+                        total_protein_g += meal_macros["protein_g"]
+                        total_carbs_g += meal_macros["carbs_g"]
+                        total_fat_g += meal_macros["fat_g"]
+                        total_fiber_g += meal_macros["fiber_g"]
 
-                meal_details.append({
+                else:
+                    # No recipe and no external meal
+                    meal_macros = {
+                        "calories": 0,
+                        "protein_g": 0,
+                        "carbs_g": 0,
+                        "fat_g": 0,
+                        "fiber_g": 0
+                    }
+
+                # Match v1 structure EXACTLY (consumption_services.py:419-427)
+                meal_info = {
+                    "id": meal.id,
                     "meal_type": meal.meal_type,
-                    "recipe_name": meal.recipe.title if meal.recipe else (meal.external_meal.get("dish_name") if meal.external_meal else "Unknown"),
+                    "planned_time": meal.planned_datetime.isoformat(),
+                    "recipe_id": meal.recipe.id if meal.recipe else None,
+                    "recipe": meal.recipe.title if meal.recipe else "External",
                     "status": status,
-                    "time": meal.consumed_datetime.strftime("%H:%M") if meal.consumed_datetime else meal.planned_datetime.strftime("%H:%M"),
-                    "calories": meal_calories,
                     "macros": meal_macros
-                })
+                }
+
+                # Add consumed-specific fields (consumption_services.py:429-432)
+                if meal.consumed_datetime:
+                    meal_info["consumed_time"] = meal.consumed_datetime.isoformat()
+                    meal_info["portion"] = meal.portion_multiplier or 1.0
+
+                # Add skip-specific fields (consumption_services.py:441-443)
+                if meal.was_skipped:
+                    meal_info["skip_reason"] = meal.skip_reason
+
+                meal_details.append(meal_info)
 
             # Calculate remaining
             target_calories = targets.get("calories", 2000)
@@ -860,9 +900,22 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
 
-            # Get user targets
-            user = self.db.query(User).filter(User.id == user_id).first()
-            targets = user.nutrition_targets if user and user.nutrition_targets else {}
+            # Get user targets from UserGoal.macro_targets
+            user = self.db.query(User).options(
+                joinedload(User.goal)
+            ).filter(User.id == user_id).first()
+
+            targets = {}
+            if user and user.goal and user.goal.macro_targets:
+                targets = user.goal.macro_targets
+            else:
+                # Default targets if not set
+                targets = {
+                    "calories": 2000,
+                    "protein_g": 150,
+                    "carbs_g": 200,
+                    "fat_g": 65
+                }
 
             target_calories = targets.get("calories", 2000)
             target_protein = targets.get("protein_g", 150)

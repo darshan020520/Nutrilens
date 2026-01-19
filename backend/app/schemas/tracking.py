@@ -148,6 +148,9 @@ class SkipMealResponse(BaseModel):
     skip_reason: Optional[str]
     adherence_impact: Dict[str, Any]
     updated_adherence_rate: float
+    skip_patterns: Dict[str, Any]
+    insights: List[str]
+    recommendations: List[str]
 
 
 class TodaySummaryResponse(BaseModel):
