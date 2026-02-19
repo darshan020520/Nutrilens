@@ -2,13 +2,13 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from app.api import auth, auth_v2, onboarding, onboarding_v2, recipes, recipes_v2, inventory, inventory_v2, meal_plan, meal_plan_v2, notifications, tracking, tracking_v2, websocket, dashboard, dashboard_v2, receipt, receipt_v2, orchestrator, nutrition_chat
+from app.api import auth_v2, onboarding_v2, recipes_v2, inventory_v2, meal_plan_v2, tracking_v2, websocket, dashboard_v2, receipt_v2, nutrition_chat, whatsapp_webhook
 from app.core.config import settings
 from app.services.websocket_manager import websocket_manager
 from app.core.events import event_bus
 from app.core.mongodb import init_mongodb_collections, close_mongo_clients
 from app.agents.graph_instance import initialize_nutrition_graph
-from app.models.database import SessionLocal
+from app.agents.whatsapp_graph_instance import initialize_whatsapp_graph
 from app.dependencies import initialize_event_publisher
 from app.core.redis_client import close_redis_client
 from app.core.llm_clients import get_openai_client, close_llm_clients
@@ -18,15 +18,12 @@ import logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize LLM clients (singleton pattern)
     await get_openai_client()
     print("✅ LLM clients initialized")
 
-    # Startup: Initialize WebSocket Redis connection
     await websocket_manager.initialize_redis()
     print("✅ WebSocket manager initialized")
 
-    # Startup: Initialize MongoDB collections and indexes
     try:
         init_mongodb_collections()
         print("✅ MongoDB initialized")
@@ -34,22 +31,21 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ MongoDB initialization failed: {e}")
         logging.error(f"MongoDB initialization error: {e}")
 
-    # Startup: Initialize EventPublisher with observers
-    db = SessionLocal()
     try:
-        initialize_event_publisher(db)
+        initialize_event_publisher()
         print("✅ EventPublisher initialized with observers")
     except Exception as e:
         print(f"⚠️ EventPublisher initialization failed: {e}")
         logging.error(f"EventPublisher initialization error: {e}")
-    finally:
-        db.close()
 
-    # Startup: Initialize and compile LangGraph (singleton pattern)
+    # Startup: Initialize and compile both LangGraph instances (singleton pattern)
     async with initialize_nutrition_graph():
-        print("✅ LangGraph compiled and ready")
+        print("✅ Nutrition LangGraph compiled and ready")
 
-        yield  # Application runs here with compiled graph available
+        async with initialize_whatsapp_graph():
+            print("✅ WhatsApp LangGraph compiled and ready")
+
+            yield  # Application runs here with both graphs available
 
     # Shutdown: Close all connections gracefully
     await websocket_manager.close_all_connections()
@@ -124,28 +120,16 @@ async def llm_service_error_handler(request: Request, exc: LLMServiceError):
         }
     )
 
-
-# Include routers
-# app.include_router(auth.router, prefix="/api")
-app.include_router(auth_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-# app.include_router(onboarding.router, prefix="/api")
-app.include_router(onboarding_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-app.include_router(recipes.router, prefix="/api")
-app.include_router(recipes_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-# app.include_router(inventory.router, prefix="/api")
-app.include_router(inventory_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-app.include_router(meal_plan.router, prefix="/api")
-app.include_router(meal_plan_v2.router_v2, prefix="/api")  # V2 endpoint (new architecture)
-app.include_router(tracking.router, prefix="/api")
-app.include_router(tracking_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-app.include_router(websocket.router)
-app.include_router(notifications.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
-app.include_router(dashboard_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-app.include_router(receipt.router, prefix="/api")
-app.include_router(receipt_v2.router, prefix="/api")  # V2 endpoint (clean architecture)
-app.include_router(orchestrator.router, prefix="/api")
+app.include_router(auth_v2.router, prefix="/api") 
+app.include_router(onboarding_v2.router, prefix="/api") 
+app.include_router(recipes_v2.router, prefix="/api")  
+app.include_router(inventory_v2.router, prefix="/api") 
+app.include_router(meal_plan_v2.router_v2, prefix="/api")
+app.include_router(tracking_v2.router, prefix="/api")
+app.include_router(dashboard_v2.router, prefix="/api")
+app.include_router(receipt_v2.router, prefix="/api")
 app.include_router(nutrition_chat.router, prefix="/api")
+app.include_router(whatsapp_webhook.router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
@@ -154,22 +138,5 @@ async def startup_event():
     asyncio.create_task(event_bus.process_events())
 
     logger.info("Background tasks started")
-
-
-
-@app.get("/")
-def root():
-    return {
-        "name": "NutriLens API",
-        "version": "1.0.0",
-        "status": "operational"
-    }
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "websocket_stats": websocket_manager.get_stats()
-    }
 
 

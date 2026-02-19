@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func, case, extract
 
 from app.repositories.interfaces.consumption_analytics_repository import IConsumptionAnalyticsRepository
-from app.models.database import MealLog, Recipe, User
+from app.models.database import MealLog, MealPlan, Recipe, User
+from app.core.ist_datetime import today_ist, start_of_day_naive, end_of_day_naive
 
 logger = logging.getLogger(__name__)
 
@@ -158,21 +159,29 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
         """
         try:
             if not target_date:
-                target_date = datetime.utcnow().date()
+                target_date = today_ist()
 
-            start_datetime = datetime.combine(target_date, datetime.min.time())
-            end_datetime = datetime.combine(target_date, datetime.max.time())
+            start_datetime = start_of_day_naive(target_date)
+            end_datetime = end_of_day_naive(target_date)
 
-            # Get user targets from UserGoal.macro_targets
+            # Get user targets from UserProfile.goal_calories + UserGoal.macro_targets (ratios)
             user = self.db.query(User).options(
+                joinedload(User.profile),
                 joinedload(User.goal)
             ).filter(User.id == user_id).first()
 
             targets = {}
-            if user and user.goal and user.goal.macro_targets:
-                targets = user.goal.macro_targets
+            if user and user.profile and user.profile.goal_calories and user.goal and user.goal.macro_targets:
+                goal_cal = user.profile.goal_calories
+                ratios = user.goal.macro_targets
+                targets = {
+                    "calories": goal_cal,
+                    "protein_g": round((goal_cal * ratios.get("protein", 0.3)) / 4, 1),
+                    "carbs_g": round((goal_cal * ratios.get("carbs", 0.4)) / 4, 1),
+                    "fat_g": round((goal_cal * ratios.get("fat", 0.3)) / 9, 1),
+                }
             else:
-                # Default targets if not set
+                # Default targets if onboarding incomplete
                 targets = {
                     "calories": 2000,
                     "protein_g": 150,
@@ -183,13 +192,19 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             # Get all meals for today
             all_meals = self.db.query(MealLog).options(
                 joinedload(MealLog.recipe)
+            ).outerjoin(
+                MealPlan, MealLog.meal_plan_id == MealPlan.id
             ).filter(
                 and_(
                     MealLog.user_id == user_id,
                     MealLog.planned_datetime >= start_datetime,
-                    MealLog.planned_datetime <= end_datetime
+                    MealLog.planned_datetime <= end_datetime,
+                    or_(
+                        MealLog.meal_plan_id.is_(None),
+                        MealPlan.is_active.is_(True)
+                    )
                 )
-            ).all()
+            ).order_by(MealLog.planned_datetime).all()
 
             meals_planned = len(all_meals)
             meals_consumed = sum(1 for m in all_meals if m.consumed_datetime is not None)
@@ -296,9 +311,9 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             remaining_carbs_g = max(0, target_carbs_g - total_carbs_g)
             remaining_fat_g = max(0, target_fat_g - total_fat_g)
 
-            # Compliance rate
-            if meals_consumed + meals_skipped > 0:
-                compliance_rate = meals_consumed / (meals_consumed + meals_skipped)
+            # Compliance rate: consumed out of total planned
+            if meals_planned > 0:
+                compliance_rate = meals_consumed / meals_planned
             else:
                 compliance_rate = 1.0
 
@@ -900,16 +915,24 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
 
-            # Get user targets from UserGoal.macro_targets
+            # Get user targets from UserProfile.goal_calories + UserGoal.macro_targets (ratios)
             user = self.db.query(User).options(
+                joinedload(User.profile),
                 joinedload(User.goal)
             ).filter(User.id == user_id).first()
 
             targets = {}
-            if user and user.goal and user.goal.macro_targets:
-                targets = user.goal.macro_targets
+            if user and user.profile and user.profile.goal_calories and user.goal and user.goal.macro_targets:
+                goal_cal = user.profile.goal_calories
+                ratios = user.goal.macro_targets
+                targets = {
+                    "calories": goal_cal,
+                    "protein_g": round((goal_cal * ratios.get("protein", 0.3)) / 4, 1),
+                    "carbs_g": round((goal_cal * ratios.get("carbs", 0.4)) / 4, 1),
+                    "fat_g": round((goal_cal * ratios.get("fat", 0.3)) / 9, 1),
+                }
             else:
-                # Default targets if not set
+                # Default targets if onboarding incomplete
                 targets = {
                     "calories": 2000,
                     "protein_g": 150,

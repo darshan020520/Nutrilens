@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from langgraph.checkpoint.mongodb import MongoDBSaver
 from app.core.config import settings
 from app.core.mongodb import get_mongo_sync_client
+from app.agents.nutrition_graph_v3 import create_nutrition_graph_structure
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +55,7 @@ async def initialize_nutrition_graph():
             logger.warning("[GraphInit] ⚠️ Proceeding WITHOUT checkpointer (stateless mode)")
             logger.warning("[GraphInit] ⚠️ Conversations will NOT persist across sessions")
             _checkpointer = None  # Graph will work but won't persist conversations
-
-        # Import here to avoid circular dependency
-        from app.agents.nutrition_graph import create_nutrition_graph_structure
-
+        
         # Build stateless graph structure
         workflow = create_nutrition_graph_structure()
         logger.info("[GraphInit] ✅ Graph structure created")

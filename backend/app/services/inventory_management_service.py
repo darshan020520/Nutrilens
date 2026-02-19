@@ -15,11 +15,13 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta, date
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, func
+from app.core.ist_datetime import now_ist_naive, to_ist_naive
 
 from app.models.database import MealLog, UserInventory, Item, Recipe, RecipeIngredient, User
 from app.repositories.interfaces import IInventoryRepository, ITrackingRepository
-from app.services.item_normalizer import IntelligentItemNormalizer
 from app.core.config import settings
+from app.core.exceptions import TokenBudgetExceeded
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -40,7 +42,8 @@ class InventoryManagementService:
         self,
         inventory_repo: IInventoryRepository,
         tracking_repo: ITrackingRepository,
-        db: Session
+        db: Session,
+        llm_orchestrator=None
     ):
         """
         Initialize InventoryManagementService with required repositories.
@@ -49,10 +52,12 @@ class InventoryManagementService:
             inventory_repo: Repository for inventory data access
             tracking_repo: Repository for meal log data access
             db: Database session (for complex queries not in repositories)
+            llm_orchestrator: Optional LLMOrchestrator for AI recommendations
         """
         self.inventory_repo = inventory_repo
         self.tracking_repo = tracking_repo
         self.db = db
+        self.llm_orchestrator = llm_orchestrator
 
     async def calculate_inventory_status(self, user_id: int) -> Dict[str, Any]:
         """
@@ -298,7 +303,7 @@ class InventoryManagementService:
             }
         """
         try:
-            expiry_threshold = datetime.utcnow() + timedelta(days=days_threshold)
+            expiry_threshold = now_ist_naive() + timedelta(days=days_threshold)
 
             # Base query for all inventory items with expiry dates
             base_query = self.db.query(UserInventory).options(
@@ -338,7 +343,8 @@ class InventoryManagementService:
                     if not inv_item.expiry_date:
                         continue
 
-                    days_until_expiry = (inv_item.expiry_date - datetime.utcnow()).days
+                    expiry_date = to_ist_naive(inv_item.expiry_date) if inv_item.expiry_date.tzinfo else inv_item.expiry_date
+                    days_until_expiry = (expiry_date - now_ist_naive()).days
 
                     # Show items expiring soon OR already expired within last 30 days
                     expired_lookback_days = 30
@@ -378,7 +384,7 @@ class InventoryManagementService:
                         "quantity_grams": float(inv_item.quantity_grams),
                         "expiry_date": inv_item.expiry_date.isoformat(),
                         "days_remaining": days_until_expiry,
-                        "priority": "urgent" if days_until_expiry <= 1 else "high" if days_until_expiry <= 2 else "medium",
+                        "priority": "expired" if days_until_expiry < 0 else "urgent" if days_until_expiry <= 1 else "high" if days_until_expiry <= 2 else "medium",
                         "category": inv_item.item.category or "other",
                         "recipe_suggestions": []  # To be populated by recipe suggester
                     })
@@ -398,9 +404,10 @@ class InventoryManagementService:
                 "success": True,
                 "expiring_count": len(expiring_items),
                 "expiring_items": expiring_items,
-                "recommendations": self._generate_expiry_recommendations(expiring_items),
+                "recommendations": await self._generate_expiry_recommendations(expiring_items, user_id),
                 "recipe_suggestions": [],  # Placeholder for future LLM-based recipe suggestions
                 "summary": {
+                    "expired": len([i for i in expiring_items if i["priority"] == "expired"]),
                     "urgent": len([i for i in expiring_items if i["priority"] == "urgent"]),
                     "high": len([i for i in expiring_items if i["priority"] == "high"]),
                     "medium": len([i for i in expiring_items if i["priority"] == "medium"])
@@ -634,7 +641,7 @@ class InventoryManagementService:
             # Calculate summary
             total_items = sum(len(restock_list[category]) for category in ["urgent", "soon", "routine"])
             estimated_cost = self._estimate_cost(restock_list)
-            shopping_strategy = self._generate_shopping_strategy(restock_list)
+            shopping_strategy = await self._generate_shopping_strategy(restock_list, user_id)
 
             logger.info(f"Restock list generated for user {user_id}: {total_items} items")
 
@@ -777,21 +784,37 @@ class InventoryManagementService:
 
         return will_consume
 
-    def _generate_expiry_recommendations(self, expiring_items: List[Dict]) -> List[str]:
-        """Generate actionable recommendations for expiring items."""
-        recommendations = []
+    async def _generate_expiry_recommendations(self, expiring_items: List[Dict], user_id: int) -> List[str]:
+        """Generate actionable recommendations for expiring items. Uses AI with hardcoded fallback."""
+        # Try AI recommendations
+        if self.llm_orchestrator and expiring_items:
+            try:
+                from app.schemas.recommendation import RecommendationResponse
+                items_for_prompt = [
+                    {"name": i["item_name"], "priority": i["priority"], "days_remaining": i["days_remaining"]}
+                    for i in expiring_items[:10]
+                ]
+                result = await self.llm_orchestrator.run(
+                    user_id=user_id,
+                    slug="expiry_recommendations",
+                    variables={"expiring_items_json": json.dumps(items_for_prompt)},
+                    response_model=RecommendationResponse
+                )
+                return result.recommendations
+            except (TokenBudgetExceeded, Exception) as e:
+                logger.warning(f"AI expiry recommendations unavailable ({type(e).__name__}), using fallback")
 
+        # Fallback: hardcoded logic
+        recommendations = []
         urgent_count = len([i for i in expiring_items if i["priority"] == "urgent"])
         high_count = len([i for i in expiring_items if i["priority"] == "high"])
 
         if urgent_count > 0:
             urgent_names = [i["item_name"] for i in expiring_items if i["priority"] == "urgent"][:3]
             recommendations.append(f"URGENT: Use {', '.join(urgent_names)} immediately (expiring within 1 day)")
-
         if high_count > 0:
             high_names = [i["item_name"] for i in expiring_items if i["priority"] == "high"][:3]
             recommendations.append(f"Use {', '.join(high_names)} within 2-3 days")
-
         if len(expiring_items) > 5:
             recommendations.append(f"Total {len(expiring_items)} items expiring soon - plan meals accordingly")
 
@@ -802,23 +825,42 @@ class InventoryManagementService:
         # Placeholder - would integrate with pricing API in production
         return None
 
-    def _generate_shopping_strategy(self, restock_list: Dict) -> List[str]:
-        """Generate shopping strategy recommendations."""
-        strategy = []
-
+    async def _generate_shopping_strategy(self, restock_list: Dict, user_id: int) -> List[str]:
+        """Generate shopping strategy recommendations. Uses AI with hardcoded fallback."""
         urgent_count = len(restock_list["urgent"])
         soon_count = len(restock_list["soon"])
         bulk_count = len(restock_list["bulk_opportunities"])
 
+        # Try AI recommendations
+        if self.llm_orchestrator:
+            try:
+                from app.schemas.recommendation import RecommendationResponse
+                urgent_items = [{"name": i["item_name"], "category": i["category"]} for i in restock_list["urgent"][:5]]
+                soon_items = [{"name": i["item_name"], "category": i["category"]} for i in restock_list["soon"][:5]]
+                result = await self.llm_orchestrator.run(
+                    user_id=user_id,
+                    slug="shopping_strategy_recommendations",
+                    variables={
+                        "urgent_count": urgent_count,
+                        "soon_count": soon_count,
+                        "bulk_count": bulk_count,
+                        "urgent_items_json": json.dumps(urgent_items),
+                        "soon_items_json": json.dumps(soon_items),
+                    },
+                    response_model=RecommendationResponse
+                )
+                return result.recommendations
+            except (TokenBudgetExceeded, Exception) as e:
+                logger.warning(f"AI shopping strategy unavailable ({type(e).__name__}), using fallback")
+
+        # Fallback: hardcoded logic
+        strategy = []
         if urgent_count > 0:
             strategy.append(f"Priority: Buy {urgent_count} urgent items immediately")
-
         if soon_count > 0:
             strategy.append(f"Plan shopping for {soon_count} items within 2-3 days")
-
         if bulk_count > 0:
             strategy.append(f"Consider bulk buying {bulk_count} frequently used items for savings")
-
         if urgent_count + soon_count > 10:
             strategy.append("Large shopping trip recommended - consider online delivery")
         elif urgent_count + soon_count > 0:

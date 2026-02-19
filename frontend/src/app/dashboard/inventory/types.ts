@@ -164,6 +164,7 @@ export interface ExpiringItem {
 }
 
 export interface RestockItem {
+  item_id: number;
   item_name: string;
   category: string;
   current_quantity: number;
@@ -180,6 +181,38 @@ export interface RestockList {
   routine_items: RestockItem[];
   estimated_total_cost?: number;
   shopping_strategy: string[];
+}
+
+export interface AIRecipeSuggestion {
+  name: string;
+  description: string;
+  ingredients_used: string[];
+  estimated_prep_time_min: number;
+  estimated_calories: number;
+  estimated_protein_g: number;
+  difficulty: string;
+}
+
+export interface BulkAddFromRestockItem {
+  item_id: number;
+  quantity_grams: number;
+}
+
+export interface BulkAddFromRestockResponse {
+  success: boolean;
+  total_requested: number;
+  successfully_added: number;
+  failed_count: number;
+  added_items: Array<{
+    item_id: number;
+    item_name: string;
+    quantity_added: number;
+    total_quantity: number;
+  }>;
+  failed_items: Array<{
+    item_id: number;
+    error: string;
+  }>;
 }
 
 export type ViewMode = 'grid' | 'list';

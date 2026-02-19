@@ -19,9 +19,10 @@ from app.schemas.meal_plan import (
     MealPlanCreate, MealPlanUpdate, MealPlanResponse,
     MealSwapRequest, MealLogCreate
 )
-from app.services.inventory_service import IntelligentInventoryService
+# from app.services.inventory_service import IntelligentInventoryService
 from app.models.database import MealPlan, MealLog
 from sqlalchemy.orm.attributes import flag_modified
+from app.core.ist_datetime import to_ist_naive, today_ist, now_ist_naive
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class MealPlanServiceV2:
         meal_plan_repo: IMealPlanRepository,
         meal_log_repo: IMealLogRepository,
         recipe_repo: IRecipeRepository,
-        inventory_service: IntelligentInventoryService,
+        # inventory_service: IntelligentInventoryService,
         user_profile_repo: IUserProfileRepository
     ):
         """
@@ -55,7 +56,7 @@ class MealPlanServiceV2:
         self.meal_plan_repo = meal_plan_repo
         self.meal_log_repo = meal_log_repo
         self.recipe_repo = recipe_repo
-        self.inventory_service = inventory_service
+        # self.inventory_service = inventory_service
         self.user_profile_repo = user_profile_repo
 
     async def get_meal_plan_by_id(self, plan_id: int, user_id: int) -> Optional[MealPlanResponse]:
@@ -125,6 +126,10 @@ class MealPlanServiceV2:
             Created MealPlanResponse
         """
         try:
+            week_start_date = to_ist_naive(week_start_date).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
             # COPY-PASTED FROM planning_agent.py:992-995 - NO CHANGES
             # Deactivate existing active plans
             await self.meal_plan_repo.deactivate_active_plans(user_id)
@@ -209,7 +214,7 @@ class MealPlanServiceV2:
         plan = await self.get_active_meal_plan(user_id)
 
         if not plan:
-            today = datetime.now().date()
+            today = today_ist()
             days_since_monday = today.weekday()
             current_week_start = today - timedelta(days=days_since_monday)
 
@@ -521,24 +526,29 @@ class MealPlanServiceV2:
             Dict with meal_type and time (None if no upcoming meal)
         """
         try:
-            now = datetime.now()
+            from datetime import timedelta
+            now = now_ist_naive()
+            grace_window = timedelta(hours=2)
 
-            # Get upcoming meals from repository (domain operation)
-            upcoming_meals = await self.meal_log_repo.get_upcoming_meals_for_today(
+            # Get all unconsumed meals for today (ordered by planned_datetime)
+            unconsumed_meals = await self.meal_log_repo.get_upcoming_meals_for_today(
                 user_id=user_id,
                 current_datetime=now
             )
 
-            if upcoming_meals:
-                # Repository returns ordered by planned_datetime, take first
-                next_meal = upcoming_meals[0]
-                return {
-                    "meal_type": next_meal.meal_type.capitalize(),
-                    "time": next_meal.planned_datetime.strftime("%I:%M %p")
-                }
+            # Find first meal still within grace window:
+            # - Future meals always qualify
+            # - Past meals qualify if planned_datetime + 2 hours > now
+            for meal in unconsumed_meals:
+                if meal.planned_datetime + grace_window > now:
+                    return {
+                        "meal_type": meal.meal_type.capitalize(),
+                        "time": meal.planned_datetime.strftime("%I:%M %p")
+                    }
 
             return {"meal_type": None, "time": None}
 
         except Exception as e:
             logger.error(f"Error getting next meal: {str(e)}")
             return {"meal_type": None, "time": None}
+

@@ -1,0 +1,13 @@
+{
+  "title": "Inventory Alert",
+  "body": "{{ message }}",
+  "icon": "inventory_icon",
+  "badge": 1,
+  "sound": "default",
+  "click_action": "OPEN_INVENTORY",
+  "data": {
+    "alert_type": "{{ alert_type }}",
+    "notification_type": "inventory_alert",
+    "action_url": "/dashboard/inventory"
+  }
+}

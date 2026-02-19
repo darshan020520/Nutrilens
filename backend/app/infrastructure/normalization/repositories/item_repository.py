@@ -61,7 +61,7 @@ class ItemRepository:
 
         for item in items:
             # Add name
-            cache_dict[item.name.lower().strip()] = item.id
+            cache_dict[item.canonical_name.lower().strip()] = item.id
 
             # Add aliases
             if item.aliases:
@@ -89,18 +89,32 @@ class ItemRepository:
         Returns:
             List of (item_id, item_name, similarity_score)
         """
+        # Debug: Check if embedding is valid
+        if not embedding or len(embedding) != 1536:
+            logger.error(f"Invalid embedding: length={len(embedding) if embedding else 0}")
+            return []
+
+        # Debug: Check if embedding is zero vector
+        if all(v == 0.0 for v in embedding):
+            logger.error("Embedding is a zero vector - embedding generation likely failed")
+            return []
+
+        logger.info(f"Vector search: embedding length={len(embedding)}, first 5 values={embedding[:5]}")
+
         # Convert embedding to PostgreSQL array format
         embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
 
         # Vector similarity query using pgvector
+        # Note: Space before ::vector is required for SQLAlchemy parameter binding
+        # Both column and parameter need casting since embedding is stored as TEXT
         query = text("""
             SELECT
                 id,
-                name,
-                1 - (embedding <=> :embedding::vector) as similarity
+                canonical_name,
+                1 - (embedding::vector(1536) <=> :embedding ::vector(1536)) as similarity
             FROM items
             WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding::vector(1536) <=> :embedding ::vector(1536)
             LIMIT :limit
         """)
 

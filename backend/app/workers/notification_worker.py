@@ -18,7 +18,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.models.database import engine
 from app.infrastructure.events.event_publisher import EventPublisher
-from app.services.consumption_services import ConsumptionService
+from app.services.consumption_service_v2 import ConsumptionServiceV2
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,13 +76,13 @@ class NotificationWorker:
         logger.info("Scheduled: Daily summaries at 9 PM UTC")
 
         # Schedule weekly reports (every Sunday at 8 PM UTC)
-        self.scheduler.add_job(
-            self._trigger_weekly_reports,
-            trigger=CronTrigger(day_of_week='sun', hour=20, minute=0),
-            id='weekly_reports',
-            name='Weekly Reports',
-            replace_existing=True
-        )
+        # self.scheduler.add_job(
+        #     self._trigger_weekly_reports,
+        #     trigger=CronTrigger(day_of_week='sun', hour=20, minute=0),
+        #     id='weekly_reports',
+        #     name='Weekly Reports',
+        #     replace_existing=True
+        # )
         logger.info("Scheduled: Weekly reports on Sunday at 8 PM UTC")
 
         # Schedule meal reminders (every 5 minutes)
@@ -186,8 +186,22 @@ class NotificationWorker:
         db = self.session_factory()
         try:
             from app.repositories.auth_repository import AuthRepository
+            from app.repositories.tracking_repository import TrackingRepository
+            from app.repositories.inventory_repository import InventoryRepository
+            from app.repositories.consumption_analytics_repository import ConsumptionAnalyticsRepository
+            from app.services.consumption_service_v2 import ConsumptionServiceV2
+            from app.dependencies import get_llm_orchestrator
 
-            consumption_service = ConsumptionService(db)
+            # Build ConsumptionServiceV2 directly — Depends() only works in route handlers
+            llm_orchestrator = await get_llm_orchestrator()
+            consumption_service = ConsumptionServiceV2(
+                tracking_repo=TrackingRepository(db),
+                inventory_repo=InventoryRepository(db),
+                analytics_repo=ConsumptionAnalyticsRepository(db),
+                db=db,
+                llm_orchestrator=llm_orchestrator,
+            )
+
             auth_repo = AuthRepository(db)
             active_users = auth_repo.get_all_active()
 
@@ -223,65 +237,65 @@ class NotificationWorker:
         finally:
             db.close()
     
-    async def _trigger_weekly_reports(self):
-        """
-        Trigger weekly report events via EventPublisher.
+    # async def _trigger_weekly_reports(self):
+    #     """
+    #     Trigger weekly report events via EventPublisher.
 
-        Generates weekly analytics for all active users and publishes events.
-        """
-        db = self.session_factory()
-        try:
-            from app.repositories.auth_repository import AuthRepository
+    #     Generates weekly analytics for all active users and publishes events.
+    #     """
+    #     db = self.session_factory()
+    #     try:
+    #         from app.repositories.auth_repository import AuthRepository
 
-            consumption_service = ConsumptionService(db)
-            auth_repo = AuthRepository(db)
-            active_users = auth_repo.get_all_active()
+    #         consumption_service = ConsumptionService(db)
+    #         auth_repo = AuthRepository(db)
+    #         active_users = auth_repo.get_all_active()
 
-            for user in active_users:
-                try:
-                    analytics = consumption_service.generate_consumption_analytics(
-                        user_id=user.id,
-                        days=7
-                    )
+    #         for user in active_users:
+    #             try:
+    #                 analytics = consumption_service.generate_consumption_analytics(
+    #                     user_id=user.id,
+    #                     days=7
+    #                 )
 
-                    if analytics.get("success"):
-                        # Extract data from analytics
-                        analytics_data = analytics.get("analytics", {})
-                        daily_compliance = analytics_data.get("daily_compliance", {})
+    #                 if analytics.get("success"):
+    #                     # Extract data from analytics
+    #                     analytics_data = analytics.get("analytics", {})
+    #                     daily_compliance = analytics_data.get("daily_compliance", {})
 
-                        # Calculate date range
-                        end_date = datetime.utcnow().date()
-                        start_date = end_date - timedelta(days=7)
+    #                     # Calculate date range
+    #                     end_date = datetime.utcnow().date()
+    #                     start_date = end_date - timedelta(days=7)
 
-                        # Publish event via EventPublisher
-                        # Map service data to observer expectations:
-                        # - Calculate start_date and end_date
-                        # - Extract average_compliance from nested analytics
-                        # - Map total_meals_analyzed → total_meals
-                        # - Set weight_change and achievements_unlocked to 0 (TODO: integrate services)
-                        await self.event_publisher.publish(
-                            event_type="scheduled_weekly_report",
-                            data={
-                                "user_id": user.id,
-                                "start_date": start_date.isoformat(),
-                                "end_date": end_date.isoformat(),
-                                "total_meals": analytics.get("total_meals_analyzed", 0),
-                                "average_compliance": daily_compliance.get("average_compliance", 0.0),
-                                "weight_change": 0.0,  # TODO: Integrate weight tracking service
-                                "achievements_unlocked": 0,  # TODO: Integrate achievement service
-                            }
-                        )
-                        logger.info(f"Weekly report event published for user {user.id}")
+    #                     # Publish event via EventPublisher
+    #                     # Map service data to observer expectations:
+    #                     # - Calculate start_date and end_date
+    #                     # - Extract average_compliance from nested analytics
+    #                     # - Map total_meals_analyzed → total_meals
+    #                     # - Set weight_change and achievements_unlocked to 0 (TODO: integrate services)
+    #                     await self.event_publisher.publish(
+    #                         event_type="scheduled_weekly_report",
+    #                         data={
+    #                             "user_id": user.id,
+    #                             "start_date": start_date.isoformat(),
+    #                             "end_date": end_date.isoformat(),
+    #                             "total_meals": analytics.get("total_meals_analyzed", 0),
+    #                             "average_compliance": daily_compliance.get("average_compliance", 0.0),
+    #                             "weight_change": 0.0,  # TODO: Integrate weight tracking service
+    #                             "achievements_unlocked": 0,  # TODO: Integrate achievement service
+    #                         }
+    #                     )
+    #                     logger.info(f"Weekly report event published for user {user.id}")
 
-                except Exception as e:
-                    logger.error(f"Error publishing weekly report for user {user.id}: {str(e)}")
+    #             except Exception as e:
+    #                 logger.error(f"Error publishing weekly report for user {user.id}: {str(e)}")
 
-            logger.info(f"Published weekly report events for {len(active_users)} users")
+    #         logger.info(f"Published weekly report events for {len(active_users)} users")
 
-        except Exception as e:
-            logger.error(f"Error in _trigger_weekly_reports: {str(e)}")
-        finally:
-            db.close()
+    #     except Exception as e:
+    #         logger.error(f"Error in _trigger_weekly_reports: {str(e)}")
+    #     finally:
+    #         db.close()
 
     async def _trigger_inventory_alerts(self):
         """
@@ -410,16 +424,13 @@ async def main():
         if mode == "producer":
             logger.info("Starting in PRODUCER mode (APScheduler worker)")
 
-            # Initialize EventPublisher with NotificationObserver
-            from app.infrastructure.notifications.observers import NotificationObserver
+            from app.infrastructure.observers.notification_observer import NotificationObserver
+            from app.models.database import SessionLocal
 
             event_publisher = EventPublisher()
-            db = sessionmaker(bind=engine)()
-            notification_observer = NotificationObserver(db)
+            notification_observer = NotificationObserver(session_factory=SessionLocal)
             event_publisher.attach(notification_observer)
-            db.close()
 
-            # Start worker with EventPublisher
             worker = NotificationWorker(event_publisher)
             await worker.run()
 
@@ -438,14 +449,12 @@ async def main():
         # No argument - run both
         logger.info("Starting in BOTH mode (producer + consumer)")
 
-        # Initialize EventPublisher with NotificationObserver
-        from app.infrastructure.notifications.observers import NotificationObserver
+        from app.infrastructure.observers.notification_observer import NotificationObserver
+        from app.models.database import SessionLocal
 
         event_publisher = EventPublisher()
-        db = sessionmaker(bind=engine)()
-        notification_observer = NotificationObserver(db)
+        notification_observer = NotificationObserver(session_factory=SessionLocal)
         event_publisher.attach(notification_observer)
-        db.close()
 
         # Start both worker and consumer
         worker = NotificationWorker(event_publisher)

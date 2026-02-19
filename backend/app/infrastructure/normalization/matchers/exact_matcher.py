@@ -8,58 +8,39 @@ logger = logging.getLogger(__name__)
 
 
 class ExactMatcherHandler(IMatchHandler):
-    """
-    Handler for exact matching using item cache
-
-    Responsibilities:
-    - Load item cache into context if not present
-    - Clean and normalize text
-    - Check exact match in cache (name + aliases)
-    - Mark context as matched if found
-
-    Chain Position: First matcher in chain (after cache loading)
-    Chain Behavior: Stops chain if match found, continues otherwise
-    """
 
     def __init__(self, item_repository: ItemRepository):
-        """
-        Args:
-            item_repository: ItemRepository for loading item cache
-        """
+
         super().__init__()
         self.item_repo = item_repository
 
     def _clean_text(self, text: str) -> str:
-        """Clean and normalize text for matching"""
+
         return text.lower().strip()
 
     async def _process(self, context: MatchContext) -> None:
-        """
-        Try to match text exactly against item cache
 
-        Args:
-            context: Shared context containing user_text and item_cache
-        """
-        # Load cache if not present
         if context.item_cache is None:
             context.item_cache = await self.item_repo.build_and_cache_items()
             context.add_log(f"ExactMatcher: Loaded cache ({len(context.item_cache)} entries)")
 
-        # Clean text
         cleaned = self._clean_text(context.user_text)
 
-        # Check direct match
+        print(f"  [ExactMatcher] user_text='{context.user_text}' -> cleaned='{cleaned}' -> in_cache={cleaned in context.item_cache}")
+
         if cleaned in context.item_cache:
             item_id = context.item_cache[cleaned]
             context.mark_matched(
                 item_id=item_id,
-                item_name=cleaned,  # Will be replaced with actual name from DB if needed
+                item_name=cleaned,
                 confidence=1.0,
                 strategy="exact",
                 reasoning=f"Exact match found in cache"
             )
-            context.add_log(f"ExactMatcher: Match found for '{cleaned}' -> item_id {item_id}")
-            logger.debug(f"Exact match: '{context.user_text}' -> item_id {item_id}")
+            print(f"  [ExactMatcher] MATCHED -> item_id={item_id}")
         else:
+            # Show a few cache keys that are close for debugging
+            similar = [k for k in list(context.item_cache.keys())[:500] if cleaned.replace(" ", "_") == k or cleaned.replace("_", " ") == k]
+            if similar:
+                print(f"  [ExactMatcher] MISS but underscore variant exists in cache: {similar}")
             context.add_log(f"ExactMatcher: No match for '{cleaned}'")
-            logger.debug(f"Exact match failed for '{context.user_text}'")

@@ -1,10 +1,3 @@
-"""
-Inventory Repository Implementation
-
-Implements data access operations for user inventory management.
-Extracted from TrackingAgent and IntelligentInventoryService for clean repository pattern.
-"""
-
 import logging
 from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict
@@ -12,46 +5,16 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 
 from app.repositories.interfaces.inventory_repository import IInventoryRepository
-from app.models.database import UserInventory, Item, Recipe, RecipeIngredient
+from app.models.database import UserInventory, Item, Recipe
 
 logger = logging.getLogger(__name__)
 
 
 class InventoryRepository(IInventoryRepository):
-    """
-    Repository for inventory data access operations.
-
-    All user inventory database queries are implemented here.
-    NO business logic - only data access.
-    """
-
     def __init__(self, db: Session):
-        """
-        Initialize inventory repository.
-
-        Args:
-            db: SQLAlchemy database session
-        """
         self.db = db
 
-    # =========================================================================
-    # BASIC CRUD OPERATIONS
-    # =========================================================================
-
     async def get_all(self, limit: int = 100, offset: int = 0) -> List[UserInventory]:
-        """
-        Get all inventory items with pagination (across all users).
-
-        Note: This method is required by IRepository interface.
-        For user-specific inventory, use get_all_for_user() instead.
-
-        Args:
-            limit: Maximum number of items to return
-            offset: Number of items to skip
-
-        Returns:
-            List of inventory items ordered by ID
-        """
         try:
             inventory_items = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -70,16 +33,6 @@ class InventoryRepository(IInventoryRepository):
         inventory_id: int,
         user_id: int
     ) -> Optional[UserInventory]:
-        """
-        Get inventory item by ID with user validation.
-
-        Args:
-            inventory_id: ID of inventory item
-            user_id: User ID for ownership validation
-
-        Returns:
-            UserInventory if found and belongs to user, None otherwise
-        """
         try:
             inventory = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -101,18 +54,6 @@ class InventoryRepository(IInventoryRepository):
         user_id: int,
         include_zero_quantity: bool = False
     ) -> List[UserInventory]:
-        """
-        Get all inventory items for a user.
-
-        Source: backend/app/agents/tracking_agent.py:97
-
-        Args:
-            user_id: User ID
-            include_zero_quantity: If True, include items with 0 quantity
-
-        Returns:
-            List of inventory items ordered by item name
-        """
         try:
             query = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -140,23 +81,6 @@ class InventoryRepository(IInventoryRepository):
         user_id: int,
         item_id: int
     ) -> Optional[UserInventory]:
-        """
-        Get inventory record for a specific item.
-
-        LIMITATION: Returns only ONE UserInventory record.
-        If multiple records exist (different expiry dates), behavior is undefined.
-
-        For FIFO inventory with multiple expiry dates, use get_all_inventory_for_item() instead.
-
-        Source: backend/app/services/inventory_service.py (pattern)
-
-        Args:
-            user_id: User ID
-            item_id: Item ID
-
-        Returns:
-            UserInventory if found, None otherwise
-        """
         try:
             inventory = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -179,22 +103,6 @@ class InventoryRepository(IInventoryRepository):
         item_id: int,
         order_by_expiry_desc: bool = True
     ) -> List[UserInventory]:
-        """
-        Get ALL inventory records for a specific user and item.
-
-        Supports multiple inventory records per item (different expiry dates).
-        This enables FIFO (First In, First Out) inventory management.
-
-        Args:
-            user_id: User ID
-            item_id: Item ID
-            order_by_expiry_desc: If True, orders by expiry_date DESC (newest first)
-                                  If False, orders by expiry_date ASC (oldest first)
-
-        Returns:
-            List of inventory records for the item, ordered by expiry date.
-            Returns empty list if no records found.
-        """
         try:
             query = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -222,25 +130,11 @@ class InventoryRepository(IInventoryRepository):
         user_id: int,
         item_ids: List[int]
     ) -> Dict[int, UserInventory]:
-        """
-        BATCH OPERATION: Get inventory for multiple items in ONE query.
-
-        Solves N+1 query problem by using WHERE item_id IN (...).
-
-        Args:
-            user_id: User ID
-            item_ids: List of item IDs to fetch inventory for
-
-        Returns:
-            Dict mapping item_id to UserInventory
-        """
         try:
-            # Early exit for empty list
+
             if not item_ids:
                 return {}
 
-            # ONE QUERY: Fetch all inventory for all items
-            # SQL: SELECT * FROM user_inventory WHERE user_id = X AND item_id IN (1, 2, 3, ...)
             inventory_list = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
             ).filter(
@@ -250,7 +144,6 @@ class InventoryRepository(IInventoryRepository):
                 )
             ).all()
 
-            # Convert to dict mapping item_id -> UserInventory
             result = {inv.item_id: inv for inv in inventory_list}
 
             return result
@@ -260,18 +153,6 @@ class InventoryRepository(IInventoryRepository):
             raise
 
     async def create(self, inventory: UserInventory) -> UserInventory:
-        """
-        Create new inventory record.
-
-        NOTE: Does NOT commit - caller (service layer) controls transaction.
-        Uses flush() to generate ID without committing.
-
-        Args:
-            inventory: UserInventory entity to create
-
-        Returns:
-            Created inventory with ID populated (transaction still open)
-        """
         try:
             self.db.add(inventory)
             self.db.flush()  # ✅ Generate ID without committing transaction
@@ -285,21 +166,8 @@ class InventoryRepository(IInventoryRepository):
             raise  # ✅ Service layer will handle rollback
 
     async def update(self, inventory: UserInventory) -> UserInventory:
-        """
-        Update existing inventory record.
-
-        NOTE: Does NOT commit - caller (service layer) controls transaction.
-        Does NOT modify entity fields - service layer should set all fields.
-
-        Args:
-            inventory: UserInventory entity to update (must have ID)
-
-        Returns:
-            Updated inventory (transaction still open)
-        """
         try:
-            # ✅ Service layer should set last_updated, not repository
-            self.db.flush()  # ✅ Flush changes without committing transaction
+            self.db.flush()
             self.db.refresh(inventory)
 
             logger.info(f"Updated inventory {inventory.id} (pending commit)")
@@ -310,18 +178,6 @@ class InventoryRepository(IInventoryRepository):
             raise  # ✅ Service layer will handle rollback
 
     async def delete(self, inventory_id: int, user_id: int) -> bool:
-        """
-        Delete inventory record by ID with user validation.
-
-        NOTE: Does NOT commit - caller (service layer) controls transaction.
-
-        Args:
-            inventory_id: ID of inventory to delete
-            user_id: User ID for ownership validation
-
-        Returns:
-            True if deleted, False if not found or unauthorized
-        """
         try:
             result = self.db.query(UserInventory).filter(
                 and_(
@@ -343,9 +199,6 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error deleting inventory {inventory_id}: {e}")
             raise
 
-    # =========================================================================
-    # QUANTITY OPERATIONS
-    # =========================================================================
 
     async def add_quantity(
         self,
@@ -355,27 +208,11 @@ class InventoryRepository(IInventoryRepository):
         expiry_date: Optional[date] = None,
         source: str = "manual"
     ) -> UserInventory:
-        """
-        Add quantity to existing inventory or create new record.
-
-        Source: backend/app/services/inventory_service.py:add_item
-
-        Args:
-            user_id: User ID
-            item_id: Item ID
-            quantity_grams: Amount to add (grams)
-            expiry_date: Optional expiry date
-            source: Source of addition (manual, ocr, etc.)
-
-        Returns:
-            Updated or created UserInventory
-        """
         try:
-            # Check if inventory exists
+
             existing = await self.get_by_item_id(user_id, item_id)
 
             if existing:
-                # Add to existing quantity
                 existing.quantity_grams += quantity_grams
                 if expiry_date:
                     existing.expiry_date = expiry_date
@@ -388,7 +225,6 @@ class InventoryRepository(IInventoryRepository):
                 logger.info(f"Added {quantity_grams}g to inventory {existing.id}")
                 return existing
             else:
-                # Create new inventory record
                 new_inventory = UserInventory(
                     user_id=user_id,
                     item_id=item_id,
@@ -412,29 +248,12 @@ class InventoryRepository(IInventoryRepository):
         item_id: int,
         quantity_grams: float
     ) -> UserInventory:
-        """
-        Deduct quantity from inventory.
-
-        Source: backend/app/services/inventory_service.py:deduct_item
-
-        Args:
-            user_id: User ID
-            item_id: Item ID
-            quantity_grams: Amount to deduct (grams)
-
-        Returns:
-            Updated UserInventory
-
-        Raises:
-            ValueError: If inventory item not found
-        """
         try:
             inventory = await self.get_by_item_id(user_id, item_id)
 
             if not inventory:
                 raise ValueError(f"Inventory item {item_id} not found for user {user_id}")
 
-            # Deduct quantity (set to 0 if goes negative)
             inventory.quantity_grams = max(0, inventory.quantity_grams - quantity_grams)
             inventory.last_updated = datetime.utcnow()
             inventory.source = "deduction"
@@ -459,18 +278,6 @@ class InventoryRepository(IInventoryRepository):
         quantity_grams: float,
         expiry_date: Optional[date] = None
     ) -> UserInventory:
-        """
-        Set inventory quantity to a specific value (overwrite).
-
-        Args:
-            user_id: User ID
-            item_id: Item ID
-            quantity_grams: New quantity (grams)
-            expiry_date: Optional expiry date
-
-        Returns:
-            Updated or created UserInventory
-        """
         try:
             existing = await self.get_by_item_id(user_id, item_id)
 
@@ -510,18 +317,6 @@ class InventoryRepository(IInventoryRepository):
         user_id: int,
         updates: List[Dict]
     ) -> List[Dict]:
-        """
-        Perform bulk quantity updates in one transaction.
-
-        Source: backend/app/agents/tracking_agent.py:314-400
-
-        Args:
-            user_id: User ID
-            updates: List of update operations
-
-        Returns:
-            List of results with success/failure for each update
-        """
         results = []
 
         try:
@@ -588,9 +383,6 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error in bulk update: {e}")
             raise
 
-    # =========================================================================
-    # RECIPE INGREDIENT DEDUCTIONS
-    # =========================================================================
 
     async def deduct_recipe_ingredients(
         self,
@@ -598,17 +390,6 @@ class InventoryRepository(IInventoryRepository):
         recipe: Recipe,
         portion_multiplier: float = 1.0
     ) -> List[Dict]:
-        """
-        Deduct all ingredients for a recipe from inventory.
-
-        Args:
-            user_id: User ID
-            recipe: Recipe entity with ingredients loaded
-            portion_multiplier: Multiplier for portion size
-
-        Returns:
-            List of deduction results
-        """
         try:
             results = []
 
@@ -620,7 +401,6 @@ class InventoryRepository(IInventoryRepository):
                 try:
                     quantity_needed = ingredient.quantity_grams * portion_multiplier
 
-                    # Try to deduct
                     try:
                         inventory = await self.deduct_quantity(
                             user_id=user_id,
@@ -666,17 +446,6 @@ class InventoryRepository(IInventoryRepository):
         recipe: Recipe,
         portion_multiplier: float = 1.0
     ) -> Dict:
-        """
-        Check if user has enough inventory to make a recipe.
-
-        Args:
-            user_id: User ID
-            recipe: Recipe entity with ingredients loaded
-            portion_multiplier: Multiplier for portion size
-
-        Returns:
-            Dict with availability info and missing items
-        """
         try:
             missing_items = []
             low_stock_items = []
@@ -723,27 +492,12 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error checking recipe availability: {e}")
             raise
 
-    # =========================================================================
-    # EXPIRY AND FRESHNESS QUERIES
-    # =========================================================================
 
     async def get_expiring_items(
         self,
         user_id: int,
         days_threshold: int = 3
     ) -> List[UserInventory]:
-        """
-        Get inventory items expiring within N days.
-
-        Source: backend/app/agents/tracking_agent.py:682-821
-
-        Args:
-            user_id: User ID
-            days_threshold: Number of days ahead to check
-
-        Returns:
-            List of inventory items expiring soon, ordered by expiry_date ASC
-        """
         try:
             expiry_threshold = datetime.utcnow() + timedelta(days=days_threshold)
 
@@ -770,15 +524,6 @@ class InventoryRepository(IInventoryRepository):
         self,
         user_id: int
     ) -> List[UserInventory]:
-        """
-        Get inventory items that have already expired.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            List of expired inventory items, ordered by expiry_date DESC
-        """
         try:
             now = datetime.utcnow()
 
@@ -805,15 +550,6 @@ class InventoryRepository(IInventoryRepository):
         self,
         user_id: int
     ) -> List[UserInventory]:
-        """
-        Get inventory items without expiry date set.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            List of inventory items with no expiry date
-        """
         try:
             inventory_items = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -831,25 +567,12 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error getting items without expiry: {e}")
             raise
 
-    # =========================================================================
-    # STOCK LEVEL QUERIES
-    # =========================================================================
 
     async def get_low_stock_items(
         self,
         user_id: int,
         threshold_grams: float = 100
     ) -> List[UserInventory]:
-        """
-        Get inventory items below a quantity threshold.
-
-        Args:
-            user_id: User ID
-            threshold_grams: Quantity threshold
-
-        Returns:
-            List of low stock items, ordered by quantity ASC
-        """
         try:
             inventory_items = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -873,15 +596,6 @@ class InventoryRepository(IInventoryRepository):
         self,
         user_id: int
     ) -> List[UserInventory]:
-        """
-        Get inventory items with zero or near-zero quantity.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            List of out-of-stock items
-        """
         try:
             inventory_items = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -903,16 +617,6 @@ class InventoryRepository(IInventoryRepository):
         user_id: int,
         threshold_grams: float = 500
     ) -> List[UserInventory]:
-        """
-        Get inventory items with healthy stock levels.
-
-        Args:
-            user_id: User ID
-            threshold_grams: Minimum quantity to consider "well stocked"
-
-        Returns:
-            List of well-stocked items, ordered by quantity DESC
-        """
         try:
             inventory_items = self.db.query(UserInventory).options(
                 joinedload(UserInventory.item)
@@ -931,23 +635,11 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error getting well stocked items: {e}")
             raise
 
-    # =========================================================================
-    # CATEGORIZATION AND GROUPING
-    # =========================================================================
 
     async def get_inventory_by_category(
         self,
         user_id: int
     ) -> Dict[str, List[UserInventory]]:
-        """
-        Group inventory items by food category.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dict mapping category to items
-        """
         try:
             inventory_items = await self.get_all_for_user(user_id, include_zero_quantity=False)
 
@@ -969,15 +661,6 @@ class InventoryRepository(IInventoryRepository):
         self,
         user_id: int
     ) -> Dict[str, List[UserInventory]]:
-        """
-        Group inventory items by source (manual, ocr, deduction).
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dict mapping source to items
-        """
         try:
             inventory_items = await self.get_all_for_user(user_id, include_zero_quantity=False)
 
@@ -994,23 +677,10 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error grouping inventory by source: {e}")
             raise
 
-    # =========================================================================
-    # ANALYTICS AND STATISTICS
-    # =========================================================================
-
     async def calculate_total_inventory_weight(
         self,
         user_id: int
     ) -> float:
-        """
-        Calculate total weight of all inventory items.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Total weight in grams
-        """
         try:
             total = self.db.query(
                 func.sum(UserInventory.quantity_grams)
@@ -1028,33 +698,12 @@ class InventoryRepository(IInventoryRepository):
         self,
         user_id: int
     ) -> float:
-        """
-        Estimate total monetary value of inventory.
-
-        Placeholder for future feature.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Estimated value (currently 0.0)
-        """
-        # Placeholder - would need item prices
         return 0.0
 
     async def get_inventory_status_summary(
         self,
         user_id: int
     ) -> Dict:
-        """
-        Get comprehensive inventory status summary.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dict with summary statistics
-        """
         try:
             all_items = await self.get_all_for_user(user_id, include_zero_quantity=False)
             total_weight = await self.calculate_total_inventory_weight(user_id)
@@ -1087,20 +736,6 @@ class InventoryRepository(IInventoryRepository):
         item_id: int,
         days_to_analyze: int = 14
     ) -> Dict:
-        """
-        Calculate how quickly an item is being consumed.
-
-        Placeholder for future analytics feature.
-
-        Args:
-            user_id: User ID
-            item_id: Item ID
-            days_to_analyze: Number of days to look back
-
-        Returns:
-            Dict with velocity data (placeholder)
-        """
-        # Placeholder - would need consumption history tracking
         return {
             "item_id": item_id,
             "average_daily_consumption_grams": 0,
@@ -1108,47 +743,19 @@ class InventoryRepository(IInventoryRepository):
             "depletion_date": None
         }
 
-    # =========================================================================
-    # HISTORICAL TRACKING
-    # =========================================================================
 
     async def get_inventory_changes_history(
         self,
         user_id: int,
         days: int = 30
     ) -> List[Dict]:
-        """
-        Get history of inventory changes.
-
-        Placeholder for future feature (requires separate history table).
-
-        Args:
-            user_id: User ID
-            days: Number of days to look back
-
-        Returns:
-            Empty list (placeholder)
-        """
-        # Placeholder - would need inventory_history table
         return []
 
-    # =========================================================================
-    # BULK OPERATIONS
-    # =========================================================================
 
     async def bulk_create_inventory(
         self,
         inventory_items: List[UserInventory]
     ) -> List[UserInventory]:
-        """
-        Create multiple inventory records in one transaction.
-
-        Args:
-            inventory_items: List of UserInventory entities
-
-        Returns:
-            List of created inventory items with IDs
-        """
         try:
             self.db.add_all(inventory_items)
             self.db.commit()
@@ -1169,16 +776,6 @@ class InventoryRepository(IInventoryRepository):
         inventory_ids: List[int],
         user_id: int
     ) -> int:
-        """
-        Delete multiple inventory records in one transaction.
-
-        Args:
-            inventory_ids: List of inventory IDs to delete
-            user_id: User ID for validation
-
-        Returns:
-            Number of records deleted
-        """
         try:
             result = self.db.query(UserInventory).filter(
                 and_(
@@ -1201,15 +798,6 @@ class InventoryRepository(IInventoryRepository):
         self,
         user_id: int
     ) -> int:
-        """
-        Delete ALL inventory for a user.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Number of records deleted
-        """
         try:
             result = self.db.query(UserInventory).filter(
                 UserInventory.user_id == user_id

@@ -5,7 +5,7 @@ import logging
 
 from app.models.database import User
 from app.schemas.user import (
-    ProfileCreate, ProfileResponse,
+    ProfileCreate,
     GoalCreate, PathSelection, PreferenceCreate,
     OnboardingTargets, BasicInfoResponse
 )
@@ -17,7 +17,6 @@ router = APIRouter(prefix="/onboarding/v2", tags=["onboarding-v2"])
 
 
 class StepResponse(BaseModel):
-    """Generic step completion response"""
     success: bool
     data: dict
     message: str
@@ -34,14 +33,7 @@ async def submit_basic_info(
     current_user: User = Depends(get_current_user),
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
-    """
-    Submit basic user information.
 
-    MIGRATED FROM: onboarding.py:27-55
-
-    Architecture: API → OnboardingService → OnboardingRepository → Database
-    """
-    # Service handles profile creation and onboarding tracking
     profile = onboarding_service.complete_basic_info(
         current_user.id,
         profile_data.dict(),
@@ -62,14 +54,7 @@ async def select_goal(
     current_user: User = Depends(get_current_user),
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
-    """
-    Select fitness goal.
 
-    MIGRATED FROM: onboarding.py:57-95
-
-    Architecture: API → OnboardingService → OnboardingRepository → Database
-    """
-    # Validate prerequisite
     if not current_user.basic_info_completed:
         raise HTTPException(
             status_code=400,
@@ -80,7 +65,6 @@ async def select_goal(
             }
         )
 
-    # Service handles goal setting and onboarding tracking
     goal = onboarding_service.complete_goal_selection(
         current_user.id,
         goal_data.dict()
@@ -103,14 +87,6 @@ async def select_path(
     current_user: User = Depends(get_current_user),
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
-    """
-    Select eating path/strategy.
-
-    MIGRATED FROM: onboarding.py:97-136
-
-    Architecture: API → OnboardingService → OnboardingRepository → Database
-    """
-    # Validate prerequisite
     if not current_user.goal_selection_completed:
         raise HTTPException(
             status_code=400,
@@ -121,7 +97,7 @@ async def select_path(
             }
         )
 
-    # Service handles path selection and onboarding tracking
+
     path = onboarding_service.complete_path_selection(
         current_user.id,
         path_data.dict()
@@ -145,14 +121,7 @@ async def set_preferences(
     current_user: User = Depends(get_current_user),
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
-    """
-    Set dietary preferences.
 
-    MIGRATED FROM: onboarding.py:138-177
-
-    Architecture: API → OnboardingService → OnboardingRepository → Database
-    """
-    # Validate prerequisite
     if not current_user.path_selection_completed:
         raise HTTPException(
             status_code=400,
@@ -163,7 +132,6 @@ async def set_preferences(
             }
         )
 
-    # Service handles preferences and onboarding completion
     preferences = onboarding_service.complete_preferences(
         current_user.id,
         pref_data.dict()
@@ -185,15 +153,8 @@ async def get_calculated_targets(
     current_user: User = Depends(get_current_user),
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
-    """
-    Get calculated nutritional targets after onboarding.
-
-    MIGRATED FROM: onboarding.py:179-191
-
-    Architecture: API → OnboardingService → OnboardingRepository → Database
-    """
     try:
-        targets = onboarding_service.get_calculated_targets(current_user.id)
+        targets = await onboarding_service.get_calculated_targets(current_user.id)
         return targets
     except ValueError as e:
         raise HTTPException(

@@ -1,0 +1,13 @@
+{
+  "title": "Progress Update",
+  "body": "{{ message }}",
+  "icon": "progress_icon",
+  "badge": 1,
+  "sound": "default",
+  "click_action": "OPEN_DASHBOARD",
+  "data": {
+    "milestone_type": "{{ milestone_type }}",
+    "notification_type": "progress_update",
+    "action_url": "/dashboard"
+  }
+}

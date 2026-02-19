@@ -5,6 +5,7 @@ Provides FastAPI dependencies for repositories, services, and orchestrators.
 """
 
 import logging
+from app.core.llm_orchestrator import LLMOrchestrator
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -28,13 +29,12 @@ from app.repositories.meal_log_repository import MealLogRepository
 from app.repositories.recipe_repository import RecipeRepository
 
 from app.services.meal_plan_service_v2 import MealPlanServiceV2
-from app.services.inventory_service import IntelligentInventoryService
 from app.services.intelligent_inventory_service_v2 import IntelligentInventoryServiceV2
 from app.services.final_meal_optimizer import MealPlanOptimizer
 from app.services.grocery_service import GroceryService
 from app.services.constraint_builder_service import ConstraintBuilderService
 from app.orchestrators.meal_plan_orchestrator import MealPlanOrchestrator
-from app.events.event_publisher import EventPublisher
+from app.infrastructure.events.event_publisher import EventPublisher
 
 
 from app.repositories import (
@@ -68,9 +68,14 @@ from app.infrastructure.normalization.repositories.item_repository import ItemRe
 from app.services.receipt_processing_service import ReceiptProcessingService
 from app.services.s3_service import S3Service
 from app.infrastructure.events.event_publisher import EventPublisher
+from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
+from app.core.llm_orchestrator import LLMOrchestrator
+from app.infrastructure.prompts import MongoPromptRegistry
+from app.core.mongodb import get_mongo_async_client
+from app.core.token_governor import RedisTokenGovernor
+from app.infrastructure.normalization.adapters.openai_llm_adapter import OpenAILLMAdapter
 
-from app.infrastructure.normalization.interfaces import LLMTransport
-from app.infrastructure.normalization.adapters.openai_transport import OpenAITransport
+
 from app.core.llm_clients import get_openai_client
 
 
@@ -155,13 +160,6 @@ def get_recipe_repository(db: Session = Depends(get_db)) -> IRecipeRepository:
     return RecipeRepository(db)
 
 
-# ===== Service Dependencies =====
-
-def get_inventory_service(db: Session = Depends(get_db)) -> IntelligentInventoryService:
-
-    return IntelligentInventoryService(db)
-
-
 def get_user_profile_repository(db: Session = Depends(get_db)) -> IUserProfileRepository:
     """Get user profile repository instance"""
     return UserProfileRepository(db)
@@ -178,7 +176,7 @@ def get_meal_plan_service_v2(
     meal_plan_repo: IMealPlanRepository = Depends(get_meal_plan_repository),
     meal_log_repo: IMealLogRepository = Depends(get_meal_log_repository),
     recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
-    inventory_service: IntelligentInventoryService = Depends(get_inventory_service),
+    # inventory_service: IntelligentInventoryService = Depends(get_inventory_service),
     user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository)
 ) -> MealPlanServiceV2:
     """
@@ -189,7 +187,7 @@ def get_meal_plan_service_v2(
         meal_plan_repo=meal_plan_repo,
         meal_log_repo=meal_log_repo,
         recipe_repo=recipe_repo,
-        inventory_service=inventory_service,
+        # inventory_service=inventory_service,
         user_profile_repo=user_profile_repo
     )
 
@@ -205,6 +203,39 @@ def get_event_publisher() -> EventPublisher:
     return _event_publisher
 
 
+def get_inventory_repository(db: Session = Depends(get_db)) -> IInventoryRepository:
+
+    return InventoryRepository(db)
+
+
+def get_meal_plan_optimizer(
+    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
+    inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository)
+) -> MealPlanOptimizer:
+    """
+    Get meal plan optimizer instance with repository dependencies.
+
+    REFACTORED: Now injects repositories instead of raw DB session.
+    """
+    return MealPlanOptimizer(
+        recipe_repo=recipe_repo,
+        inventory_repo=inventory_repo,
+        user_profile_repo=user_profile_repo
+    )
+
+def get_grocery_service(
+    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
+    inventory_repo: IInventoryRepository = Depends(get_inventory_repository)
+) -> GroceryService:
+    """
+    Get grocery service instance with repository dependencies.
+    REFACTORED: Now injects repositories instead of raw DB session.
+    """
+    return GroceryService(
+        recipe_repo=recipe_repo,
+        inventory_repo=inventory_repo
+    )
 
 def get_meal_plan_orchestrator(
     meal_plan_service: MealPlanServiceV2 = Depends(get_meal_plan_service_v2),
@@ -233,18 +264,7 @@ def get_inventory_repository(db: Session = Depends(get_db)) -> IInventoryReposit
     return InventoryRepository(db)
 
 
-def get_grocery_service(
-    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
-    inventory_repo: IInventoryRepository = Depends(get_inventory_repository)
-) -> GroceryService:
-    """
-    Get grocery service instance with repository dependencies.
-    REFACTORED: Now injects repositories instead of raw DB session.
-    """
-    return GroceryService(
-        recipe_repo=recipe_repo,
-        inventory_repo=inventory_repo
-    )
+
 
 
 def get_meal_plan_optimizer(
@@ -274,7 +294,6 @@ def get_item_repository(db: Session = Depends(get_db)) -> ItemRepository:
     """
     redis_client = get_redis_client()
 
-    from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
     cache_adapter = RedisCacheAdapter(redis_client=redis_client)
 
     return ItemRepository(db=db, cache_adapter=cache_adapter)
@@ -284,10 +303,12 @@ async def get_intelligent_inventory_service_v2(
     inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
     recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
     item_repo: ItemRepository = Depends(get_item_repository),
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository),
+    meal_plan_repo: IMealPlanRepository = Depends(get_meal_plan_repository),
     db: Session = Depends(get_db)
 ) -> IntelligentInventoryServiceV2:
 
-    # Get centralized Redis client
+
     redis_client = get_redis_client()
 
     # Create adapters with singleton clients (lightweight wrappers)
@@ -299,7 +320,8 @@ async def get_intelligent_inventory_service_v2(
         db=db,
         redis_client=redis_client,
         llm_orchestrator=llm_orchestrator,
-        embedding_adapter=embedding_adapter
+        embedding_adapter=embedding_adapter,
+        item_repo=item_repo
     )
 
     return IntelligentInventoryServiceV2(
@@ -307,7 +329,10 @@ async def get_intelligent_inventory_service_v2(
         recipe_repo=recipe_repo,
         normalizer=normalizer,
         item_repo=item_repo,
-        db=db
+        db=db,
+        llm_orchestrator=llm_orchestrator,
+        user_profile_repo=user_profile_repo,
+        meal_plan_repo=meal_plan_repo
     )
 
 
@@ -332,6 +357,43 @@ def get_consumption_analytics_repository(
     return ConsumptionAnalyticsRepository(db)
 
 
+# ============================================================================
+# USER CONTEXT DEPENDENCY (for LangGraph nutrition bot)
+# ============================================================================
+
+def get_user_context(
+    user_id: int,
+    user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository),
+    tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
+    inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
+    recipe_repo: IRecipeRepository = Depends(get_recipe_repository),
+    analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
+):
+    """
+    Get UserContext instance with all repository dependencies.
+
+    Used by LangGraph nutrition bot to inject dependencies via context_schema.
+
+    Args:
+        user_id: The user ID to build context for
+        All other args are injected via Depends
+
+    Returns:
+        UserContext instance with all dependencies
+    """
+    from app.agents.nutrition_context import UserContext
+
+    return UserContext(
+        user_id=user_id,
+        user_profile_repo=user_profile_repo,
+        tracking_repo=tracking_repo,
+        inventory_repo=inventory_repo,
+        recipe_repo=recipe_repo,
+        analytics_repo=analytics_repo,
+        onboarding_service=onboarding_service
+    )
+
 
 def get_notification_service(db: Session = Depends(get_db)) -> NotificationService:
 
@@ -353,72 +415,126 @@ def get_meal_tracking_service(
     )
 
 
-def get_external_meal_service(
-    tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
-    analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository)
-) -> ExternalMealService:
 
-    return ExternalMealService(
-        tracking_repo=tracking_repo,
-        analytics_repo=analytics_repo
+def get_prompt_registry():
+    """
+    Get MongoDB-based prompt registry.
+
+    Stateless wrapper around singleton MongoDB client.
+    Created per-request (lightweight, no connection overhead).
+
+    Returns:
+        IPromptRegistry: MongoDB prompt registry instance
+    """
+
+    client = get_mongo_async_client()
+    return MongoPromptRegistry(
+        client=client,
+        database=settings.mongodb_db,
+        collection="llm_prompts"
     )
 
 
-def get_inventory_management_service(
+def get_token_governor():
+    """
+    Get Redis-based token governor.
+
+    Stateless wrapper around singleton Redis client.
+    Created per-request (lightweight, no connection overhead).
+
+    Returns:
+        ITokenGovernor: Redis token governor instance
+    """
+    
+
+    return RedisTokenGovernor(ttl=86400)  # 24-hour budget window
+
+
+async def get_llm_adapter():
+    """
+    Get OpenAI LLM adapter.
+
+    Stateless wrapper around singleton OpenAI client.
+    Created per-request (lightweight, no connection overhead).
+
+    Returns:
+        ILLMAdapter: OpenAI adapter instance
+    """
+
+    openai_client = await get_openai_client()
+    return OpenAILLMAdapter(client=openai_client)
+
+
+async def get_llm_orchestrator():
+    """
+    Get LLM Orchestrator - the single entry point for all LLM calls.
+
+    Wires together:
+    - PromptRegistry (MongoDB) - fetches and renders prompts
+    - TokenGovernor (Redis) - manages token budgets
+    - LLMAdapter (OpenAI) - executes LLM calls
+
+    Created per-request (all components are stateless wrappers).
+
+    Usage in routes:
+        @router.post("/normalize")
+        async def normalize_item(
+            orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
+        ):
+            result = await orchestrator.run(
+                user_id=user.id,
+                slug="verify_match",
+                variables={"user_text": "red capsicum", "candidates": "[...]"},
+                response_model=VerifyMatchResult
+            )
+
+    Returns:
+        LLMOrchestrator: Fully wired orchestrator instance
+    """
+
+    registry = get_prompt_registry()
+    governor = get_token_governor()
+    adapter = await get_llm_adapter()
+
+    return LLMOrchestrator(
+        registry=registry,
+        governor=governor,
+        adapter=adapter
+    )
+
+
+
+
+async def get_inventory_management_service(
     inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    llm_orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
 ) -> InventoryManagementService:
 
     return InventoryManagementService(
         inventory_repo=inventory_repo,
         tracking_repo=tracking_repo,
-        db=db
+        db=db,
+        llm_orchestrator=llm_orchestrator
     )
 
 
-def get_consumption_service_v2(
+async def get_consumption_service_v2(
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
     inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
     analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    llm_orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
 ) -> ConsumptionServiceV2:
 
     return ConsumptionServiceV2(
         tracking_repo=tracking_repo,
         inventory_repo=inventory_repo,
         analytics_repo=analytics_repo,
-        db=db
+        db=db,
+        llm_orchestrator=llm_orchestrator
     )
-
-
-def get_meal_logging_orchestrator(
-    meal_tracking_service: MealTrackingService = Depends(get_meal_tracking_service),
-    external_meal_service: ExternalMealService = Depends(get_external_meal_service),
-    inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
-    consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
-    notification_service: NotificationService = Depends(get_notification_service),
-    event_publisher: EventPublisher = Depends(get_event_publisher),
-    db: Session = Depends(get_db)
-) -> MealLoggingOrchestrator:
-    """Get meal logging orchestrator with all dependencies including new EventPublisher"""
-    return MealLoggingOrchestrator(
-        meal_tracking_service=meal_tracking_service,
-        external_meal_service=external_meal_service,
-        inventory_service=inventory_service,
-        consumption_service=consumption_service,
-        notification_service=notification_service,
-        event_publisher=event_publisher,
-        db=db
-    )
-
-
-
-def get_tracking_orchestrator(
-    orchestrator: MealLoggingOrchestrator = Depends(get_meal_logging_orchestrator)
-) -> MealLoggingOrchestrator:
-
-    return orchestrator
 
 
 
@@ -473,27 +589,21 @@ def create_achievement_service(db: Session):
     )
 
 
-def create_notification_observer(db: Session):
+def create_notification_observer():
     """
     Factory function to create NotificationObserver.
     Used at STARTUP - does NOT use Depends().
 
-    Args:
-        db: Database session (created manually at startup)
+    Injects SessionLocal (the factory class, not an instance) so the observer
+    can open a fresh session per handler call instead of holding a stale one.
 
     Returns:
-        NotificationObserver instance with services injected
+        NotificationObserver instance with session factory injected
     """
     from app.infrastructure.observers.notification_observer import NotificationObserver
+    from app.models.database import SessionLocal
 
-    # Create services manually
-    achievement_service = create_achievement_service(db)
-    notification_service = NotificationService(db)
-
-    return NotificationObserver(
-        achievement_service=achievement_service,
-        notification_service=notification_service
-    )
+    return NotificationObserver(session_factory=SessionLocal)
 
 
 def create_websocket_observer():
@@ -510,13 +620,10 @@ def create_websocket_observer():
     return WebSocketObserver(websocket_manager)
 
 
-def initialize_event_publisher(db: Session):
+def initialize_event_publisher():
     """
     Initialize EventPublisher with observers attached.
     Called ONCE at startup in main.py lifespan event.
-
-    Args:
-        db: Database session (created manually at startup)
 
     Returns:
         EventPublisher singleton with observers attached
@@ -526,11 +633,9 @@ def initialize_event_publisher(db: Session):
     if _event_publisher is None:
         _event_publisher = EventPublisher()
 
-        # Create observers using factory functions
         _websocket_observer = create_websocket_observer()
-        _notification_observer = create_notification_observer(db)
+        _notification_observer = create_notification_observer()
 
-        # Attach observers
         _event_publisher.attach(_websocket_observer)
         _event_publisher.attach(_notification_observer)
 
@@ -666,93 +771,140 @@ async def get_openai_transport(
 # LLM ORCHESTRATOR DEPENDENCIES (New Clean Architecture)
 # ============================================================================
 
-def get_prompt_registry():
-    """
-    Get MongoDB-based prompt registry.
 
-    Stateless wrapper around singleton MongoDB client.
-    Created per-request (lightweight, no connection overhead).
+async def get_external_meal_service(
+    tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
+    analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
+    llm_orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
+) -> ExternalMealService:
 
-    Returns:
-        IPromptRegistry: MongoDB prompt registry instance
-    """
-    from app.infrastructure.prompts import MongoPromptRegistry
-    from app.core.mongodb import get_mongo_async_client
-
-    client = get_mongo_async_client()
-    return MongoPromptRegistry(
-        client=client,
-        database=settings.mongodb_db,
-        collection="llm_prompts"
+    return ExternalMealService(
+        tracking_repo=tracking_repo,
+        analytics_repo=analytics_repo,
+        llm_orchestrator=llm_orchestrator
     )
 
 
-def get_token_governor():
-    """
-    Get Redis-based token governor.
+def get_meal_logging_orchestrator(
+    meal_tracking_service: MealTrackingService = Depends(get_meal_tracking_service),
+    external_meal_service: ExternalMealService = Depends(get_external_meal_service),
+    inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
+    consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
+    notification_service: NotificationService = Depends(get_notification_service),
+    event_publisher: EventPublisher = Depends(get_event_publisher),
+    db: Session = Depends(get_db)
+) -> MealLoggingOrchestrator:
+    """Get meal logging orchestrator with all dependencies including new EventPublisher"""
+    return MealLoggingOrchestrator(
+        meal_tracking_service=meal_tracking_service,
+        external_meal_service=external_meal_service,
+        inventory_service=inventory_service,
+        consumption_service=consumption_service,
+        notification_service=notification_service,
+        event_publisher=event_publisher,
+        db=db
+    )
 
-    Stateless wrapper around singleton Redis client.
-    Created per-request (lightweight, no connection overhead).
+def get_tracking_orchestrator(
+    orchestrator: MealLoggingOrchestrator = Depends(get_meal_logging_orchestrator)
+) -> MealLoggingOrchestrator:
+
+    return orchestrator
+
+
+# ============================================================================
+# WHATSAPP CONTEXT BUILDER (for background tasks, no FastAPI Depends)
+# ============================================================================
+
+async def build_whatsapp_context(user_id: int, db: Session):
+    """
+    Build WhatsAppContextSchema for background processing.
+
+    Called from the WhatsApp webhook background task where FastAPI's
+    Depends() is not available. Creates all dependencies manually
+    using the provided DB session.
+
+    Args:
+        user_id: User ID to build context for
+        db: SQLAlchemy session (created manually in background task)
 
     Returns:
-        ITokenGovernor: Redis token governor instance
+        WhatsAppContextSchema with all dependencies wired
     """
-    from app.core.token_governor import RedisTokenGovernor
+    from app.agents.whatsapp_graph import WhatsAppContextSchema
+    from app.agents.nutrition_context import UserContext
 
-    return RedisTokenGovernor(ttl=86400)  # 24-hour budget window
+    # Repositories
+    user_profile_repo = UserProfileRepository(db)
+    tracking_repo = TrackingRepository(db)
+    inventory_repo = InventoryRepository(db)
+    recipe_repo = RecipeRepository(db)
+    analytics_repo = ConsumptionAnalyticsRepository(db)
+    onboarding_repo = OnboardingRepository(db)
 
+    # LLM Orchestrator (async - uses singleton OpenAI client)
+    llm_orchestrator = await get_llm_orchestrator()
 
-async def get_llm_adapter():
-    """
-    Get OpenAI LLM adapter.
+    # Services
+    onboarding_service = OnboardingService(onboarding_repo=onboarding_repo)
+    notification_service = NotificationService(db)
+    meal_tracking_service = MealTrackingService(
+        tracking_repo=tracking_repo,
+        inventory_repo=inventory_repo,
+        analytics_repo=analytics_repo,
+        notification_service=notification_service
+    )
+    inventory_management_service = InventoryManagementService(
+        inventory_repo=inventory_repo,
+        tracking_repo=tracking_repo,
+        db=db,
+        llm_orchestrator=llm_orchestrator
+    )
+    consumption_service = ConsumptionServiceV2(
+        tracking_repo=tracking_repo,
+        inventory_repo=inventory_repo,
+        analytics_repo=analytics_repo,
+        db=db,
+        llm_orchestrator=llm_orchestrator
+    )
 
-    Stateless wrapper around singleton OpenAI client.
-    Created per-request (lightweight, no connection overhead).
+    external_meal_service = ExternalMealService(
+        tracking_repo=tracking_repo,
+        analytics_repo=analytics_repo,
+        llm_orchestrator=llm_orchestrator
+    )
 
-    Returns:
-        ILLMAdapter: OpenAI adapter instance
-    """
-    from app.infrastructure.normalization.adapters.openai_llm_adapter import OpenAILLMAdapter
+    event_publisher = get_event_publisher()
 
-    openai_client = await get_openai_client()
-    return OpenAILLMAdapter(client=openai_client)
+    meal_orchestrator = MealLoggingOrchestrator(
+        meal_tracking_service=meal_tracking_service,
+        external_meal_service=external_meal_service,
+        inventory_service=inventory_management_service,
+        consumption_service=consumption_service,
+        notification_service=notification_service,
+        event_publisher=event_publisher,
+        db=db
+    )
 
+    # UserContext (shared read-only data access layer)
+    user_context = UserContext(
+        user_id=user_id,
+        user_profile_repo=user_profile_repo,
+        tracking_repo=tracking_repo,
+        inventory_repo=inventory_repo,
+        recipe_repo=recipe_repo,
+        analytics_repo=analytics_repo,
+        onboarding_service=onboarding_service
+    )
 
-async def get_llm_orchestrator():
-    """
-    Get LLM Orchestrator - the single entry point for all LLM calls.
-
-    Wires together:
-    - PromptRegistry (MongoDB) - fetches and renders prompts
-    - TokenGovernor (Redis) - manages token budgets
-    - LLMAdapter (OpenAI) - executes LLM calls
-
-    Created per-request (all components are stateless wrappers).
-
-    Usage in routes:
-        @router.post("/normalize")
-        async def normalize_item(
-            orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
-        ):
-            result = await orchestrator.run(
-                user_id=user.id,
-                slug="verify_match",
-                variables={"user_text": "red capsicum", "candidates": "[...]"},
-                response_model=VerifyMatchResult
-            )
-
-    Returns:
-        LLMOrchestrator: Fully wired orchestrator instance
-    """
-    from app.core.llm_orchestrator import LLMOrchestrator
-
-    registry = get_prompt_registry()
+    # Token governor and prompt registry (stateless wrappers)
     governor = get_token_governor()
-    adapter = await get_llm_adapter()
+    prompt_registry = get_prompt_registry()
 
-    return LLMOrchestrator(
-        registry=registry,
+    return WhatsAppContextSchema(
+        user_context=user_context,
         governor=governor,
-        adapter=adapter
+        prompt_registry=prompt_registry,
+        meal_orchestrator=meal_orchestrator,
+        external_meal_service=external_meal_service
     )
-

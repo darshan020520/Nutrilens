@@ -32,6 +32,7 @@ from app.services.inventory_management_service import InventoryManagementService
 from app.services.consumption_service_v2 import ConsumptionServiceV2
 from app.services.notification_service import NotificationService
 from app.infrastructure.events.event_publisher import EventPublisher
+from app.core.ist_datetime import today_ist
 
 logger = logging.getLogger(__name__)
 
@@ -356,7 +357,7 @@ class MealLoggingOrchestrator:
         """
         try:
             if not target_date:
-                target_date = datetime.utcnow().date()
+                target_date = today_ist()
 
             logger.info(f"Getting daily overview for user {user_id}, date {target_date}")
 

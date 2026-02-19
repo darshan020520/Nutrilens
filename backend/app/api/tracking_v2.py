@@ -1,43 +1,10 @@
-"""
-Tracking API V2 - Clean Architecture Implementation
-
-This module implements Phase 2 tracking endpoints using the layered architecture:
-    API → Orchestrator → Services → Repositories → Database
-
-Migrated from: backend/app/api/tracking.py (TrackingAgent-based implementation)
-
-Active Endpoints (9):
-1. POST /log-meal - Log meal consumption
-2. POST /skip-meal - Skip a meal
-3. GET /today - Today's consumption summary
-4. GET /history - Historical consumption data
-5. GET /inventory-status - Current inventory analytics
-6. GET /expiring-items - Items expiring soon
-7. GET /restock-list - Shopping recommendations
-8. POST /estimate-external-meal - LLM nutrition estimation
-9. POST /log-external-meal - Log external/restaurant meal
-
-Architecture:
-    This file (API Layer)
-        ↓ Uses dependency injection
-    MealLoggingOrchestrator (Workflow Coordination)
-        ↓ Coordinates
-    Services (Business Logic)
-        ↓ Uses
-    Repositories (Data Access)
-        ↓ Queries
-    Database Models
-"""
-
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional
-from datetime import datetime, date
+from datetime import datetime
+from app.core.ist_datetime import today_ist
 
-# Auth and User
 from app.models.database import User
 
-# Dependencies (DI)
 from app.dependencies import (
     get_tracking_orchestrator,
     get_external_meal_service,
@@ -46,20 +13,16 @@ from app.dependencies import (
     get_current_user
 )
 
-# Orchestrator and Services
 from app.orchestrators.meal_logging_orchestrator import MealLoggingOrchestrator
 from app.services.external_meal_service import ExternalMealService
 from app.services.inventory_management_service import InventoryManagementService
 from app.services.consumption_service_v2 import ConsumptionServiceV2
 
-# Request/Response Schemas
 from app.schemas.tracking import (
-    # Request schemas
     LogMealRequest,
     SkipMealRequest,
     ExternalMealEstimateRequest,
     LogExternalMealRequest,
-    # Response schemas
     LogMealResponse,
     SkipMealResponse,
     TodaySummaryResponse,
@@ -69,7 +32,6 @@ from app.schemas.tracking import (
     RestockListResponse,
     ExternalMealEstimateResponse,
     LogExternalMealResponse,
-    # Helper schemas
     MacroNutrients,
     InventoryChangeItem,
     InsightItem,
@@ -80,8 +42,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tracking/v2", tags=["Tracking V2"])
 
-
-# ===== HELPER FUNCTIONS (copied from tracking.py for schema compatibility) =====
 
 def format_macro_nutrients(macros: dict) -> MacroNutrients:
     """Convert macro dict to MacroNutrients schema"""
@@ -149,33 +109,15 @@ def format_recommendations(recommendations: list) -> list:
     return formatted
 
 
-# ===== CORE MEAL TRACKING ENDPOINTS =====
-
 @router.post("/log-meal", response_model=LogMealResponse)
 async def log_meal(
     request: LogMealRequest,
     current_user: User = Depends(get_current_user),
     orchestrator: MealLoggingOrchestrator = Depends(get_tracking_orchestrator)
 ):
-    """
-    Log a planned meal consumption.
-
-    Workflow:
-    1. Validate meal log exists and belongs to user
-    2. Mark meal as consumed
-    3. Auto-deduct ingredients from inventory
-    4. Update daily consumption totals
-    5. Check inventory status
-    6. Publish events and send notifications
-    7. Return comprehensive response
-
-    Source: backend/app/api/tracking.py:120-206
-    Migrated to: Clean architecture with orchestrator pattern
-    """
     try:
         logger.info(f"POST /tracking/v2/log-meal - User {current_user.id}, Meal {request.meal_log_id}")
 
-        # Use orchestrator for full workflow
         result = await orchestrator.log_planned_meal(
             user_id=current_user.id,
             meal_log_id=request.meal_log_id,
@@ -183,9 +125,6 @@ async def log_meal(
             notes=request.notes
         )
 
-        # Transform orchestrator response to match API schema
-        # Orchestrator returns: {meal_log: {...}, inventory_changes: [...], daily_summary: {...}, insights: [...], recommendations: [...]}
-        # meal_log contains the logged_meal dict from service
         meal_data = result["meal_log"]
 
         return LogMealResponse(
@@ -219,33 +158,15 @@ async def skip_meal(
     current_user: User = Depends(get_current_user),
     orchestrator: MealLoggingOrchestrator = Depends(get_tracking_orchestrator)
 ):
-    """
-    Mark a planned meal as skipped.
-
-    Workflow:
-    1. Validate meal log exists and belongs to user
-    2. Mark meal as skipped with reason
-    3. Analyze skip patterns (frequency, meal types, etc.)
-    4. Update daily summary
-    5. Publish events
-    6. Send notifications if patterns detected
-
-    Source: backend/app/api/tracking.py:208-288
-    Migrated to: Clean architecture with orchestrator pattern
-    """
     try:
         logger.info(f"POST /tracking/v2/skip-meal - User {current_user.id}, Meal {request.meal_log_id}")
 
-        # Use orchestrator for full workflow
         result = await orchestrator.skip_meal_workflow(
             user_id=current_user.id,
             meal_log_id=request.meal_log_id,
-            skip_reason=request.reason  # Use 'reason' field from schema
+            skip_reason=request.reason
         )
 
-        # Transform orchestrator response to match OLD API schema EXACTLY
-        # OLD schema from tracking.py:268-275
-        # Orchestrator wraps service result: result["meal_log"] contains the skip service response
         skip_data = result["meal_log"]
 
         return SkipMealResponse(
@@ -262,7 +183,6 @@ async def skip_meal(
 
     except ValueError as e:
         logger.error(f"Validation error skipping meal: {e}")
-        # Match OLD API: "not found" errors should return 404, not 400
         if "not found" in str(e).lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -276,45 +196,51 @@ async def get_today_summary(
     current_user: User = Depends(get_current_user),
     orchestrator: MealLoggingOrchestrator = Depends(get_tracking_orchestrator)
 ):
-    """
-    Get comprehensive summary for today's consumption.
-
-    Includes:
-    - All meals (planned, consumed, skipped, external)
-    - Daily macro totals vs targets
-    - Remaining calories and macros
-    - Inventory status
-    - Expiring items
-    - Personalized recommendations
-
-    Source: backend/app/api/tracking.py:474-531
-    Migrated to: Clean architecture with orchestrator pattern
-    """
     try:
         logger.info(f"GET /tracking/v2/today - User {current_user.id}")
-
-        # Use orchestrator to aggregate daily overview
         result = await orchestrator.get_daily_overview(
             user_id=current_user.id,
-            target_date=None  # Defaults to today
+            target_date=None
         )
 
-        # Transform orchestrator response to match OLD API schema EXACTLY
-        # OLD schema from tracking.py:507-520
         summary = result.get("daily_summary", {})
+
+        total_macros = {
+            "calories": summary.get("total_calories", 0),
+            "protein_g": summary.get("total_protein_g", 0),
+            "carbs_g": summary.get("total_carbs_g", 0),
+            "fat_g": summary.get("total_fat_g", 0),
+            "fiber_g": summary.get("total_fiber_g", 0)
+        }
+        target_macros = {
+            "calories": summary.get("target_calories", 0),
+            "protein_g": summary.get("target_protein_g", 0),
+            "carbs_g": summary.get("target_carbs_g", 0),
+            "fat_g": summary.get("target_fat_g", 0),
+            "fiber_g": 0
+        }
+        remaining_macros = {
+            "calories": summary.get("remaining_calories", 0),
+            "protein_g": summary.get("remaining_protein_g", 0),
+            "carbs_g": summary.get("remaining_carbs_g", 0),
+            "fat_g": summary.get("remaining_fat_g", 0),
+            "fiber_g": 0
+        }
+
         return TodaySummaryResponse(
-            date=result.get("date", datetime.utcnow().date().isoformat()),
+            date=result.get("date", today_ist().isoformat()),
             meals_planned=summary.get("meals_planned", 0),
             meals_consumed=summary.get("meals_consumed", 0),
             meals_skipped=summary.get("meals_skipped", 0),
             total_calories=summary.get("total_calories", 0),
-            total_macros=format_macro_nutrients(summary.get("total_macros", {})),
+            total_macros=format_macro_nutrients(total_macros),
             target_calories=summary.get("target_calories", 0),
-            target_macros=format_macro_nutrients(summary.get("targets", {})),
+            target_macros=format_macro_nutrients(target_macros),
             remaining_calories=summary.get("remaining_calories", 0),
-            remaining_macros=format_macro_nutrients(summary.get("remaining_macros", {})),
-            compliance_rate=summary.get("compliance_rate", 0),
-            meal_details=summary.get("meals", [])
+            remaining_macros=format_macro_nutrients(remaining_macros),
+            compliance_rate=round(summary.get("compliance_rate", 0) * 100, 1),  # Convert decimal to percentage
+            meal_details=summary.get("meals", []),
+            recommendations=summary.get("recommendations", [])
         )
 
     except Exception as e:
@@ -328,40 +254,19 @@ async def get_consumption_history(
     current_user: User = Depends(get_current_user),
     consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2)
 ):
-    """
-    Get historical consumption data with trends and analytics.
 
-    Query Parameters:
-    - days: Number of days to retrieve (1-90, default: 7)
-
-    Includes:
-    - Daily consumption totals
-    - Trend analysis (increasing/decreasing/stable)
-    - Adherence rates
-    - Macro distribution
-    - Meal completion stats
-
-    Source: backend/app/api/tracking.py:533-610
-    Migrated to: Clean architecture with service pattern
-    """
     try:
         logger.info(f"GET /tracking/v2/history - User {current_user.id}, Days {days}")
 
-        # Use consumption service to get historical data
+
         result = await consumption_service.get_consumption_history(
             user_id=current_user.id,
             days=days,
             include_details=True
         )
 
-        # Transform service response to match OLD API schema EXACTLY
-        # Service returns: {period, daily_data (LIST), trends}
-        # OLD expects: {period, statistics, history (LIST), trends}
-
-        # daily_data is a LIST from repository, not a dict
         daily_data_list = result.get("daily_data", [])
 
-        # Build history array matching OLD format (service already returns correct structure)
         history = []
         for daily_item in daily_data_list:
             history.append({
@@ -369,7 +274,6 @@ async def get_consumption_history(
                 "meals": daily_item.get("meals", [])
             })
 
-        # Build statistics from daily_data list
         total_meals = sum(d.get("meals_planned", 0) for d in daily_data_list)
         logged_meals = sum(d.get("meals_consumed", 0) for d in daily_data_list)
         skipped_meals = sum(d.get("meals_skipped", 0) for d in daily_data_list)
@@ -389,7 +293,6 @@ async def get_consumption_history(
 
     except ValueError as e:
         logger.error(f"Validation error getting history: {e}")
-        # Match OLD API: "not found" errors should return 404, not 400
         if "not found" in str(e).lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -398,30 +301,14 @@ async def get_consumption_history(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-# ===== INVENTORY MANAGEMENT ENDPOINTS =====
-
 @router.get("/inventory-status", response_model=InventoryStatusResponse)
 async def get_inventory_status(
     current_user: User = Depends(get_current_user),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service)
 ):
-    """
-    Get current inventory status with analytics.
-
-    Includes:
-    - Overall percentage stocked
-    - Critical items (low/out of stock)
-    - Well-stocked items
-    - Category breakdown
-    - Consumption-based recommendations
-
-    Source: backend/app/api/tracking.py:683-737
-    Migrated to: Clean architecture with service pattern
-    """
     try:
         logger.info(f"GET /tracking/v2/inventory-status - User {current_user.id}")
 
-        # Use inventory service for status calculation
         result = await inventory_service.calculate_inventory_status(
             user_id=current_user.id
         )
@@ -432,11 +319,6 @@ async def get_inventory_status(
                 detail="Failed to calculate inventory status"
             )
 
-        # Transform service response to match OLD API schema EXACTLY
-        # Service returns: overall_percentage, category_breakdown (complex objects)
-        # OLD expects: overall_stock_level, items_by_category (simple counts)
-
-        # Extract items_by_category from category_breakdown
         items_by_category = {}
         if result.get("category_breakdown"):
             for category, data in result["category_breakdown"].items():
@@ -449,7 +331,7 @@ async def get_inventory_status(
             low_stock_items=result.get("low_stock_items", []),
             critical_items=result.get("critical_items", []),
             expiring_soon=result.get("expiring_soon", []),
-            overstocked_items=result.get("well_stocked", []),  # Service calls it "well_stocked"
+            overstocked_items=result.get("well_stocked", []),
             recommendations=result.get("recommendations", [])
         )
 
@@ -468,43 +350,21 @@ async def get_expiring_items(
     current_user: User = Depends(get_current_user),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service)
 ):
-    """
-    Get items expiring soon with smart filtering.
-
-    Query Parameters:
-    - days: Days threshold for expiry warning (1-14, default: 3)
-    - filter_mode: Filtering strategy
-      * date_only: Check expiry date alone
-      * consumption_only: Check if will be consumed before expiry
-      * both: Combine both filters (default)
-
-    Includes:
-    - List of expiring items
-    - Recipes using those ingredients
-    - Recommendations for using items
-    - Priority levels (urgent, soon, routine)
-
-    Source: backend/app/api/tracking.py:739-798
-    Migrated to: Clean architecture with service pattern
-    """
     try:
         logger.info(f"GET /tracking/v2/expiring-items - User {current_user.id}, Days {days}, Mode {filter_mode}")
 
-        # Use inventory service for expiry detection
         result = await inventory_service.check_expiring_items(
             user_id=current_user.id,
             filter_mode=filter_mode,
             days_threshold=days
         )
 
-        # Transform service response to match OLD API schema EXACTLY
-        # Service returns: {expiring_count, expiring_items, recommendations, summary: {urgent, high, medium}}
-        # OLD expects: {total_expiring, urgent_count, high_priority_count, medium_priority_count, items, action_recommendations}
 
         summary = result.get("summary", {})
 
         return ExpiringItemsResponse(
             total_expiring=result.get("expiring_count", 0),
+            expired_count=summary.get("expired", 0),
             urgent_count=summary.get("urgent", 0),
             high_priority_count=summary.get("high", 0),
             medium_priority_count=summary.get("medium", 0),
@@ -514,7 +374,6 @@ async def get_expiring_items(
 
     except ValueError as e:
         logger.error(f"Validation error getting expiring items: {e}")
-        # Match OLD API: "not found" errors should return 404, not 400
         if "not found" in str(e).lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -528,35 +387,12 @@ async def get_restock_list(
     current_user: User = Depends(get_current_user),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service)
 ):
-    """
-    Get intelligent shopping/restock recommendations.
-
-    Analysis includes:
-    - Upcoming planned meals (next 7 days)
-    - Historical consumption patterns (last 30 days)
-    - Current inventory levels
-    - Seasonal/bulk buying opportunities
-
-    Returns:
-    - Prioritized restock list (urgent, soon, routine)
-    - Quantity recommendations
-    - Bulk buying suggestions
-    - Cost estimates (if available)
-
-    Source: backend/app/api/tracking.py:800-852
-    Migrated to: Clean architecture with service pattern
-    """
     try:
         logger.info(f"GET /tracking/v2/restock-list - User {current_user.id}")
 
-        # Use inventory service for restock analysis
         result = await inventory_service.generate_restock_list(
             user_id=current_user.id
         )
-
-        # Transform service response to match OLD API schema EXACTLY
-        # Service returns: {restock_list: {urgent: [], soon: [], routine: []}, estimated_cost, shopping_strategy}
-        # OLD expects: {urgent_items, soon_items, routine_items, estimated_total_cost, shopping_strategy}
 
         restock_list = result.get("restock_list", {})
 
@@ -574,42 +410,17 @@ async def get_restock_list(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-# ===== EXTERNAL MEAL ENDPOINTS =====
-
 @router.post("/estimate-external-meal", response_model=ExternalMealEstimateResponse)
 async def estimate_external_meal(
     request: ExternalMealEstimateRequest,
     current_user: User = Depends(get_current_user),
     external_meal_service: ExternalMealService = Depends(get_external_meal_service)
 ):
-    """
-    Get LLM-based nutrition estimate for an external meal.
-
-    Uses OpenAI to estimate macronutrients for restaurant meals,
-    eating out, or meals without recipes.
-
-    Request includes:
-    - dish_name: Name of the dish (required)
-    - portion_size: Portion description (required)
-    - restaurant_name: Optional restaurant name for better estimation
-    - cuisine_type: Optional cuisine type (e.g., "Indian", "Italian")
-
-    Returns:
-    - Estimated calories, protein, carbs, fat, fiber
-    - Confidence score (low, medium, high)
-    - Reasoning/explanation of estimation
-
-    Note: This endpoint does NOT create any database entries.
-    Use /log-external-meal to actually log the meal.
-
-    Source: backend/app/api/tracking.py:854-904
-    Migrated to: Clean architecture with service pattern
-    """
     try:
         logger.info(f"POST /tracking/v2/estimate-external-meal - User {current_user.id}, Dish: {request.dish_name}")
 
-        # Use external meal service for LLM estimation
         estimate = await external_meal_service.estimate_nutrition(
+            user_id=current_user.id,
             dish_name=request.dish_name,
             portion_size=request.portion_size,
             restaurant_name=request.restaurant_name,
@@ -620,7 +431,6 @@ async def estimate_external_meal(
 
     except ValueError as e:
         logger.error(f"Validation error estimating external meal: {e}")
-        # Match OLD API: "not found" errors should return 404, not 400
         if "not found" in str(e).lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -635,36 +445,9 @@ async def log_external_meal(
     current_user: User = Depends(get_current_user),
     orchestrator: MealLoggingOrchestrator = Depends(get_tracking_orchestrator)
 ):
-    """
-    Log an external/restaurant meal.
-
-    Can either:
-    1. Replace a planned meal with external meal data
-    2. Add a new external meal without replacing
-
-    Workflow:
-    1. Validate meal data (from estimate or manual entry)
-    2. Create/update meal log
-    3. Update daily consumption totals
-    4. Check inventory status
-    5. Get remaining meals for potential adjustment
-    6. Publish events and send notifications
-
-    Request includes:
-    - meal_data: External meal nutrition data (required)
-      * dish_name, portion_size, calories, protein_g, carbs_g, fat_g
-      * Optional: restaurant_name, cuisine_type, fiber_g
-    - meal_log_id_to_replace: Optional ID of planned meal to replace
-    - meal_type: Required if not replacing (breakfast, lunch, dinner, snack)
-    - notes: Optional notes about the meal
-
-    Source: backend/app/api/tracking.py:907-1095
-    Migrated to: Clean architecture with orchestrator pattern
-    """
     try:
         logger.info(f"POST /tracking/v2/log-external-meal - User {current_user.id}, Dish: {request.dish_name}")
 
-        # Build meal_data dict from request fields (matching v1: tracking.py:936-947)
         meal_data = {
             "dish_name": request.dish_name,
             "portion_size": request.portion_size,
@@ -677,7 +460,6 @@ async def log_external_meal(
             "fiber_g": request.fiber_g
         }
 
-        # Use orchestrator for full external meal workflow
         result = await orchestrator.log_external_meal_workflow(
             user_id=current_user.id,
             meal_data=meal_data,
@@ -685,10 +467,6 @@ async def log_external_meal(
             meal_type=request.meal_type,
             notes=request.notes
         )
-
-        # Transform orchestrator response to match OLD API schema EXACTLY
-        # OLD schema from tracking.py:1061-1082 (flat structure)
-        # Orchestrator now returns flat structure matching service response
 
         return LogExternalMealResponse(
             success=True,
@@ -709,28 +487,9 @@ async def log_external_meal(
 
     except ValueError as e:
         logger.error(f"Validation error logging external meal: {e}")
-        # Match OLD API: "not found" errors should return 404, not 400
         if "not found" in str(e).lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error logging external meal: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
-# ===== HEALTH CHECK =====
-
-@router.get("/health")
-async def health_check():
-    """
-    Health check endpoint for monitoring.
-
-    Returns:
-        Dict with status and version info
-    """
-    return {
-        "status": "healthy",
-        "version": "v2",
-        "architecture": "layered (API → Orchestrator → Services → Repositories)",
-        "endpoints": 9
-    }

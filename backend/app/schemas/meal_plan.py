@@ -61,13 +61,14 @@ class MealPlanResponse(BaseModel):
     user_id: int
     week_start_date: datetime
     plan_data: Dict[str, Any]
-    grocery_list:  Optional[Dict[str, Any]] = None 
+    grocery_list: Optional[Dict[str, Any]] = None
     total_calories: float
     avg_macros: Dict[str, float]
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+    optimization_method: Optional[str] = None
+
     class Config:
         from_attributes = True
 

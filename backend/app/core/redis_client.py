@@ -1,29 +1,14 @@
-"""
-Redis Client - Centralized Redis connection management
-
-Provides singleton Redis client for entire application.
-All modules (normalizer, notifications, caching, etc.) use this.
-"""
 import redis.asyncio as redis
 from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Global Redis client instance (singleton)
 _redis_client = None
 
 
 def get_redis_client() -> redis.Redis:
-    """
-    Get Redis client instance (singleton pattern)
 
-    Creates ONE async connection pool for entire application lifecycle.
-    All modules share this connection pool.
-
-    Returns:
-        redis.asyncio.Redis: Configured async Redis client with decode_responses=True
-    """
     global _redis_client
 
     if _redis_client is None:
@@ -123,7 +108,7 @@ async def check_and_increment_token_budget(
 
     result = await redis_client.evalsha(
         _token_budget_script_sha,
-        1,  # number of keys
+        1,
         key,
         tokens,
         limit,

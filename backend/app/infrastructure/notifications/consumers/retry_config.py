@@ -9,30 +9,10 @@ from typing import Optional
 
 
 class RetryConfig:
-    """
-    Retry configuration using exponential backoff.
 
-    Exponential backoff is an industry-standard retry strategy used by:
-    - AWS SQS
-    - Google Cloud Pub/Sub
-    - Twilio
-    - SendGrid
-    - Stripe
-
-    Pattern:
-    - Attempt 1: Wait 1 minute (2^0 = 1)
-    - Attempt 2: Wait 2 minutes (2^1 = 2)
-    - Attempt 3: Wait 4 minutes (2^2 = 4)
-    - Attempt 4: Wait 8 minutes (2^3 = 8)
-    - Attempt 5: Wait 15 minutes (capped at max)
-
-    Total time before giving up: ~30 minutes
-    """
-
-    # Configuration constants
-    BASE_DELAY_SECONDS = 60          # 1 minute
-    MAX_DELAY_SECONDS = 900          # 15 minutes (cap)
-    MAX_RETRIES = 5                  # Total attempts: 6 (1 original + 5 retries)
+    BASE_DELAY_SECONDS = 60
+    MAX_DELAY_SECONDS = 900
+    MAX_RETRIES = 5
 
     @staticmethod
     def calculate_delay(attempt: int) -> int:

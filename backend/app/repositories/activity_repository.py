@@ -1,11 +1,3 @@
-"""
-Activity Repository Implementation
-
-PostgreSQL implementation for querying user activity across multiple tables.
-
-EXTRACTED FROM: dashboard.py:334-375 (recent-activity endpoint)
-"""
-
 import logging
 from typing import List, Dict, Any
 from datetime import datetime
@@ -18,21 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActivityRepository:
-    """
-    Repository for user activity queries.
-
-    Aggregates activity from:
-    - MealLog (consumed meals, skipped meals)
-    - MealPlan (plan generation)
-    """
-
     def __init__(self, db: Session):
-        """
-        Initialize repository.
-
-        Args:
-            db: SQLAlchemy database session
-        """
         self.db = db
 
     async def get_recent_activity(
@@ -40,29 +18,16 @@ class ActivityRepository:
         user_id: int,
         limit: int = 10
     ) -> List[Dict[str, Any]]:
-        """
-        Get recent activity for user.
 
-        EXTRACTED FROM: dashboard.py:334-375
-
-        Args:
-            user_id: User ID
-            limit: Maximum number of activities to return
-
-        Returns:
-            List of activity items with type, description, timestamp, icon
-        """
         activities = []
 
-        # Get recent meal logs (consumed and skipped)
-        # COPIED FROM: dashboard.py:334-359
         recent_meals = self.db.query(MealLog).options(
             joinedload(MealLog.recipe)
         ).filter(
             MealLog.user_id == user_id
         ).order_by(
             desc(MealLog.planned_datetime)
-        ).limit(limit * 2).all()  # Get more than needed to ensure we have enough after filtering
+        ).limit(limit * 2).all()
 
         for meal in recent_meals:
             if meal.consumed_datetime:
@@ -82,8 +47,6 @@ class ActivityRepository:
                     "icon": "⏭️"
                 })
 
-        # Get recent meal plans
-        # COPIED FROM: dashboard.py:362-375
         recent_plans = self.db.query(MealPlan).filter(
             MealPlan.user_id == user_id
         ).order_by(
@@ -99,8 +62,6 @@ class ActivityRepository:
                 "icon": "📋"
             })
 
-        # Sort all activities by timestamp (most recent first)
         activities.sort(key=lambda x: x["timestamp"], reverse=True)
 
-        # Return only the requested limit
         return activities[:limit]

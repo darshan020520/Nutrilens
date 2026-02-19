@@ -48,9 +48,10 @@ class ITrackingRepository(IRepository[MealLog]):
     async def get_by_date(
         self,
         user_id: int,
-        target_date: date
+        target_date: date,
+        active_plans_only: bool = False
     ) -> List[MealLog]:
-        
+
         pass
 
     @abstractmethod

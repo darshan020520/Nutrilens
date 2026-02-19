@@ -1,9 +1,3 @@
-"""
-Receipt Repository Implementation
-
-Implements data access operations for receipt scanning and processing.
-"""
-
 import logging
 from typing import Optional, List
 from datetime import datetime
@@ -16,25 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class ReceiptRepository(IReceiptRepository):
-    """
-    Repository for receipt data access operations.
-
-    Handles ReceiptScan and ReceiptPendingItem database queries.
-    NO business logic - only data access.
-    """
-
     def __init__(self, db: Session):
-        """
-        Initialize receipt repository.
-
-        Args:
-            db: SQLAlchemy database session
-        """
         self.db = db
-
-    # =========================================================================
-    # RECEIPT SCAN OPERATIONS
-    # =========================================================================
 
     def create_receipt_scan(
         self,
@@ -42,19 +19,6 @@ class ReceiptRepository(IReceiptRepository):
         s3_url: str,
         status: str = "processing"
     ) -> ReceiptScan:
-        """
-        Create a new receipt scan record.
-
-        EXTRACTED FROM: receipt.py:77-84
-
-        Args:
-            user_id: User ID
-            s3_url: S3 URL of uploaded receipt image
-            status: Initial status
-
-        Returns:
-            Created ReceiptScan with ID populated and refreshed from DB
-        """
         try:
             receipt_scan = ReceiptScan(
                 user_id=user_id,
@@ -78,18 +42,6 @@ class ReceiptRepository(IReceiptRepository):
         receipt_id: int,
         user_id: int
     ) -> Optional[ReceiptScan]:
-        """
-        Get receipt scan by ID with user validation.
-
-        EXTRACTED FROM: receipt.py:234-237
-
-        Args:
-            receipt_id: Receipt scan ID
-            user_id: User ID for ownership validation
-
-        Returns:
-            ReceiptScan if found and belongs to user, None otherwise
-        """
         try:
             receipt_scan = self.db.query(ReceiptScan).filter(
                 ReceiptScan.id == receipt_id,
@@ -111,24 +63,6 @@ class ReceiptRepository(IReceiptRepository):
         needs_confirmation_count: Optional[int] = None,
         error_message: Optional[str] = None
     ) -> Optional[ReceiptScan]:
-        """
-        Update receipt scan status and counts.
-
-        EXTRACTED FROM: receipt.py:159-165, 180-182, 191-193
-
-        CRITICAL: Returns fresh ReceiptScan object after update.
-
-        Args:
-            receipt_id: Receipt scan ID
-            status: New status
-            items_count: Total items found
-            auto_added_count: Items auto-added
-            needs_confirmation_count: Items needing confirmation
-            error_message: Error message if failed
-
-        Returns:
-            Updated ReceiptScan with fresh data from DB, None if not found
-        """
         try:
             receipt_scan = self.db.query(ReceiptScan).filter(
                 ReceiptScan.id == receipt_id
@@ -138,7 +72,6 @@ class ReceiptRepository(IReceiptRepository):
                 logger.warning(f"Receipt scan {receipt_id} not found for update")
                 return None
 
-            # Update fields
             receipt_scan.status = status
 
             if items_count is not None:
@@ -172,18 +105,6 @@ class ReceiptRepository(IReceiptRepository):
         user_id: int,
         limit: int = 10
     ) -> List[ReceiptScan]:
-        """
-        Get user's receipt scan history.
-
-        EXTRACTED FROM: receipt.py:426-428
-
-        Args:
-            user_id: User ID
-            limit: Maximum number of receipts
-
-        Returns:
-            List of receipt scans ordered by created_at DESC
-        """
         try:
             receipts = self.db.query(ReceiptScan).filter(
                 ReceiptScan.user_id == user_id
@@ -195,9 +116,6 @@ class ReceiptRepository(IReceiptRepository):
             logger.error(f"Error getting receipt history for user {user_id}: {e}")
             raise
 
-    # =========================================================================
-    # PENDING ITEM OPERATIONS
-    # =========================================================================
 
     def create_pending_item(
         self,
@@ -214,28 +132,6 @@ class ReceiptRepository(IReceiptRepository):
         enrichment_confidence: Optional[float] = None,
         enrichment_reasoning: Optional[str] = None
     ) -> ReceiptPendingItem:
-        """
-        Create a pending item for user confirmation.
-
-        EXTRACTED FROM: receipt.py:136-152
-
-        Args:
-            receipt_scan_id: Receipt scan ID
-            item_name: Original item name from receipt
-            quantity: Quantity
-            unit: Unit
-            suggested_item_id: Suggested item ID
-            confidence: Normalization confidence
-            canonical_name: Enriched canonical name
-            category: Enriched category
-            fdc_id: FDC ID
-            nutrition_data: Nutrition data
-            enrichment_confidence: Enrichment confidence
-            enrichment_reasoning: Enrichment reasoning
-
-        Returns:
-            Created ReceiptPendingItem with ID populated and refreshed from DB
-        """
         try:
             pending_item = ReceiptPendingItem(
                 receipt_scan_id=receipt_scan_id,
@@ -269,18 +165,6 @@ class ReceiptRepository(IReceiptRepository):
         receipt_id: int,
         status: str = "pending"
     ) -> List[ReceiptPendingItem]:
-        """
-        Get pending items for a receipt.
-
-        EXTRACTED FROM: receipt.py:243-246
-
-        Args:
-            receipt_id: Receipt scan ID
-            status: Item status filter
-
-        Returns:
-            List of pending items
-        """
         try:
             pending = self.db.query(ReceiptPendingItem).filter(
                 ReceiptPendingItem.receipt_scan_id == receipt_id,
@@ -297,17 +181,6 @@ class ReceiptRepository(IReceiptRepository):
         self,
         pending_item_id: int
     ) -> Optional[ReceiptPendingItem]:
-        """
-        Get a specific pending item by ID.
-
-        EXTRACTED FROM: receipt.py:311-313
-
-        Args:
-            pending_item_id: Pending item ID
-
-        Returns:
-            ReceiptPendingItem if found, None otherwise
-        """
         try:
             pending_item = self.db.query(ReceiptPendingItem).filter(
                 ReceiptPendingItem.id == pending_item_id
@@ -324,20 +197,6 @@ class ReceiptRepository(IReceiptRepository):
         pending_item_id: int,
         status: str
     ) -> Optional[ReceiptPendingItem]:
-        """
-        Update pending item status.
-
-        EXTRACTED FROM: receipt.py:381-382, 387-388
-
-        CRITICAL: Returns fresh ReceiptPendingItem object after update.
-
-        Args:
-            pending_item_id: Pending item ID
-            status: New status
-
-        Returns:
-            Updated ReceiptPendingItem with fresh data from DB, None if not found
-        """
         try:
             pending_item = self.db.query(ReceiptPendingItem).filter(
                 ReceiptPendingItem.id == pending_item_id
@@ -367,17 +226,6 @@ class ReceiptRepository(IReceiptRepository):
         self,
         pending_items: List[ReceiptPendingItem]
     ) -> List[ReceiptPendingItem]:
-        """
-        Create multiple pending items in one transaction.
-
-        EXTRACTED FROM: receipt.py:136-153 (loop pattern)
-
-        Args:
-            pending_items: List of ReceiptPendingItem entities
-
-        Returns:
-            List of created items with IDs populated and refreshed from DB
-        """
         try:
             self.db.add_all(pending_items)
             self.db.commit()

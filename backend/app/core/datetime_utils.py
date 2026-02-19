@@ -63,3 +63,17 @@ class DateTimeHelper:
         if not past_date:
             return None
         return (DateTimeHelper.now_utc() - past_date).days
+    
+    @staticmethod
+    def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+        """
+        Ensure a datetime is in UTC timezone.
+
+        Args:
+            dt: Input datetime (can be None)
+        """
+        if not dt:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)

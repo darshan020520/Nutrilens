@@ -1,19 +1,8 @@
-"""
-Auth API Endpoints V2 - Clean Architecture
-
-Provides authentication endpoints using clean architecture pattern.
-
-MIGRATED FROM: auth.py
-ARCHITECTURE: API → Service → Repository → Database
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, EmailStr, TypeAdapter, ValidationError
 import logging
-
 from app.models.database import User
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth import (
@@ -28,53 +17,60 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth/v2", tags=["auth-v2"])
 
 
-# ===== RESPONSE SCHEMAS (IDENTICAL TO V1) =====
-
 class LoginResponse(BaseModel):
-    """Login response with token and user"""
     access_token: str
     token_type: str
     user: UserResponse
-
     class Config:
         orm_mode = True
 
 
 class MeResponse(BaseModel):
-    """Current user with onboarding status"""
     success: bool
     data: dict
-
     class Config:
         orm_mode = True
 
 
 class TokenResponse(BaseModel):
-    """Token refresh response"""
     access_token: str
     token_type: str
 
 
-# ===== ENDPOINTS =====
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class VerifyEmailResponse(BaseModel):
+    message: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class MessageResponse(BaseModel):
+    message: str
+
 
 @router.post("/register", response_model=UserResponse)
 async def register(
     user_create: UserCreate,
     auth_service: AuthService = Depends(get_auth_service)
 ):
-    """
-    Register a new user.
 
-    MIGRATED FROM: auth.py:20-33
-
-    Architecture: API → AuthService → AuthRepository → Database
-    """
     try:
         user = auth_service.register_user(user_create)
+        await auth_service.send_verification_email(user)
         return UserResponse.from_orm(user)
     except ValueError as e:
+        status_code = (
+            status.HTTP_409_CONFLICT
+            if str(e) == "Email already registered"
+            else status.HTTP_400_BAD_REQUEST
+        )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status_code,
             detail=str(e)
         )
 
@@ -84,23 +80,28 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service)
 ):
-    """
-    Login and receive access token.
-
-    MIGRATED FROM: auth.py:35-61
-
-    Architecture: API → AuthService → AuthRepository → Database
-    """
-    # Authenticate user
-    user = auth_service.authenticate_user(form_data.username, form_data.password)
-    if not user:
+    try:
+        email = TypeAdapter(EmailStr).validate_python(form_data.username)
+    except ValidationError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email format",
         )
 
-    # Update last login
+    try:
+        user = auth_service.authenticate_user(str(email), form_data.password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
     user = auth_service.update_last_login(user.id)
     if not user:
         raise HTTPException(
@@ -108,7 +109,6 @@ async def login(
             detail="Failed to update login timestamp"
         )
 
-    # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)},
@@ -126,14 +126,7 @@ async def login(
 async def get_me(
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get current user information with onboarding status.
 
-    MIGRATED FROM: auth.py:63-86
-
-    Architecture: API → get_current_user (DI) → AuthService → AuthRepository → Database
-    """
-    # Calculate onboarding status
     onboarding_status = calculate_onboarding_status(current_user)
 
     return MeResponse(
@@ -149,14 +142,6 @@ async def get_me(
 async def refresh_token(
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Refresh access token.
-
-    MIGRATED FROM: auth.py:90-110
-
-    Architecture: API → get_current_user (DI) → AuthService → AuthRepository → Database
-    """
-    # Create new token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(current_user.id)},
@@ -166,4 +151,30 @@ async def refresh_token(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer"
+    )
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+async def verify_email(
+    payload: VerifyEmailRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    try:
+        auth_service.verify_email_token(payload.token)
+        return VerifyEmailResponse(message="Email verified successfully. You can now log in.")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+async def resend_verification(
+    payload: ResendVerificationRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    await auth_service.resend_verification_email(str(payload.email))
+    return MessageResponse(
+        message="If an unverified account exists for this email, a verification link has been sent."
     )

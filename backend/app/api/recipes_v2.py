@@ -1,12 +1,3 @@
-"""
-Recipes API Endpoints V2 - Clean Architecture
-
-Provides recipe browsing and search functionality.
-
-MIGRATED FROM: recipes.py
-USES: Clean architecture with RecipeRepository
-"""
-
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import List, Optional, Dict
 from pydantic import BaseModel
@@ -19,8 +10,6 @@ from app.dependencies import get_recipe_repository, get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/recipes/v2", tags=["recipes-v2"])
 
-
-# ===== RESPONSE SCHEMAS (IDENTICAL TO V1) =====
 
 class RecipeResponse(BaseModel):
     """Recipe summary response"""
@@ -78,8 +67,6 @@ class RecipeDetailResponse(BaseModel):
         orm_mode = True
 
 
-# ===== ENDPOINTS =====
-
 @router.get("/", response_model=List[RecipeResponse])
 async def search_recipes(
     goal: Optional[str] = Query(None, description="Filter by goal"),
@@ -92,22 +79,9 @@ async def search_recipes(
     offset: int = Query(0, ge=0),
     recipe_repo: RecipeRepository = Depends(get_recipe_repository)
 ):
-    """
-    Search recipes with multiple filters.
-
-    SOURCE: recipes.py:33-108
-    MIGRATED TO: Clean architecture with RecipeRepository
-
-    Frontend usage:
-    - RecipeBrowser.tsx uses this with search, goal, cuisine, dietary_type, meal_time, max_prep_time filters
-
-    Returns:
-        List of recipes matching the filter criteria
-    """
     try:
         logger.info(f"GET /recipes/v2/ - Filters: goal={goal}, dietary={dietary_type}, meal_time={meal_time}")
 
-        # Use repository to search
         recipes = recipe_repo.search(
             goal=goal,
             dietary_type=dietary_type,
@@ -119,7 +93,6 @@ async def search_recipes(
             offset=offset
         )
 
-        # Convert to response format
         recipe_list = []
         for recipe in recipes:
             recipe_dict = {
@@ -157,25 +130,9 @@ async def get_recipe(
     recipe_id: int,
     recipe_repo: RecipeRepository = Depends(get_recipe_repository)
 ):
-    """
-    Get detailed recipe information by ID.
-
-    SOURCE: recipes.py:158-202
-    MIGRATED TO: Clean architecture with RecipeRepository
-
-    Frontend usage:
-    - RecipeDetailsDialog.tsx fetches recipe details when user clicks on a recipe
-
-    Args:
-        recipe_id: Recipe ID
-
-    Returns:
-        Detailed recipe information including ingredients
-    """
     try:
         logger.info(f"GET /recipes/v2/{recipe_id}")
 
-        # Use repository to get recipe with ingredients
         result = recipe_repo.get_with_ingredients(recipe_id)
 
         if not result:
@@ -187,7 +144,6 @@ async def get_recipe(
         recipe = result["recipe"]
         ingredients = result["ingredients"]
 
-        # Build response
         return {
             "id": recipe.id,
             "title": recipe.title,

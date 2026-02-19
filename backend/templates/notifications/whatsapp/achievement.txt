@@ -1,0 +1,6 @@
+🏆 *Achievement Unlocked!*
+
+{{ message }}
+
+Keep crushing your goals, {{ user_name }}! 💪
+— NutriLens

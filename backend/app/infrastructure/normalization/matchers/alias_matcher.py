@@ -1,4 +1,3 @@
-"""Alias Matcher - Matches items using fuzzy alias comparison"""
 import logging
 from app.infrastructure.normalization.chain.base_handler import IMatchHandler
 from app.infrastructure.normalization.chain.match_context import MatchContext
@@ -8,32 +7,17 @@ logger = logging.getLogger(__name__)
 
 
 class AliasMatcherHandler(IMatchHandler):
-    """
-    Handler for alias matching using fuzzy comparison
 
-    Responsibilities:
-    - Load item cache into context if not present
-    - Try fuzzy variations (plurals, singulars, partial matches)
-    - Check aliases in cache
-    - Mark context as matched if found
-
-    Chain Position: Second matcher in chain (after ExactMatcher)
-    Chain Behavior: Stops chain if match found, continues otherwise
-    """
 
     def __init__(self, item_repository: ItemRepository):
-        """
-        Args:
-            item_repository: ItemRepository for loading item cache
-        """
+
         super().__init__()
         self.item_repo = item_repository
 
     def _generate_variations(self, text: str) -> list:
-        """Generate fuzzy variations of text"""
+
         variations = [text]
 
-        # Add plural/singular
         if text.endswith('s'):
             variations.append(text[:-1])
         else:
@@ -42,22 +26,16 @@ class AliasMatcherHandler(IMatchHandler):
         return variations
 
     async def _process(self, context: MatchContext) -> None:
-        """
-        Try to match text using aliases and fuzzy matching
 
-        Args:
-            context: Shared context containing user_text and item_cache
-        """
-        # Load cache if not present
         if context.item_cache is None:
             context.item_cache = await self.item_repo.build_and_cache_items()
             context.add_log(f"AliasMatcher: Loaded cache ({len(context.item_cache)} entries)")
 
-        # Generate variations
         cleaned = context.user_text.lower().strip()
         variations = self._generate_variations(cleaned)
 
-        # Try each variation
+        print(f"  [AliasMatcher] cleaned='{cleaned}', variations={variations}")
+
         for variant in variations:
             if variant in context.item_cache:
                 item_id = context.item_cache[variant]

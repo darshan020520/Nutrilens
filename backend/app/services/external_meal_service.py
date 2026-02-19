@@ -17,7 +17,11 @@ from sqlalchemy import and_, func
 
 from app.models.database import MealLog, Recipe, User
 from app.repositories.interfaces import ITrackingRepository, IConsumptionAnalyticsRepository
-from app.services.llm_nutrition_estimator import estimate_nutrition_with_llm
+from app.core.llm_orchestrator import LLMOrchestrator
+from app.core.exceptions import TokenBudgetExceeded
+from app.schemas.normaliser import NutritionEstimateResult
+from app.core.ist_datetime import now_ist_naive, today_ist
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,7 +38,8 @@ class ExternalMealService:
     def __init__(
         self,
         tracking_repo: ITrackingRepository,
-        analytics_repo: IConsumptionAnalyticsRepository
+        analytics_repo: IConsumptionAnalyticsRepository,
+        llm_orchestrator: LLMOrchestrator
     ):
         """
         Initialize ExternalMealService with required repositories.
@@ -45,9 +50,11 @@ class ExternalMealService:
         """
         self.tracking_repo = tracking_repo
         self.analytics_repo = analytics_repo
+        self.llm_orchestrator = llm_orchestrator
 
     async def estimate_nutrition(
         self,
+        user_id: int,
         dish_name: str,
         portion_size: str,
         restaurant_name: Optional[str] = None,
@@ -95,14 +102,25 @@ class ExternalMealService:
             if not portion_size or not portion_size.strip():
                 raise ValueError("portion_size is required")
 
-            # Get LLM estimation
+            # Get LLM estimation via centralized orchestrator
             logger.info(f"Estimating nutrition for: {dish_name} ({portion_size})")
-            estimation = estimate_nutrition_with_llm(
-                dish_name=dish_name,
-                portion_size=portion_size,
-                restaurant_name=restaurant_name,
-                cuisine_type=cuisine_type
+            result = await self.llm_orchestrator.run(
+                user_id=user_id,
+                slug="estimate_nutrition",
+                variables={
+                    "dish_name": dish_name,
+                    "portion_size": portion_size,
+                    "restaurant_name": restaurant_name or "Not specified",
+                    "cuisine_type": cuisine_type or "Not specified"
+                },
+                response_model=NutritionEstimateResult
             )
+
+            # Convert Pydantic model to dict and add extra fields
+            estimation = result.model_dump()
+            estimation["dish_name"] = dish_name
+            estimation["portion_size"] = portion_size
+            estimation["estimation_method"] = "llm"
 
             logger.info(f"Nutrition estimation complete: {estimation['calories']} calories (confidence: {estimation['confidence']})")
 
@@ -170,7 +188,7 @@ class ExternalMealService:
                 if field not in meal_data:
                     raise ValueError(f"meal_data missing required field: {field}")
 
-            consumed_at = meal_data.get("consumed_at") or datetime.utcnow()
+            consumed_at = meal_data.get("consumed_at") or now_ist_naive()
 
             # Build external_meal JSON data
             external_meal_data = {
@@ -223,7 +241,7 @@ class ExternalMealService:
             # Get remaining meals for today (for potential adjustment)
             remaining_meals = await self.get_remaining_meals_for_adjustment(
                 user_id=user_id,
-                target_date=datetime.utcnow().date()
+                target_date=today_ist()
             )
 
             # Generate insights and recommendations
@@ -234,9 +252,11 @@ class ExternalMealService:
                 original_recipe_name=original_recipe_name
             )
 
-            recommendations = self._generate_external_meal_recommendations(
+            recommendations = await self._generate_external_meal_recommendations(
                 daily_summary=today_summary,
-                has_remaining_meals=len(remaining_meals) > 0
+                has_remaining_meals=len(remaining_meals) > 0,
+                user_id=user_id,
+                dish_name=meal_data["dish_name"]
             )
 
             # Calculate remaining calories
@@ -457,47 +477,56 @@ class ExternalMealService:
 
         return insights
 
-    def _generate_external_meal_recommendations(
+    async def _generate_external_meal_recommendations(
         self,
         daily_summary: Dict,
-        has_remaining_meals: bool
+        has_remaining_meals: bool,
+        user_id: int = 0,
+        dish_name: str = ""
     ) -> List[str]:
         """
         Generate recommendations based on external meal logging.
-
-        Source: backend/app/api/tracking.py:1042-1055
-
-        Args:
-            daily_summary: Today's consumption summary
-            has_remaining_meals: Whether there are remaining planned meals today
-
-        Returns:
-            List[str]: Recommendations for the user
+        Uses AI with hardcoded fallback.
         """
-        recommendations = []
-
         total_calories = daily_summary.get("total_calories", 0)
         target_calories = daily_summary.get("target_calories", 2000)
+        protein_g = daily_summary.get("total_macros", {}).get("protein_g", 0)
+        target_protein = daily_summary.get("target_macros", {}).get("protein_g", 150)
 
-        # Over target recommendations
+        # Try AI recommendations
+        if self.llm_orchestrator and user_id:
+            try:
+                from app.schemas.recommendation import RecommendationResponse
+                result = await self.llm_orchestrator.run(
+                    user_id=user_id,
+                    slug="external_meal_recommendations",
+                    variables={
+                        "dish_name": dish_name,
+                        "total_calories": int(total_calories),
+                        "target_calories": int(target_calories),
+                        "protein_g": round(protein_g, 1),
+                        "target_protein": round(target_protein, 1),
+                        "has_remaining_meals": "Yes" if has_remaining_meals else "No",
+                    },
+                    response_model=RecommendationResponse
+                )
+                return result.recommendations
+            except (TokenBudgetExceeded, Exception) as e:
+                logger.warning(f"AI external meal recommendations unavailable ({type(e).__name__}), using fallback")
+
+        # Fallback: hardcoded logic
+        recommendations = []
+
         if total_calories > target_calories * 1.1 and has_remaining_meals:
             recommendations.append("Consider lighter options for remaining meals today")
             recommendations.append("You might want to skip a meal or have a small snack instead")
-
-        # Under target recommendations
         elif total_calories < target_calories * 0.7:
             recommendations.append("You have plenty of room for more meals today")
             recommendations.append("Make sure to eat enough to meet your nutrition goals")
-
-        # On track recommendations
         elif total_calories >= target_calories * 0.9 and total_calories <= target_calories * 1.1:
             recommendations.append("You're on track with your calorie goals!")
             if has_remaining_meals:
                 recommendations.append("Stick to your planned meals for the rest of the day")
-
-        # Macro balance recommendations
-        protein_g = daily_summary.get("total_macros", {}).get("protein_g", 0)
-        target_protein = daily_summary.get("target_macros", {}).get("protein_g", 150)
 
         if protein_g < target_protein * 0.5:
             recommendations.append("Focus on protein-rich foods for remaining meals")

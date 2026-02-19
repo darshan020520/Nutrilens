@@ -1,9 +1,3 @@
-"""
-Push notification channel implementation using Firebase Cloud Messaging (FCM).
-
-Sends push notifications to mobile devices via FCM.
-"""
-
 import logging
 from typing import Dict, Any
 import json
@@ -14,19 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class PushChannel:
-    """
-    Push notification channel using Firebase Cloud Messaging.
-
-    Strategy Pattern implementation for push notification delivery.
-    """
-
     def __init__(self, server_key: str = None):
-        """
-        Initialize push notification channel.
-
-        Args:
-            server_key: FCM server key (defaults to settings.FCM_SERVER_KEY)
-        """
         self.server_key = server_key or getattr(settings, "FCM_SERVER_KEY", None)
         self.fcm_url = "https://fcm.googleapis.com/fcm/send"
 
@@ -40,18 +22,6 @@ class PushChannel:
         body: str,
         data: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """
-        Send push notification via FCM.
-
-        Args:
-            device_token: User's FCM device token
-            title: Notification title
-            body: Notification body
-            data: Additional data payload (icon, badge, sound, click_action, etc.)
-
-        Returns:
-            {"success": bool, "channel": "push", "error": str, "external_id": str}
-        """
         try:
             if not self.server_key:
                 raise Exception("FCM server key not configured")
@@ -59,7 +29,6 @@ class PushChannel:
             if not device_token:
                 raise Exception("Device token not provided")
 
-            # Build FCM payload
             payload = {
                 "to": device_token,
                 "notification": {
@@ -69,7 +38,6 @@ class PushChannel:
                 "data": data or {}
             }
 
-            # Add optional fields from data
             if data:
                 notification = payload["notification"]
                 if "icon" in data:
@@ -81,7 +49,6 @@ class PushChannel:
                 if "click_action" in data:
                     notification["click_action"] = data["click_action"]
 
-            # Send to FCM
             headers = {
                 "Authorization": f"key={self.server_key}",
                 "Content-Type": "application/json"
@@ -95,7 +62,6 @@ class PushChannel:
                     timeout=10.0
                 )
 
-            # Check response
             if response.status_code == 200:
                 result = response.json()
                 if result.get("success", 0) > 0:
@@ -135,17 +101,7 @@ class PushChannel:
             }
 
     def validate(self, device_token: str) -> bool:
-        """
-        Validate that push notification can be sent.
-
-        Args:
-            device_token: User's FCM device token
-
-        Returns:
-            True if device token exists
-        """
         return bool(device_token and len(device_token) > 20)
 
     def get_channel_type(self) -> str:
-        """Get channel type."""
         return "push"

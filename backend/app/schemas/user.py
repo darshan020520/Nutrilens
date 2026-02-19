@@ -51,6 +51,7 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str
+    email_verified: bool
     is_active: bool
     created_at: datetime
     last_login: Optional[datetime]
@@ -74,7 +75,7 @@ class OnboardingStatus(BaseModel):
     redirect_to: str
     next_step_name: Optional[str]
 
-# Profile Schemas
+
 class ProfileCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     age: int = Field(..., ge=13, le=100)
@@ -105,8 +106,8 @@ class ProfileResponse(BaseModel):
     bmr: Optional[float]
     tdee: Optional[float]
     goal_calories: Optional[float]
-    created_at: datetime           # ADD
-    updated_at: datetime           # ADD
+    created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True
@@ -165,6 +166,6 @@ class OnboardingTargets(BaseModel):
 
 class BasicInfoResponse(BaseModel):
     success: bool
-    data: ProfileResponse  # Nested profile data
+    data: ProfileResponse
     message: str
     next_step: str

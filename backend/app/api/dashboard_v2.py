@@ -81,7 +81,7 @@ async def get_dashboard_summary(
         summary = await orchestrator.get_dashboard_summary(current_user.id)
 
         return DashboardSummary(**summary)
-
+ 
     except HTTPException:
         raise
     except Exception as e:
@@ -100,18 +100,7 @@ async def get_recent_activity(
     current_user: User = Depends(get_current_user),
     orchestrator: DashboardOrchestrator = Depends(get_dashboard_orchestrator)
 ):
-    """
-    Get recent activity feed.
 
-    SOURCE: dashboard.py:319-393
-    MIGRATED TO: Clean architecture with ActivityRepository
-
-    Args:
-        limit: Maximum number of activities (1-50, default 5)
-
-    Returns:
-        RecentActivityResponse with activities list and count
-    """
     try:
         logger.info(f"GET /dashboard/v2/recent-activity - User {current_user.id}, limit={limit}")
 

@@ -1,10 +1,8 @@
-"""Normalizer schemas for LLM structured outputs"""
 from pydantic import BaseModel
 from typing import Optional
 
 
 class VerifyMatchResult(BaseModel):
-    """Response schema for match verification"""
     is_match: bool
     confidence: float
     reasoning: str
@@ -57,3 +55,13 @@ class MatchOrIdentifyResult(BaseModel):
     confidence: float
     reasoning: str
     unknown_item: Optional[UnknownItemInfo] = None
+
+class NutritionEstimateResult(BaseModel):
+    """Response schema for nutrition estimation from LLM"""
+    calories: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    fiber_g: float
+    confidence: float
+    reasoning: str

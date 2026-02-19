@@ -15,6 +15,7 @@ from app.repositories.interfaces.inventory_repository import IInventoryRepositor
 from app.repositories.interfaces.consumption_analytics_repository import IConsumptionAnalyticsRepository
 from app.services.notification_service import NotificationService, NotificationPriority
 from app.models.database import MealLog, User
+from app.core.ist_datetime import now_ist_naive
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ class MealTrackingService:
             meal_log = await self._validate_meal_for_logging(user_id, meal_log_id)
 
             # 2. Mark as consumed
-            consumed_at = datetime.utcnow()
+            consumed_at = now_ist_naive()
             meal_log = await self.tracking_repo.mark_as_consumed(
                 meal_log_id=meal_log_id,
                 user_id=user_id,

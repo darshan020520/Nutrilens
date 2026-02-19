@@ -1,37 +1,29 @@
-# backend/app/core/mongodb.py
-"""MongoDB connection and initialization for LangGraph agent state."""
-
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import CollectionInvalid
 from typing import Optional
 import logging
-
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Synchronous client (for LangGraph checkpointer which doesn't support async yet)
+
 _sync_client: Optional[MongoClient] = None
 
-# Async client (for manual operations like chat history)
 _async_client: Optional[AsyncIOMotorClient] = None
 
 
 def get_mongo_sync_client() -> MongoClient:
-    """Get or create synchronous MongoDB client for LangGraph."""
     global _sync_client
     if _sync_client is None:
         logger.info(f"Connecting to MongoDB at {settings.mongodb_url}")
         _sync_client = MongoClient(settings.mongodb_url)
-        # Test connection
         _sync_client.admin.command('ping')
         logger.info("MongoDB sync client connected successfully")
     return _sync_client
 
 
 def get_mongo_async_client() -> AsyncIOMotorClient:
-    """Get or create async MongoDB client for chat history and queries."""
     global _async_client
     if _async_client is None:
         logger.info(f"Connecting to async MongoDB at {settings.mongodb_url}")
@@ -41,7 +33,6 @@ def get_mongo_async_client() -> AsyncIOMotorClient:
 
 
 def close_mongo_clients():
-    """Close both MongoDB clients."""
     global _sync_client, _async_client
     if _sync_client:
         _sync_client.close()
@@ -60,40 +51,34 @@ def init_mongodb_collections():
 
     logger.info("Initializing MongoDB collections...")
 
-    # 1. Checkpoints collection (auto-managed by LangGraph)
-    # Just ensure it exists
     try:
         db.create_collection("checkpoints")
         logger.info("Created 'checkpoints' collection")
     except CollectionInvalid:
         logger.info("'checkpoints' collection already exists")
 
-    # Create indexes for checkpoints
     checkpoints = db["checkpoints"]
     checkpoints.create_index([("thread_id", ASCENDING), ("checkpoint_ns", ASCENDING)])
     checkpoints.create_index([("created_at", DESCENDING)])
     logger.info("Created indexes for 'checkpoints' collection")
 
-    # 2. Chat history collection (manually managed)
     try:
         db.create_collection("chat_history")
         logger.info("Created 'chat_history' collection")
     except CollectionInvalid:
         logger.info("'chat_history' collection already exists")
 
-    # Create indexes for chat_history
+
     chat_history = db["chat_history"]
     chat_history.create_index([("user_id", ASCENDING), ("session_id", ASCENDING)])
     chat_history.create_index([("created_at", DESCENDING)])
 
-    # TTL index: auto-delete messages older than 90 days
     chat_history.create_index(
         [("created_at", ASCENDING)],
-        expireAfterSeconds=7776000  # 90 days
+        expireAfterSeconds=7776000 
     )
     logger.info("Created indexes for 'chat_history' collection")
 
-    # 3. Sessions collection (optional - for session metadata)
     try:
         db.create_collection("sessions")
         logger.info("Created 'sessions' collection")
@@ -105,7 +90,6 @@ def init_mongodb_collections():
     sessions.create_index([("created_at", DESCENDING)])
     logger.info("Created indexes for 'sessions' collection")
 
-    # 4. LLM Prompts collection (for prompt registry)
     try:
         db.create_collection("llm_prompts")
         logger.info("Created 'llm_prompts' collection")
@@ -113,12 +97,12 @@ def init_mongodb_collections():
         logger.info("'llm_prompts' collection already exists")
 
     llm_prompts = db["llm_prompts"]
-    # Unique index on slug + version for versioned prompts
+
     llm_prompts.create_index(
         [("slug", ASCENDING), ("version", ASCENDING)],
         unique=True
     )
-    # Index for quick lookup of active prompts
+
     llm_prompts.create_index([("slug", ASCENDING), ("active", ASCENDING)])
     logger.info("Created indexes for 'llm_prompts' collection")
 

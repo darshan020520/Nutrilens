@@ -65,7 +65,7 @@ class IRecipeRepository(ABC):
         pass
 
     @abstractmethod
-    def get_makeable_recipe_candidates(
+    async def get_makeable_recipe_candidates(
         self,
         user_item_quantities: Dict[int, float],
         min_match_pct: float = 80.0,

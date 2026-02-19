@@ -25,6 +25,8 @@ from app.repositories.interfaces import (
     IInventoryRepository,
     IConsumptionAnalyticsRepository
 )
+from app.core.exceptions import TokenBudgetExceeded
+from app.core.ist_datetime import now_ist_naive, today_ist
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,8 @@ class ConsumptionServiceV2:
         tracking_repo: ITrackingRepository,
         inventory_repo: IInventoryRepository,
         analytics_repo: IConsumptionAnalyticsRepository,
-        db: Session  # Keep for backward compatibility with existing code
+        db: Session,  # Keep for backward compatibility with existing code
+        llm_orchestrator=None
     ):
         """
         Initialize ConsumptionServiceV2 with repositories.
@@ -52,11 +55,13 @@ class ConsumptionServiceV2:
             inventory_repo: Repository for inventory data access
             analytics_repo: Repository for analytics queries
             db: Database session (for backward compatibility)
+            llm_orchestrator: Optional LLMOrchestrator for AI recommendations
         """
         self.tracking_repo = tracking_repo
         self.inventory_repo = inventory_repo
         self.analytics_repo = analytics_repo
         self.db = db  # Keep for methods not yet refactored
+        self.llm_orchestrator = llm_orchestrator
 
     # ===== PUBLIC API METHODS (5 required functions) =====
 
@@ -107,13 +112,13 @@ class ConsumptionServiceV2:
                     user_id=user_id,
                     recipe_id=meal_data.get("recipe_id"),
                     meal_type=meal_data["meal_type"],
-                    planned_datetime=meal_data.get("timestamp", datetime.utcnow()),
+                    planned_datetime=meal_data.get("timestamp", now_ist_naive()),
                     notes=meal_data.get("notes")
                 )
 
             # Mark as consumed
             portion_multiplier = meal_data.get("portion_multiplier", 1.0)
-            consumed_at = datetime.utcnow()
+            consumed_at = now_ist_naive()
 
             meal_log = await self.tracking_repo.mark_as_consumed(
                 meal_log_id=meal_log.id,
@@ -373,8 +378,8 @@ class ConsumptionServiceV2:
             Dict: Comprehensive analytics including trends, patterns, compliance
         """
         try:
-            start_date = datetime.utcnow().date() - timedelta(days=days)
-            end_date = datetime.utcnow().date()
+            start_date = today_ist() - timedelta(days=days)
+            end_date = today_ist()
 
             # Get consumption trends
             trends = await self.analytics_repo.get_consumption_trends(user_id, days)
@@ -425,8 +430,8 @@ class ConsumptionServiceV2:
             if not summary:
                 return {"success": False, "error": "Failed to get today's summary"}
 
-            # Add recommendations
-            summary["recommendations"] = self._get_daily_recommendations(summary)
+            # Add recommendations (AI-powered with fallback)
+            summary["recommendations"] = await self._get_daily_recommendations(summary, user_id)
 
             return {"success": True, **summary}
 
@@ -454,8 +459,8 @@ class ConsumptionServiceV2:
             Dict: Consumption history with trends and patterns
         """
         try:
-            start_date = datetime.utcnow().date() - timedelta(days=days)
-            end_date = datetime.utcnow().date()
+            start_date = today_ist() - timedelta(days=days)
+            end_date = today_ist()
 
             # Get daily aggregates from analytics repo
             daily_totals = await self.analytics_repo.get_daily_totals(user_id, start_date, end_date)
@@ -606,24 +611,46 @@ class ConsumptionServiceV2:
         else:
             return f"Good {meal_type} adherence! Keep it up."
 
-    def _get_daily_recommendations(self, summary: Dict) -> List[str]:
-        """Generate daily recommendations based on summary."""
-        recommendations = []
-
+    async def _get_daily_recommendations(self, summary: Dict, user_id: int) -> List[str]:
+        """Generate daily recommendations based on summary. Uses AI with hardcoded fallback."""
         compliance_rate = summary.get("compliance_rate", 0)
         remaining_calories = summary.get("remaining_calories", 0)
         total_calories = summary.get("total_calories", 0)
         target_calories = summary.get("target_calories", 2000)
 
-        # Compliance recommendations
-        if compliance_rate >= 90:
+        # compliance_rate from analytics is decimal (0.0-1.0), convert to percentage
+        compliance_pct = compliance_rate * 100 if compliance_rate <= 1 else compliance_rate
+
+        # Try AI recommendations
+        if self.llm_orchestrator:
+            try:
+                from app.schemas.recommendation import RecommendationResponse
+                result = await self.llm_orchestrator.run(
+                    user_id=user_id,
+                    slug="daily_consumption_recommendations",
+                    variables={
+                        "compliance_rate": round(compliance_pct, 1),
+                        "total_calories": int(total_calories),
+                        "target_calories": int(target_calories),
+                        "remaining_calories": int(remaining_calories),
+                    },
+                    response_model=RecommendationResponse
+                )
+                logger.info(f"AI daily recommendations generated for user {user_id}")
+                return result.recommendations
+            except (TokenBudgetExceeded, Exception) as e:
+                logger.warning(f"AI daily recommendations unavailable ({type(e).__name__}: {e}), using fallback")
+
+        # Fallback: hardcoded logic
+        recommendations = []
+
+        if compliance_pct >= 90:
             recommendations.append("Excellent adherence today! You're crushing your goals!")
-        elif compliance_rate >= 70:
+        elif compliance_pct >= 70:
             recommendations.append("Good progress today. Stay consistent!")
         else:
             recommendations.append("Let's focus on completing your planned meals.")
 
-        # Calorie recommendations
         if total_calories > target_calories * 1.1:
             recommendations.append(f"You're {int(total_calories - target_calories)} calories over target. Consider lighter options.")
         elif remaining_calories > target_calories * 0.3:

@@ -51,7 +51,7 @@ class OpenAIEmbeddingService(IEmbeddingService):
             return [0.0] * self.dimension
 
         try:
-            response = self.client.embeddings.create(
+            response = await self.client.embeddings.create(
                 model=self.model,
                 input=text.lower().strip()
             )
@@ -89,7 +89,7 @@ class OpenAIEmbeddingService(IEmbeddingService):
 
             try:
                 # Call OpenAI API
-                response = self.client.embeddings.create(
+                response = await self.client.embeddings.create(
                     model=self.model,
                     input=batch_clean
                 )
@@ -106,7 +106,7 @@ class OpenAIEmbeddingService(IEmbeddingService):
 
         return all_embeddings
 
-    def embedding_to_db_string(self, embedding: List[float]) -> str:
+    async def embedding_to_db_string(self, embedding: List[float]) -> str:
         """
         Convert embedding to string format for database storage
 
@@ -118,7 +118,7 @@ class OpenAIEmbeddingService(IEmbeddingService):
         """
         return json.dumps(embedding)
 
-    def db_string_to_embedding(self, db_string: str) -> List[float]:
+    async def db_string_to_embedding(self, db_string: str) -> List[float]:
         """
         Convert database string back to embedding
 

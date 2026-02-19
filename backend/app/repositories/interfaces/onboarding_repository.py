@@ -1,9 +1,3 @@
-"""
-Onboarding Repository Interface
-
-Defines contract for onboarding data access operations.
-"""
-
 from abc import ABC, abstractmethod
 from typing import Optional
 from app.models.database import UserProfile, UserGoal, UserPath, UserPreference
@@ -161,17 +155,8 @@ class IOnboardingRepository(ABC):
         """
         pass
 
-    # ===== User Onboarding Tracking Operations =====
 
     @abstractmethod
     def update_user_onboarding_step(self, user_id: int, step_updates: dict) -> None:
-        """
-        Update user's onboarding tracking fields.
 
-        EXTRACTED FROM: onboarding.py (API):43-48, 83-85, 123-125, 164-167
-
-        Args:
-            user_id: User ID
-            step_updates: Dict with fields to update (e.g., {"basic_info_completed": True, "onboarding_current_step": 2})
-        """
         pass

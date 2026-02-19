@@ -78,6 +78,46 @@ class IAuthRepository(ABC):
         pass
 
     @abstractmethod
+    def set_email_verification_token(self, user_id: int, token: str) -> Optional[User]:
+        """
+        Persist a fresh email verification token for a user.
+
+        Args:
+            user_id: User ID
+            token: New verification token
+
+        Returns:
+            Updated user, None if not found
+        """
+        pass
+
+    @abstractmethod
+    def get_by_email_verification_token(self, token: str) -> Optional[User]:
+        """
+        Resolve a user by email verification token.
+
+        Args:
+            token: Verification token
+
+        Returns:
+            User if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    def mark_email_verified(self, user_id: int) -> Optional[User]:
+        """
+        Mark user email as verified and clear verification token fields.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Updated user, None if not found
+        """
+        pass
+
+    @abstractmethod
     def create_notification_preferences(self, user_id: int) -> NotificationPreference:
         """
         Create default notification preferences for a user.

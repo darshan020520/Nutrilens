@@ -26,6 +26,8 @@ export function getEndpoint(v1Path: string): string {
     '/auth/login': '/auth/v2/login',
     '/auth/me': '/auth/v2/me',
     '/auth/refresh': '/auth/v2/refresh',
+    '/auth/verify-email': '/auth/v2/verify-email',
+    '/auth/resend-verification': '/auth/v2/resend-verification',
 
     // Onboarding endpoints
     '/onboarding/basic-info': '/onboarding/v2/basic-info',
@@ -40,6 +42,8 @@ export function getEndpoint(v1Path: string): string {
     '/inventory/status': '/inventory/v2/status',
     '/inventory/items': '/inventory/v2/items',
     '/inventory/makeable-recipes': '/inventory/v2/makeable-recipes',
+    '/inventory/ai-recipes': '/inventory/v2/ai-recipes',
+    '/inventory/bulk-add-from-restock': '/inventory/v2/bulk-add-from-restock',
     '/inventory/item/': '/inventory/v2/item/',
 
     // Receipt endpoints (specific paths first, then generic)
@@ -50,9 +54,10 @@ export function getEndpoint(v1Path: string): string {
     // Recipes endpoints
     '/recipes/': '/recipes/v2/',
 
-    // Meal Plan endpoints
+    // Meal Plan endpoints (specific paths first, then generic)
     '/meal-plans/generate': '/meal-plans/v2/generate',
     '/meal-plans/current/with-status': '/meal-plans/v2/current/with-status',
+    '/meal-plans/': '/meal-plans/v2/',  // Handles dynamic paths like /meal-plans/123/grocery-list
 
     // Tracking endpoints
     '/tracking/log-meal': '/tracking/v2/log-meal',
@@ -63,6 +68,7 @@ export function getEndpoint(v1Path: string): string {
     '/tracking/estimate-external-meal': '/tracking/v2/estimate-external-meal',
     '/tracking/inventory-status': '/tracking/v2/inventory-status',
     '/tracking/restock-list': '/tracking/v2/restock-list',
+    '/tracking/expiring-items': '/tracking/v2/expiring-items',
 
     // Dashboard endpoints
     '/dashboard/summary': '/dashboard/v2/summary',
@@ -137,6 +143,16 @@ export const authAPI = {
 
   getMe: async () => {
     const response = await api.get(getEndpoint('/auth/me'));
+    return response.data;
+  },
+
+  verifyEmail: async (token: string) => {
+    const response = await api.post(getEndpoint('/auth/verify-email'), { token });
+    return response.data;
+  },
+
+  resendVerification: async (email: string) => {
+    const response = await api.post(getEndpoint('/auth/resend-verification'), { email });
     return response.data;
   },
 };

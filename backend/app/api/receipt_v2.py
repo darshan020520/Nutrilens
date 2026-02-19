@@ -1,15 +1,4 @@
-"""
-Receipt API Endpoints V2 - Clean Architecture
-
-Provides receipt scanning and processing endpoints using repository pattern.
-
-MIGRATED FROM: receipt.py
-USES:
-- ReceiptRepository for data access
-- IntelligentInventoryService for item normalization
-- S3Service, ReceiptItemEnricher, EmbeddingService for business logic
-"""
-
+from app.infrastructure.normalization.adapters.embedding_adapter import EmbeddingAdapter
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import uuid
@@ -19,11 +8,13 @@ from pydantic import BaseModel
 import logging
 
 from app.models.database import get_db, User, Item
-from app.services.inventory_service import IntelligentInventoryService
+from app.services.intelligent_inventory_service_v2 import IntelligentInventoryServiceV2
 from app.services.s3_service import S3Service
 from app.core.config import settings
 from app.repositories.receipt_repository import ReceiptRepository
 from app.dependencies import (
+    get_intelligent_inventory_service_v2,
+    get_openai_embedding_adapter,
     get_receipt_repository,
     get_current_user,
     get_s3_service,
@@ -33,9 +24,6 @@ from app.services.receipt_processing_service import ReceiptProcessingService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/receipt/v2", tags=["receipt-v2"])
-
-
-# ===== REQUEST/RESPONSE SCHEMAS =====
 
 class InitiateUploadRequest(BaseModel):
     """Request for initiating receipt upload"""
@@ -73,9 +61,6 @@ class ConfirmItemsRequest(BaseModel):
     """Request for confirming enriched items"""
     items: List[Dict]  # [{"pending_item_id": 1, "action": "confirm"/"skip"}]
 
-
-# ===== ENDPOINTS =====
-
 @router.post("/initiate", response_model=InitiateUploadResponse)
 async def initiate_receipt_upload(
     request: InitiateUploadRequest,
@@ -83,26 +68,10 @@ async def initiate_receipt_upload(
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository),
     s3_service: S3Service = Depends(get_s3_service)
 ):
-    """
-    Step 1: Generate presigned URL for client-side upload.
 
-    Client will upload file directly to S3 using the presigned URL,
-    then call /process endpoint to trigger processing.
-
-    Args:
-        request: Upload initiation request with filename and content type
-        current_user: Authenticated user
-        receipt_repo: Receipt repository (injected)
-        s3_service: S3 service (injected)
-
-    Returns:
-        InitiateUploadResponse with presigned URL and receipt ID
-    """
     try:
-        # Generate unique S3 key
         s3_key = f"receipts/user_{current_user.id}/{uuid.uuid4()}.jpg"
 
-        # Create receipt record with status 'uploading'
         s3_url = f"https://{settings.s3_bucket}.s3.{settings.s3_region}.amazonaws.com/{s3_key}"
         receipt_scan = receipt_repo.create_receipt_scan(
             user_id=current_user.id,
@@ -110,7 +79,6 @@ async def initiate_receipt_upload(
             status='uploading'
         )
 
-        # Generate presigned URL for client upload
         presigned_url = s3_service.generate_presigned_upload_url(
             s3_key=s3_key,
             content_type=request.content_type,
@@ -140,20 +108,7 @@ async def process_receipt(
     current_user: User = Depends(get_current_user),
     receipt_service: ReceiptProcessingService = Depends(get_receipt_processing_service)
 ):
-    """
-    Step 2: Process uploaded receipt after client has uploaded to S3.
 
-    Validates the receipt, calls scanner microservice, normalizes items,
-    and stores unknown items for admin enrichment.
-
-    Args:
-        request: Process request with receipt_id and s3_key
-        current_user: Authenticated user
-        receipt_service: Receipt processing service (injected)
-
-    Returns:
-        ProcessReceiptResponse with processing results
-    """
     result = await receipt_service.process_receipt(
         receipt_id=request.receipt_id,
         s3_key=request.s3_key,
@@ -169,34 +124,7 @@ async def get_receipt_pending_items(
     current_user: User = Depends(get_current_user),
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository)
 ):
-    """
-    Get pending items for a specific receipt with enrichment data.
 
-    MIGRATED FROM: receipt.py:205-267
-
-    Uses:
-    - ReceiptRepository for data access (receipt validation, pending items query)
-
-    Returns:
-        {
-            "receipt_id": int,
-            "count": int,
-            "items": [
-                {
-                    "id": int,
-                    "item_name": str,  # Original from receipt
-                    "quantity": float,
-                    "unit": str,
-                    "canonical_name": str,  # Normalized name
-                    "category": str,
-                    "nutrition_data": {...},
-                    "enrichment_confidence": float,
-                    "enrichment_reasoning": str
-                }
-            ]
-        }
-    """
-    # Verify receipt belongs to user - using repository
     receipt_scan = receipt_repo.get_receipt_scan(
         receipt_id=receipt_id,
         user_id=current_user.id
@@ -205,7 +133,6 @@ async def get_receipt_pending_items(
     if not receipt_scan:
         raise HTTPException(status_code=404, detail="Receipt not found")
 
-    # Get pending items for this receipt - using repository
     pending = receipt_repo.get_pending_items(
         receipt_id=receipt_id,
         status='pending'
@@ -217,7 +144,7 @@ async def get_receipt_pending_items(
         "items": [
             {
                 "id": item.id,
-                "item_name": item.item_name,  # Original from receipt
+                "item_name": item.item_name,
                 "quantity": item.quantity,
                 "unit": item.unit,
                 # Enrichment data
@@ -238,40 +165,10 @@ async def confirm_and_seed_items(
     request: ConfirmItemsRequest,
     current_user: User = Depends(get_current_user),
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository),
+    inventory_service: IntelligentInventoryServiceV2 = Depends(get_intelligent_inventory_service_v2),
+    embedding_adapter: EmbeddingAdapter = Depends(get_openai_embedding_adapter),
     db: Session = Depends(get_db)
 ):
-    """
-    Confirm enriched items, seed to items database, and add to inventory.
-
-    MIGRATED FROM: receipt.py:270-397
-
-    Uses:
-    - ReceiptRepository for pending item data access
-    - EmbeddingService for generating item embeddings (business logic)
-    - IntelligentInventoryService for adding to inventory (business logic)
-
-    Request body:
-        {
-            "items": [
-                {
-                    "pending_item_id": 1,
-                    "action": "confirm"  # or "skip"
-                }
-            ]
-        }
-
-    Returns:
-        {
-            "status": "success",
-            "seeded_count": int,
-            "added_count": int,
-            "seeded_items": [...]
-        }
-    """
-    from app.services.embedding_service import EmbeddingService
-
-    inventory_service = IntelligentInventoryService(db)
-    embedder = EmbeddingService(api_key=settings.openai_api_key)
 
     seeded_count = 0
     added_count = 0
@@ -281,13 +178,11 @@ async def confirm_and_seed_items(
         pending_id = item_data.get("pending_item_id")
         action = item_data.get("action")
 
-        # Get pending item - using repository
         pending_item = receipt_repo.get_pending_item(pending_id)
 
         if not pending_item:
             continue
 
-        # Verify ownership - using repository
         receipt_scan = receipt_repo.get_receipt_scan(
             receipt_id=pending_item.receipt_scan_id,
             user_id=current_user.id
@@ -297,12 +192,11 @@ async def confirm_and_seed_items(
             continue
 
         if action == "confirm":
-            # Check if enrichment data exists
             if not pending_item.canonical_name or not pending_item.nutrition_data:
                 logger.warning(f"Skipping {pending_item.item_name}: missing enrichment data")
                 continue
 
-            # Check if item already exists
+
             existing_item = db.query(Item).filter(
                 Item.canonical_name == pending_item.canonical_name
             ).first()
@@ -311,14 +205,14 @@ async def confirm_and_seed_items(
                 item_id = existing_item.id
                 logger.info(f"Item '{pending_item.canonical_name}' already exists (ID: {item_id})")
             else:
-                # Create new item in database
+
                 embedding_text = f"{pending_item.canonical_name} {pending_item.category}"
-                embedding = await embedder.get_embedding(embedding_text)
-                embedding_json = embedder.embedding_to_db_string(embedding)
+                embedding = await embedding_adapter.get_embedding(embedding_text)
+                embedding_json = await embedding_adapter.embedding_to_db_string(embedding)
 
                 new_item = Item(
                     canonical_name=pending_item.canonical_name,
-                    aliases=[pending_item.item_name],  # Add original name as alias
+                    aliases=[pending_item.item_name],
                     category=pending_item.category,
                     unit="g",
                     fdc_id=pending_item.fdc_id,
@@ -330,7 +224,7 @@ async def confirm_and_seed_items(
                     source="receipt_enrichment"
                 )
                 db.add(new_item)
-                db.flush()  # Get the ID
+                db.flush() 
 
                 item_id = new_item.id
                 seeded_count += 1
@@ -341,16 +235,15 @@ async def confirm_and_seed_items(
                 })
                 logger.info(f"Seeded new item: {pending_item.canonical_name} (ID: {item_id})")
 
-            # Add to inventory - using inventory service
             result = inventory_service.add_item(
                 user_id=current_user.id,
                 item_id=item_id,
-                quantity_grams=pending_item.quantity,  # Use original quantity from receipt
+                quantity_grams=pending_item.quantity,
                 source='receipt_scanner'
             )
 
             if result.get("success"):
-                # Update pending item status - using repository
+
                 receipt_repo.update_pending_item_status(
                     pending_item_id=pending_id,
                     status='confirmed'
@@ -359,7 +252,7 @@ async def confirm_and_seed_items(
                 logger.info(f"Added to inventory: {pending_item.canonical_name}")
 
         elif action == "skip":
-            # Update pending item status - using repository
+
             receipt_repo.update_pending_item_status(
                 pending_item_id=pending_id,
                 status='skipped'
@@ -382,32 +275,7 @@ async def get_receipt_history(
     current_user: User = Depends(get_current_user),
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository)
 ):
-    """
-    Get user's receipt scan history.
 
-    MIGRATED FROM: receipt.py:400-446
-
-    Uses:
-    - ReceiptRepository for history query
-
-    Returns:
-        {
-            "count": int,
-            "receipts": [
-                {
-                    "id": int,
-                    "s3_url": str,
-                    "status": str,
-                    "items_count": int,
-                    "auto_added_count": int,
-                    "needs_confirmation_count": int,
-                    "created_at": str,
-                    "processed_at": str
-                }
-            ]
-        }
-    """
-    # Get receipt history - using repository
     receipts = receipt_repo.get_receipt_history(
         user_id=current_user.id,
         limit=limit

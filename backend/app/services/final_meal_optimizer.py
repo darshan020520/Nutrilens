@@ -1,7 +1,5 @@
-# backend/app/services/meal_optimizer_fixed.py
-# COMPLETE FIXED VERSION - Addresses all issues from testing
-
 import pulp
+import math
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 import logging
@@ -15,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OptimizationConstraints:
-    """Constraints for meal plan optimization"""
+
     daily_calories_min: float
     daily_calories_max: float
     daily_protein_min: float
@@ -32,7 +30,7 @@ class OptimizationConstraints:
 
 @dataclass
 class OptimizationObjective:
-    """Weights for different optimization objectives"""
+
     macro_deviation_weight: float = 0.4
     inventory_usage_weight: float = 0.3
     recipe_variety_weight: float = 0.2
@@ -40,7 +38,7 @@ class OptimizationObjective:
 
 @dataclass
 class RecipeScore:
-    """Scoring metrics for a recipe"""
+
     recipe_id: int
     goal_alignment: float = 0.0
     macro_fit: float = 0.0
@@ -50,7 +48,7 @@ class RecipeScore:
     composite_score: float = 0.0
     
     def calculate_composite(self, weights: Dict[str, float]) -> float:
-        """Calculate weighted composite score"""
+
         self.composite_score = (
             weights.get('goal', 0.3) * self.goal_alignment +
             weights.get('macro', 0.25) * self.macro_fit +
@@ -61,7 +59,7 @@ class RecipeScore:
         return self.composite_score
 
 class MealPlanOptimizer:
-    """Fixed Linear Programming based meal plan optimizer"""
+
 
     def __init__(
         self,
@@ -69,16 +67,7 @@ class MealPlanOptimizer:
         inventory_repo: IInventoryRepository,
         user_profile_repo: IUserProfileRepository
     ):
-        """
-        Initialize optimizer with repositories.
 
-        REFACTORED: Now uses repository pattern instead of raw DB session.
-
-        Args:
-            recipe_repo: Recipe repository for recipe queries
-            inventory_repo: Inventory repository for user inventory
-            user_profile_repo: User profile repository for user data
-        """
         self.recipe_repo = recipe_repo
         self.inventory_repo = inventory_repo
         self.user_profile_repo = user_profile_repo
@@ -97,59 +86,85 @@ class MealPlanOptimizer:
         available_recipes: List[Dict] = None,
         inventory: Dict[int, float] = None
     ) -> Optional[Dict]:
-        """
-        Main optimization with proper constraint handling.
 
-        REFACTORED: Now async to support repository operations.
-        """
-        
         try:
             self.days = days
             self.meals_per_day = constraints.meals_per_day if constraints else 3
 
-            # REMOVED: Dead code - constraints are ALWAYS passed from orchestrator
-            # if not constraints:
-            #     constraints = self._get_user_constraints(user_id)
+            # Minimum unique recipes LP needs: ceil(total_slots / max_uses_per_recipe)
+            # For 7d × 3 meals = 21 slots, max_uses=2 → need at least 11 unique recipes
+            max_uses_per_recipe = 2
+            lp_min_recipes = math.ceil((days * self.meals_per_day) / max_uses_per_recipe)
 
-            # Get recipes - FIXED to have appropriate calorie ranges
             if available_recipes:
                 self.recipes = available_recipes
             else:
-                self.recipes = await self._get_filtered_recipes_fixed(user_id, constraints)
-            
+                self.recipes = await self._get_filtered_recipes_fixed(user_id, constraints, lp_min_recipes)
+
             # Filter recipes to those that can help meet constraints
             self.recipes = self._filter_recipes_by_calories(self.recipes, constraints)
-            
-            if len(self.recipes) < self.meals_per_day * 3:  # Need variety
-                logger.error(f"Not enough suitable recipes: {len(self.recipes)}")
+
+            print(
+                f"[LP] user={user_id} days={days} meals/day={self.meals_per_day} "
+                f"recipe_count={len(self.recipes)} lp_min_needed={lp_min_recipes} "
+                f"cal_range=[{constraints.daily_calories_min:.0f},{constraints.daily_calories_max:.0f}] "
+                f"protein_min={constraints.daily_protein_min:.0f}g"
+            )
+
+            if len(self.recipes) < lp_min_recipes:
+                print(
+                    f"[LP] EMERGENCY FALLBACK — only {len(self.recipes)} recipes available, "
+                    f"need {lp_min_recipes} for LP feasibility"
+                )
                 return self._generate_simple_plan(days, constraints)
-            
+
             # Score recipes
-            scored_recipes = self._score_recipes(
+            scored_recipes = await self._score_recipes(
                 self.recipes, constraints, inventory or {}, user_id
             )
-            
+
             # Try LP optimization with proper constraints
+            print(f"[LP] Attempting standard LP with {len(self.recipes)} recipes...")
             result = self._solve_lp_problem_fixed(constraints, objective, scored_recipes)
-            
-            if result and self._validate_solution(result, constraints):
-                logger.info("LP optimization successful with valid solution")
-                return result
-            
-            # Try with relaxed constraints
-            logger.info("Trying relaxed constraints...")
-            result = self._solve_with_relaxed_constraints_fixed(constraints, scored_recipes, inventory)
-            
+
             if result:
-                logger.info("Relaxed LP successful")
+                valid = self._validate_solution(result, constraints)
+                print(
+                    f"[LP] Standard LP status=Optimal  validate={valid}  "
+                    f"avg_cal={result.get('avg_daily_calories', 0):.0f}  "
+                    f"avg_protein={result.get('avg_macros', {}).get('protein_g', 0):.0f}g"
+                )
+                if valid:
+                    print("[LP] SUCCESS — using linear_programming result")
+                    return result
+                print("[LP] LP result failed validation — trying relaxed LP")
+            else:
+                print("[LP] Standard LP returned no solution (Infeasible/Undefined) — trying relaxed LP")
+
+            # Try with relaxed constraints
+            result = self._solve_with_relaxed_constraints_fixed(constraints, scored_recipes, inventory)
+
+            if result:
+                print(
+                    f"[LP] Relaxed LP succeeded  "
+                    f"avg_cal={result.get('avg_daily_calories', 0):.0f}  "
+                    f"avg_protein={result.get('avg_macros', {}).get('protein_g', 0):.0f}g"
+                )
                 return result
-            
-            # Fallback to greedy
-            logger.warning("Using greedy fallback")
-            return self._fallback_greedy_algorithm_fixed(days, constraints, scored_recipes, inventory or {})
-                
+
+            print("[LP] Relaxed LP also failed — falling back to greedy algorithm")
+            result = self._fallback_greedy_algorithm_fixed(days, constraints, scored_recipes, inventory or {})
+            print(
+                f"[LP] GREEDY FALLBACK used  "
+                f"avg_cal={result.get('avg_daily_calories', 0):.0f}  "
+                f"avg_protein={result.get('avg_macros', {}).get('protein_g', 0):.0f}g"
+            )
+            return result
+
         except Exception as e:
-            logger.error(f"Optimization failed: {str(e)}", exc_info=True)
+            import traceback
+            print(f"[LP] Optimization crashed: {str(e)}")
+            print(traceback.format_exc())
             return self._generate_simple_plan(days, constraints)
     
     def _filter_recipes_by_calories(self, recipes: List[Dict], constraints: OptimizationConstraints) -> List[Dict]:
@@ -192,14 +207,18 @@ class MealPlanOptimizer:
         self._add_variety_constraints_fixed(constraints)
         
         # Solve
-        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)  # More time for complex problems
+        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)
         status = self.problem.solve(solver)
-        
+
+        print(
+            f"[LP] CBC solver status={pulp.LpStatus[status]} ({status})  "
+            f"vars={len(self.problem.variables())}  constraints={len(self.problem.constraints)}"
+        )
+
         if status == pulp.LpStatusOptimal:
             solution = self._extract_lp_solution()
             return solution
-        
-        logger.warning(f"LP status: {pulp.LpStatus[status]}")
+
         return None
     
     def _create_lp_variables(self):
@@ -277,54 +296,34 @@ class MealPlanOptimizer:
                         daily_carbs.append(macros.get('carbs_g', 0) * var)
                         daily_fat.append(macros.get('fat_g', 0) * var)
             
-            # Calorie constraints - RELAXED for feasibility
             if daily_calories:
-                # Use 20% tolerance for better feasibility
                 min_cal = constraints.daily_calories_min * 0.8
                 max_cal = constraints.daily_calories_max * 1.2
                 
                 self.problem += pulp.lpSum(daily_calories) >= min_cal, f"min_cal_d{d}"
                 self.problem += pulp.lpSum(daily_calories) <= max_cal, f"max_cal_d{d}"
             
-            # Protein - slightly relaxed
             if daily_protein:
                 min_protein = constraints.daily_protein_min * 0.85
                 self.problem += pulp.lpSum(daily_protein) >= min_protein, f"min_protein_d{d}"
             
-            # Optional constraints
             if daily_carbs and constraints.daily_carbs_max < float('inf'):
                 self.problem += pulp.lpSum(daily_carbs) <= constraints.daily_carbs_max * 1.2, f"max_carbs_d{d}"
             
             if daily_fat and constraints.daily_fat_max < float('inf'):
                 self.problem += pulp.lpSum(daily_fat) <= constraints.daily_fat_max * 1.2, f"max_fat_d{d}"
     
-    # Replace the _add_variety_constraints_fixed method with this:
 
     def _add_variety_constraints_fixed(self, constraints: OptimizationConstraints):
-        """
-        FINAL FIX: Properly implement variety constraints
-        
-        If max_recipe_repeat_in_days = 2, it means:
-        - A recipe can appear again only after 2 days gap
-        - In a 7-day plan, a recipe can be used at most on days like: 1, 4, 7 (3 times)
-        - But we want stricter: max 2 times in 7 days for better variety
-        """
-        
-        # For a 7-day plan with max_repeat=2, we want each recipe used at most 2 times
-        # Not 3 times as currently happening
+
         
         if self.days <= 3:
-            # For short plans, each recipe used at most once
             max_uses_per_recipe = 1
         elif self.days <= 5:
-            # For 4-5 day plans, allow 2 uses
             max_uses_per_recipe = 2
         else:
-            # For 6-7 day plans, strictly limit to 2 uses
-            # This ensures more variety
             max_uses_per_recipe = 2
         
-        # Global constraint: limit total uses of each recipe
         for r_idx in self.x:
             all_uses = []
             for d in self.x[r_idx]:
@@ -332,16 +331,13 @@ class MealPlanOptimizer:
                     all_uses.append(self.x[r_idx][d][m])
             
             if all_uses:
-                # Each recipe used at most 'max_uses_per_recipe' times
                 self.problem += pulp.lpSum(all_uses) <= max_uses_per_recipe, f"max_uses_r{r_idx}"
         
-        # Spacing constraint: ensure minimum gap between uses
+
         if constraints.max_recipe_repeat_in_days > 1:
             for r_idx in self.x:
                 for d in range(self.days):
-                    # Check if recipe is used on day d
-                    # If yes, it cannot be used in the next (max_repeat-1) days
-                    
+
                     window_end = min(d + constraints.max_recipe_repeat_in_days, self.days)
                     window_uses = []
                     
@@ -351,27 +347,21 @@ class MealPlanOptimizer:
                                 window_uses.append(self.x[r_idx][day][m])
                     
                     if len(window_uses) >= 2:
-                        # In any window of 'max_repeat' days, use recipe at most once
                         self.problem += pulp.lpSum(window_uses) <= 1, f"spacing_r{r_idx}_d{d}_window"
 
 
-    # Alternative simpler approach if the above is too restrictive:
     def _add_variety_constraints_simple(self, constraints: OptimizationConstraints):
-        """
-        Simpler version: Just limit total uses based on plan length
-        """
-        
-        # Calculate reasonable max uses
+
         if self.days <= 3:
             max_uses = 1
         elif self.days <= 5:
             max_uses = 2  
         elif self.days == 7:
-            max_uses = 2  # Force only 2 uses in a week for variety
+            max_uses = 2 
         else:
-            max_uses = 3  # For longer plans
+            max_uses = 3 
         
-        # Apply global limit
+
         for r_idx in self.x:
             all_uses = []
             for d in self.x[r_idx]:
@@ -381,7 +371,7 @@ class MealPlanOptimizer:
             if all_uses:
                 self.problem += pulp.lpSum(all_uses) <= max_uses, f"variety_limit_r{r_idx}"
         
-        # No consecutive days constraint
+
         for r_idx in self.x:
             for d in range(self.days - 1):
                 consecutive = []
@@ -394,14 +384,14 @@ class MealPlanOptimizer:
                     self.problem += pulp.lpSum(consecutive) <= 1, f"no_consecutive_r{r_idx}_d{d}"
     
     def _validate_solution(self, solution: Dict, constraints: OptimizationConstraints) -> bool:
-        """Validate that solution meets minimum requirements"""
+
         if not solution or 'week_plan' not in solution:
             return False
         
         avg_cal = solution.get('avg_daily_calories', 0)
         avg_protein = solution['avg_macros'].get('protein_g', 0)
         
-        # Check if within reasonable bounds (25% tolerance)
+
         cal_ok = constraints.daily_calories_min * 0.75 <= avg_cal <= constraints.daily_calories_max * 1.25
         protein_ok = avg_protein >= constraints.daily_protein_min * 0.75
         
@@ -446,21 +436,20 @@ class MealPlanOptimizer:
         }
         
         meal_names = ['breakfast', 'lunch', 'dinner', 'snack', 'meal_4', 'meal_5']
-        
-        # Group recipes by meal type
+
         recipes_by_meal = defaultdict(list)
         for recipe in self.recipes:
             for meal_time in recipe.get('suitable_meal_times', []):
                 recipes_by_meal[meal_time].append(recipe)
         
-        # Add flexible recipes to all meal types
+
         for recipe in self.recipes:
             if len(recipe.get('suitable_meal_times', [])) >= 3:
                 for meal_type in meal_names[:constraints.meals_per_day]:
                     if recipe not in recipes_by_meal[meal_type]:
                         recipes_by_meal[meal_type].append(recipe)
         
-        # Sort by score
+
         for meal_type in recipes_by_meal:
             recipes_by_meal[meal_type].sort(
                 key=lambda r: scored_recipes.get(r['id'], RecipeScore(recipe_id=r['id'])).composite_score,
@@ -472,7 +461,6 @@ class MealPlanOptimizer:
         total_fat = 0
         total_fiber = 0
         
-        # Track recent usage
         recent_recipes = []
         
         for d in range(days):
@@ -482,28 +470,28 @@ class MealPlanOptimizer:
                 'day_macros': {'protein_g': 0, 'carbs_g': 0, 'fat_g': 0}
             }
             
-            # Target calories for the day
+
             target_cal = (constraints.daily_calories_min + constraints.daily_calories_max) / 2
             remaining_cal = target_cal
             
             for m in range(constraints.meals_per_day):
                 meal_name = meal_names[m] if m < len(meal_names) else f'meal_{m}'
                 
-                # Get candidates for this meal type
+
                 candidates = recipes_by_meal.get(meal_name, self.recipes)
                 
-                # Filter out recently used
+
                 available = [r for r in candidates if r['id'] not in [x['id'] for x in recent_recipes[-constraints.meals_per_day:]]]
                 
                 if not available:
-                    available = candidates  # Use all if necessary
+                    available = candidates
                 
-                # Pick best recipe considering remaining calories
+
                 best_recipe = None
                 best_score = -1
                 target_meal_cal = remaining_cal / (constraints.meals_per_day - m)
                 
-                for recipe in available[:10]:  # Check top 10
+                for recipe in available[:10]:
                     recipe_cal = recipe.get('macros_per_serving', {}).get('calories', 0)
                     cal_fit = 1 - abs(recipe_cal - target_meal_cal) / target_meal_cal if target_meal_cal > 0 else 0
                     
@@ -531,14 +519,14 @@ class MealPlanOptimizer:
                     total_fat += macros.get('fat_g', 0)
                     total_fiber += macros.get('fiber_g', 0)
             
-            # Keep recent list manageable
+
             if len(recent_recipes) > constraints.meals_per_day * 2:
                 recent_recipes = recent_recipes[-(constraints.meals_per_day * 2):]
             
             meal_plan['week_plan'][f'day_{d}'] = day_plan
             meal_plan['total_calories'] += day_plan['day_calories']
         
-        # Calculate averages
+
         if days > 0:
             meal_plan['avg_macros']['protein_g'] = round(total_protein / days, 1)
             meal_plan['avg_macros']['carbs_g'] = round(total_carbs / days, 1)
@@ -548,20 +536,16 @@ class MealPlanOptimizer:
         
         return meal_plan
     
-    async def _get_filtered_recipes_fixed(self, user_id: int, constraints: OptimizationConstraints) -> List[Dict]:
-        """
-        Get actual recipes from database using repositories.
+    async def _get_filtered_recipes_fixed(
+        self, user_id: int, constraints: OptimizationConstraints, min_needed: int = 9
+    ) -> List[Dict]:
 
-        REFACTORED: Now uses recipe_repo and user_profile_repo instead of raw DB queries.
-        """
-
-        # REFACTORED: Use user_profile_repo instead of DB query
         goal = await self.user_profile_repo.get_active_goal(user_id)
         goal_str = goal.goal_type.value.lower() if goal else None
 
-        # Extract dietary type from constraints (it's a list, take first one if exists)
         dietary_type = constraints.dietary_restrictions[0] if constraints.dietary_restrictions else None
 
+        # First try: filter by goal + dietary + prep-time
         recipes_from_db = await self.recipe_repo.get_filtered_recipes(
             goal_type=goal_str,
             dietary_type=dietary_type,
@@ -569,58 +553,67 @@ class MealPlanOptimizer:
             max_prep_time=constraints.max_prep_time_minutes
         )
 
-        # Convert to dict format expected by optimizer
+        print(
+            f"[LP] DB query: goal={goal_str} dietary={dietary_type} "
+            f"prep_max={constraints.max_prep_time_minutes}min → {len(recipes_from_db)} recipes"
+        )
+
+        # If goal filter + other filters leave too few recipes, retry without goal filter
+        # Goal alignment is already handled in recipe scoring (not hard filtering)
+        if len(recipes_from_db) < min_needed:
+            print(
+                f"[LP] Only {len(recipes_from_db)} recipes after goal filter (need {min_needed}). "
+                f"Retrying without goal filter — scoring will still prefer goal={goal_str} recipes."
+            )
+            recipes_from_db = await self.recipe_repo.get_filtered_recipes(
+                goal_type=None,
+                dietary_type=dietary_type,
+                exclude_allergens=constraints.allergens if constraints.allergens else None,
+                max_prep_time=constraints.max_prep_time_minutes
+            )
+            print(f"[LP] Without goal filter: {len(recipes_from_db)} recipes")
+
+        # If still too few, drop prep-time filter too
+        if len(recipes_from_db) < min_needed:
+            print(f"[LP] Still only {len(recipes_from_db)} recipes. Dropping prep-time filter.")
+            recipes_from_db = await self.recipe_repo.get_filtered_recipes(
+                goal_type=None,
+                dietary_type=dietary_type,
+                exclude_allergens=None,
+                max_prep_time=None
+            )
+            print(f"[LP] Without prep-time filter: {len(recipes_from_db)} recipes")
+
+        def to_dict(recipe) -> Dict:
+            return {
+                'id': recipe.id,
+                'title': recipe.title,
+                'source': recipe.source,
+                'suitable_meal_times': recipe.suitable_meal_times or [],
+                'goals': recipe.goals or [],
+                'dietary_tags': recipe.dietary_tags or [],
+                'macros_per_serving': recipe.macros_per_serving,
+                'prep_time_min': recipe.prep_time_min or 0,
+                'cook_time_min': recipe.cook_time_min or 0,
+                'ingredients': []
+            }
+
         min_cal_per_meal = constraints.daily_calories_min / constraints.meals_per_day * 0.5
         max_cal_per_meal = constraints.daily_calories_max / constraints.meals_per_day * 1.5
 
-        recipes = []
-        filtered_out_by_calories = []
+        calorie_filtered = [
+            to_dict(r) for r in recipes_from_db
+            if min_cal_per_meal <= r.macros_per_serving.get('calories', 0) <= max_cal_per_meal
+        ]
 
-        for recipe in recipes_from_db:
-            calories = recipe.macros_per_serving.get('calories', 0)
+        if len(calorie_filtered) >= min_needed:
+            print(f"[LP] After calorie filter: {len(calorie_filtered)} recipes")
+            return calorie_filtered
 
-            # Only include recipes that could fit in the meal plan
-            if min_cal_per_meal <= calories <= max_cal_per_meal:
-                recipes.append({
-                    'id': recipe.id,
-                    'title': recipe.title,
-                    'source': recipe.source,
-                    'suitable_meal_times': recipe.suitable_meal_times or [],
-                    'goals': recipe.goals or [],
-                    'dietary_tags': recipe.dietary_tags or [],
-                    'macros_per_serving': recipe.macros_per_serving,
-                    'prep_time_min': recipe.prep_time_min or 0,
-                    'cook_time_min': recipe.cook_time_min or 0,
-                    'ingredients': []
-                })
-            else:
-                filtered_out_by_calories.append({
-                    'id': recipe.id,
-                    'title': recipe.title[:40],
-                    'source': recipe.source,
-                    'calories': calories
-                })
-
-        # If we don't have enough recipes, relax the calorie constraints
-        if len(recipes) < constraints.meals_per_day * 3:
-            recipes = []
-            for recipe in recipes_from_db:
-                recipes.append({
-                    'id': recipe.id,
-                    'title': recipe.title,
-                    'source': recipe.source,
-                    'suitable_meal_times': recipe.suitable_meal_times or [],
-                    'goals': recipe.goals or [],
-                    'dietary_tags': recipe.dietary_tags or [],
-                    'macros_per_serving': recipe.macros_per_serving,
-                    'prep_time_min': recipe.prep_time_min or 0,
-                    'cook_time_min': recipe.cook_time_min or 0,
-                    'ingredients': []
-                })
-
-        return recipes
+        # If calorie filter also cuts too deep, use all
+        print(f"[LP] Calorie filter left only {len(calorie_filtered)} recipes — using all {len(recipes_from_db)}")
+        return [to_dict(r) for r in recipes_from_db]
     
-    # Keep all other methods unchanged...
     def _is_recipe_suitable_for_meal(self, recipe: Dict, meal_slot: int) -> bool:
         """Check if recipe suitable for meal slot"""
         meal_map = {0: 'breakfast', 1: 'lunch', 2: 'dinner', 3: 'snack', 4: 'meal_4', 5: 'meal_5'}
@@ -683,7 +676,6 @@ class MealPlanOptimizer:
             meal_plan['week_plan'][f'day_{d}'] = day_plan
             meal_plan['total_calories'] += day_plan['day_calories']
         
-        # Calculate averages
         if self.days > 0:
             meal_plan['avg_macros']['protein_g'] = round(total_protein / self.days, 1)
             meal_plan['avg_macros']['carbs_g'] = round(total_carbs / self.days, 1)
@@ -704,19 +696,13 @@ class MealPlanOptimizer:
             'error': 'Could not generate valid meal plan'
         }
     
-    # Include all other helper methods from original...
+
     async def _score_recipes(self, recipes, constraints, inventory, user_id):
-        """
-        Score recipes based on actual user data and inventory.
 
-        REFACTORED: Now uses repositories instead of direct DB queries.
-        """
 
-        # REFACTORED: Use user_profile_repo instead of DB query
         goal = await self.user_profile_repo.get_active_goal(user_id)
         user_goal_type = goal.goal_type.value if goal else 'general_health'
 
-        # REFACTORED: Use inventory_repo instead of DB query
         user_inventory = {}
         if inventory:
             user_inventory = inventory
@@ -727,12 +713,9 @@ class MealPlanOptimizer:
         
         scored = {}
 
-        # BATCH FETCH: Prevent N+1 query problem
-        # Fetch ALL ingredients for ALL recipes in ONE database query
         recipe_ids = [r['id'] for r in recipes]
         all_ingredients_map = await self.recipe_repo.get_ingredients_for_recipes(recipe_ids) if recipe_ids else {}
 
-        # Target macros per meal
         target_cal_per_meal = ((constraints.daily_calories_min + constraints.daily_calories_max) / 2) / constraints.meals_per_day
         target_protein_per_meal = constraints.daily_protein_min / constraints.meals_per_day
         target_carbs_per_meal = (constraints.daily_carbs_min + constraints.daily_carbs_max) / 2 / constraints.meals_per_day
@@ -741,7 +724,6 @@ class MealPlanOptimizer:
         for recipe in recipes:
             score = RecipeScore(recipe_id=recipe['id'])
             
-            # 1. Goal alignment (0-100)
             recipe_goals = recipe.get('goals', [])
             if user_goal_type in recipe_goals:
                 score.goal_alignment = 100
@@ -750,46 +732,42 @@ class MealPlanOptimizer:
             else:
                 score.goal_alignment = 30
             
-            # 2. Macro fit (0-100) - how close to target macros
+
             macros = recipe.get('macros_per_serving', {})
             cal_diff = abs(macros.get('calories', 0) - target_cal_per_meal) / target_cal_per_meal if target_cal_per_meal > 0 else 1
             protein_diff = abs(macros.get('protein_g', 0) - target_protein_per_meal) / target_protein_per_meal if target_protein_per_meal > 0 else 1
             carbs_diff = abs(macros.get('carbs_g', 0) - target_carbs_per_meal) / target_carbs_per_meal if target_carbs_per_meal > 0 else 1
             fat_diff = abs(macros.get('fat_g', 0) - target_fat_per_meal) / target_fat_per_meal if target_fat_per_meal > 0 else 1
             
-            # Average difference (lower is better)
+
             avg_diff = (cal_diff * 0.4 + protein_diff * 0.3 + carbs_diff * 0.2 + fat_diff * 0.1)
-            score.macro_fit = max(0, 100 - (avg_diff * 50))  # Convert to 0-100 scale
+            score.macro_fit = max(0, 100 - (avg_diff * 50))  
             
-            # 3. Timing appropriateness (0-100)
-            # This stays relatively simple as meal timing is handled elsewhere
             suitable_times = recipe.get('suitable_meal_times', [])
-            if len(suitable_times) >= 3:  # Very flexible
+            if len(suitable_times) >= 3:  
                 score.timing_appropriateness = 100
             elif len(suitable_times) == 2:
                 score.timing_appropriateness = 75
             elif len(suitable_times) == 1:
                 score.timing_appropriateness = 50
             else:
-                score.timing_appropriateness = 100  # If no restriction, it's flexible
+                score.timing_appropriateness = 100  
             
-            # 4. Complexity score (0-100, lower is better)
             prep_time = recipe.get('prep_time_min', 0)
             cook_time = recipe.get('cook_time_min', 0)
             total_time = prep_time + cook_time
             
             if total_time <= 15:
-                score.complexity_score = 0  # Very quick
+                score.complexity_score = 0  
             elif total_time <= 30:
                 score.complexity_score = 30
             elif total_time <= 45:
                 score.complexity_score = 60
             else:
-                score.complexity_score = 90  # Complex
+                score.complexity_score = 90  
             
-            # 5. Inventory coverage (0-100) - what % of ingredients are available
             if user_inventory:
-                # REFACTORED: Use pre-fetched ingredients (no DB query in loop!)
+
                 recipe_ingredients = all_ingredients_map.get(recipe['id'], [])
                 
                 if recipe_ingredients:
@@ -801,15 +779,15 @@ class MealPlanOptimizer:
                             if user_inventory[ingredient.item_id] >= ingredient.quantity_grams:
                                 available_ingredients += 1
                             elif user_inventory[ingredient.item_id] > 0:
-                                available_ingredients += 0.5  # Partial credit
+                                available_ingredients += 0.5
                     
                     score.inventory_coverage = (available_ingredients / total_ingredients) * 100 if total_ingredients > 0 else 0
                 else:
-                    score.inventory_coverage = 50  # No ingredient data, neutral score
+                    score.inventory_coverage = 50
             else:
-                score.inventory_coverage = 50  # No inventory data, neutral score
+                score.inventory_coverage = 50
             
-            # Calculate composite score
+
             score.calculate_composite({
                 'goal': 0.3,
                 'macro': 0.25,
@@ -821,9 +799,3 @@ class MealPlanOptimizer:
             scored[recipe['id']] = score
         
         return scored
-    
-    
-    # DELETED: _get_user_constraints() method (lines 880-935)
-    # REASON: 100% DUPLICATE of ConstraintBuilderService.build_constraints()
-    # Constraints are now ALWAYS passed from the orchestrator (built by ConstraintBuilderService)
-    # This method was DEAD CODE - never called because constraints parameter is never None

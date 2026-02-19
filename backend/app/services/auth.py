@@ -8,29 +8,27 @@ Uses AuthRepository for database operations via dependency injection.
 from loguru import logger
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
+import smtplib
+import ssl
+from urllib.parse import quote_plus
+from email.message import EmailMessage
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 
 from app.models.database import User
 from app.schemas.user import UserCreate
 from app.core.config import settings
 from app.repositories.interfaces.auth_repository import IAuthRepository
 
-from fastapi import Depends, HTTPException, status
 
 
-# ===== CONFIGURATION =====
-
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings
 SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
-# ===== UTILITY FUNCTIONS (Pure functions, no dependencies) =====
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -80,7 +78,6 @@ def calculate_onboarding_status(user: User) -> dict:
     if user.preferences_completed:
         completed_steps.append(4)
 
-    # Determine next step
     current_step = user.onboarding_current_step
     step_names = {
         1: "basic-info",
@@ -110,6 +107,8 @@ class AuthService:
         user = self.auth_repo.get_by_email(email)
         if not user or not verify_password(password, user.hashed_password):
             return None
+        if not user.email_verified:
+            raise ValueError("Email not verified. Please verify your email before logging in.")
         return user
 
     def register_user(self, user_create: UserCreate) -> User:
@@ -120,13 +119,129 @@ class AuthService:
 
         hashed_password = get_password_hash(user_create.password)
 
-        # Create user
         user = self.auth_repo.create(user_create.email, hashed_password)
 
-        # Create default notification preferences
         self.auth_repo.create_notification_preferences(user.id)
 
         return user
+
+    async def send_verification_email(self, user: User) -> None:
+        token = secrets.token_urlsafe(48)
+        updated_user = self.auth_repo.set_email_verification_token(user.id, token)
+        if not updated_user:
+            raise ValueError("Unable to generate verification token")
+
+        verification_url = (
+            f"{settings.frontend_url.rstrip('/')}/verify-email?token={quote_plus(token)}"
+        )
+
+        html_content = (
+            "<div style='font-family: Arial, sans-serif; line-height: 1.6;'>"
+            "<h2>Verify your NutriLens account</h2>"
+            "<p>Click the button below to verify your email address.</p>"
+            f"<p><a href='{verification_url}' "
+            "style='display:inline-block;padding:10px 18px;background:#16a34a;color:white;"
+            "text-decoration:none;border-radius:6px;'>Verify Email</a></p>"
+            f"<p>If the button does not work, copy and paste this URL:<br>{verification_url}</p>"
+            f"<p>This link expires in {settings.email_verification_expire_hours} hours.</p>"
+            "</div>"
+        )
+
+        try:
+            provider = settings.email_verification_provider.lower().strip()
+            subject = "Verify your NutriLens email"
+
+            if provider == "gmail":
+                self._send_verification_email_via_gmail(
+                    to_email=updated_user.email,
+                    subject=subject,
+                    html_content=html_content,
+                )
+            else:
+                self._send_verification_email_via_sendgrid(
+                    to_email=updated_user.email,
+                    subject=subject,
+                    html_content=html_content,
+                )
+        except Exception as e:
+            logger.error(f"Verification email send failed for {updated_user.email}: {e}")
+            raise ValueError("Failed to send verification email")
+
+    def _send_verification_email_via_sendgrid(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+    ) -> None:
+        from sendgrid import SendGridAPIClient
+        from sendgrid.helpers.mail import Mail, Email, To, Content
+
+        if not settings.sendgrid_api_key:
+            raise ValueError("SendGrid API key is not configured")
+
+        message = Mail(
+            from_email=Email(settings.from_email, "NutriLens"),
+            to_emails=To(to_email),
+            subject=subject,
+            html_content=Content("text/html", html_content),
+        )
+        client = SendGridAPIClient(settings.sendgrid_api_key)
+        response = client.send(message)
+        if response.status_code not in [200, 201, 202]:
+            raise ValueError("Failed to send verification email via SendGrid")
+
+    def _send_verification_email_via_gmail(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+    ) -> None:
+        if not settings.gmail_smtp_user or not settings.gmail_smtp_app_password:
+            raise ValueError("Gmail SMTP credentials are not configured")
+
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = settings.from_email
+        msg["To"] = to_email
+        msg.set_content("Please open this message in an HTML-capable email client.")
+        msg.add_alternative(html_content, subtype="html")
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(settings.gmail_smtp_host, settings.gmail_smtp_port) as server:
+            server.starttls(context=context)
+            server.login(settings.gmail_smtp_user, settings.gmail_smtp_app_password)
+            server.send_message(msg)
+
+    def verify_email_token(self, token: str) -> User:
+        user = self.auth_repo.get_by_email_verification_token(token)
+        if not user:
+            raise ValueError("Invalid verification link")
+
+        if user.email_verified:
+            return user
+
+        if not user.email_verification_sent_at:
+            raise ValueError("Invalid verification link")
+
+        expires_at = user.email_verification_sent_at + timedelta(
+            hours=settings.email_verification_expire_hours
+        )
+        if datetime.utcnow() > expires_at:
+            raise ValueError("Verification link has expired")
+
+        verified_user = self.auth_repo.mark_email_verified(user.id)
+        if not verified_user:
+            raise ValueError("Failed to verify email")
+
+        return verified_user
+
+    async def resend_verification_email(self, email: str) -> None:
+        user = self.auth_repo.get_by_email(email)
+        if not user:
+            return
+        if user.email_verified:
+            return
+        await self.send_verification_email(user)
 
     def get_user_from_token(self, token: str) -> Optional[User]:
         payload = verify_token(token)
@@ -141,13 +256,4 @@ class AuthService:
         return user
 
     def update_last_login(self, user_id: int) -> Optional[User]:
-        """
-        Update user's last login timestamp.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Updated user object, None if user not found
-        """
         return self.auth_repo.update_last_login(user_id)

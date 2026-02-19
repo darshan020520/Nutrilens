@@ -1,10 +1,3 @@
-"""
-Tracking Repository Implementation
-
-Implements data access operations for meal logs and tracking functionality.
-Extracted from TrackingAgent to follow clean repository pattern.
-"""
-
 import logging
 from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Tuple
@@ -12,46 +5,17 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func, case
 
 from app.repositories.interfaces.tracking_repository import ITrackingRepository
-from app.models.database import MealLog, Recipe, User
+from app.models.database import MealLog, MealPlan, Recipe, User
 
 logger = logging.getLogger(__name__)
 
 
 class TrackingRepository(ITrackingRepository):
-    """
-    Repository for tracking data access operations.
-
-    All meal log database queries are implemented here.
-    NO business logic - only data access.
-    """
-
     def __init__(self, db: Session):
-        """
-        Initialize tracking repository.
-
-        Args:
-            db: SQLAlchemy database session
-        """
         self.db = db
 
-    # =========================================================================
-    # BASIC CRUD OPERATIONS
-    # =========================================================================
 
     async def get_all(self, limit: int = 100, offset: int = 0) -> List[MealLog]:
-        """
-        Get all meal logs with pagination (across all users).
-
-        Note: This method is required by IRepository interface.
-        For user-specific logs, use get_all_for_user() instead.
-
-        Args:
-            limit: Maximum number of items to return
-            offset: Number of items to skip
-
-        Returns:
-            List of meal logs ordered by ID
-        """
         try:
             meal_logs = self.db.query(MealLog).options(
                 joinedload(MealLog.recipe),
@@ -71,18 +35,6 @@ class TrackingRepository(ITrackingRepository):
         meal_log_id: int,
         user_id: int
     ) -> Optional[MealLog]:
-        """
-        Get meal log by ID with user validation.
-
-        Source: backend/app/agents/tracking_agent.py:229-233 (pattern)
-
-        Args:
-            meal_log_id: ID of the meal log
-            user_id: User ID for ownership validation
-
-        Returns:
-            MealLog if found and belongs to user, None otherwise
-        """
         try:
             meal_log = self.db.query(MealLog).options(
                 joinedload(MealLog.recipe),
@@ -106,17 +58,6 @@ class TrackingRepository(ITrackingRepository):
         limit: int = 100,
         offset: int = 0
     ) -> List[MealLog]:
-        """
-        Get all meal logs for a user with pagination.
-
-        Args:
-            user_id: User ID
-            limit: Maximum number of records
-            offset: Number of records to skip
-
-        Returns:
-            List of meal logs ordered by planned_datetime DESC
-        """
         try:
             meal_logs = self.db.query(MealLog).options(
                 joinedload(MealLog.recipe)
@@ -133,15 +74,6 @@ class TrackingRepository(ITrackingRepository):
             raise
 
     async def create(self, meal_log: MealLog) -> MealLog:
-        """
-        Create new meal log.
-
-        Args:
-            meal_log: MealLog entity to create
-
-        Returns:
-            Created meal log with ID populated
-        """
         try:
             self.db.add(meal_log)
             self.db.commit()
@@ -156,15 +88,6 @@ class TrackingRepository(ITrackingRepository):
             raise
 
     async def update(self, meal_log: MealLog) -> MealLog:
-        """
-        Update existing meal log.
-
-        Args:
-            meal_log: MealLog entity to update (must have ID)
-
-        Returns:
-            Updated meal log
-        """
         try:
             self.db.commit()
             self.db.refresh(meal_log)
@@ -178,16 +101,6 @@ class TrackingRepository(ITrackingRepository):
             raise
 
     async def delete(self, meal_log_id: int, user_id: int) -> bool:
-        """
-        Delete meal log by ID with user validation.
-
-        Args:
-            meal_log_id: ID of meal log to delete
-            user_id: User ID for ownership validation
-
-        Returns:
-            True if deleted, False if not found or unauthorized
-        """
         try:
             result = self.db.query(MealLog).filter(
                 and_(
@@ -210,44 +123,43 @@ class TrackingRepository(ITrackingRepository):
             logger.error(f"Error deleting meal log {meal_log_id}: {e}")
             raise
 
-    # =========================================================================
-    # DATE-BASED QUERIES
-    # =========================================================================
 
     async def get_by_date(
         self,
         user_id: int,
-        target_date: date
+        target_date: date,
+        active_plans_only: bool = False
     ) -> List[MealLog]:
-        """
-        Get all meal logs for a specific date.
-
-        Source: backend/app/agents/tracking_agent.py:830-841 (pattern)
-
-        Args:
-            user_id: User ID
-            target_date: Date to query
-
-        Returns:
-            List of meal logs for that date, ordered by planned_datetime
-        """
         try:
             start_datetime = datetime.combine(target_date, datetime.min.time())
             end_datetime = datetime.combine(target_date, datetime.max.time())
 
-            meal_logs = self.db.query(MealLog).options(
-                joinedload(MealLog.recipe)
-            ).filter(
-                and_(
-                    MealLog.user_id == user_id,
-                    MealLog.planned_datetime >= start_datetime,
-                    MealLog.planned_datetime <= end_datetime
-                )
-            ).order_by(
-                MealLog.planned_datetime
-            ).all()
+            query = self.db.query(MealLog).options(joinedload(MealLog.recipe))
 
-            return meal_logs
+            if active_plans_only:
+                query = query.outerjoin(
+                    MealPlan, MealLog.meal_plan_id == MealPlan.id
+                ).filter(
+                    and_(
+                        MealLog.user_id == user_id,
+                        MealLog.planned_datetime >= start_datetime,
+                        MealLog.planned_datetime <= end_datetime,
+                        or_(
+                            MealLog.meal_plan_id.is_(None),
+                            MealPlan.is_active.is_(True)
+                        )
+                    )
+                )
+            else:
+                query = query.filter(
+                    and_(
+                        MealLog.user_id == user_id,
+                        MealLog.planned_datetime >= start_datetime,
+                        MealLog.planned_datetime <= end_datetime
+                    )
+                )
+
+            return query.order_by(MealLog.planned_datetime).all()
 
         except Exception as e:
             logger.error(f"Error getting meal logs for date {target_date}: {e}")
@@ -259,17 +171,6 @@ class TrackingRepository(ITrackingRepository):
         start_date: date,
         end_date: date
     ) -> List[MealLog]:
-        """
-        Get meal logs within a date range (inclusive).
-
-        Args:
-            user_id: User ID
-            start_date: Start date (inclusive)
-            end_date: End date (inclusive)
-
-        Returns:
-            List of meal logs within range, ordered by planned_datetime
-        """
         try:
             start_datetime = datetime.combine(start_date, datetime.min.time())
             end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -293,15 +194,6 @@ class TrackingRepository(ITrackingRepository):
             raise
 
     async def get_todays_meals(self, user_id: int) -> List[MealLog]:
-        """
-        Get all meal logs for today.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            List of today's meal logs, ordered by planned_datetime
-        """
         today = datetime.utcnow().date()
         return await self.get_by_date(user_id, today)
 
@@ -310,18 +202,6 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         days: int = 7
     ) -> List[MealLog]:
-        """
-        Get upcoming meal logs (future planned meals).
-
-        Source: backend/app/agents/tracking_agent.py:830-841
-
-        Args:
-            user_id: User ID
-            days: Number of days ahead to look (default 7)
-
-        Returns:
-            List of future meal logs, ordered by planned_datetime
-        """
         try:
             now = datetime.utcnow()
             until_date = now + timedelta(days=days)
@@ -346,27 +226,12 @@ class TrackingRepository(ITrackingRepository):
             logger.error(f"Error getting upcoming meals for user {user_id}: {e}")
             raise
 
-    # =========================================================================
-    # STATUS-BASED QUERIES
-    # =========================================================================
-
     async def get_consumed_meals(
         self,
         user_id: int,
         start_date: date,
         end_date: date
     ) -> List[MealLog]:
-        """
-        Get meals that have been consumed (consumed_datetime is not null).
-
-        Args:
-            user_id: User ID
-            start_date: Start date (inclusive)
-            end_date: End date (inclusive)
-
-        Returns:
-            List of consumed meal logs
-        """
         try:
             start_datetime = datetime.combine(start_date, datetime.min.time())
             end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -396,19 +261,6 @@ class TrackingRepository(ITrackingRepository):
         start_date: date,
         end_date: date
     ) -> List[MealLog]:
-        """
-        Get meals that have been skipped (was_skipped = True).
-
-        Source: backend/app/agents/tracking_agent.py:627-680 (pattern)
-
-        Args:
-            user_id: User ID
-            start_date: Start date (inclusive)
-            end_date: End date (inclusive)
-
-        Returns:
-            List of skipped meal logs
-        """
         try:
             start_datetime = datetime.combine(start_date, datetime.min.time())
             end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -437,29 +289,22 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         target_date: date
     ) -> List[MealLog]:
-        """
-        Get meals that are pending (not consumed and not skipped).
-
-        Args:
-            user_id: User ID
-            target_date: Date to check
-
-        Returns:
-            List of pending meal logs for that date
-        """
         try:
             start_datetime = datetime.combine(target_date, datetime.min.time())
             end_datetime = datetime.combine(target_date, datetime.max.time())
 
             meal_logs = self.db.query(MealLog).options(
                 joinedload(MealLog.recipe)
+            ).outerjoin(
+                MealPlan, MealLog.meal_plan_id == MealPlan.id
             ).filter(
                 and_(
                     MealLog.user_id == user_id,
                     MealLog.planned_datetime >= start_datetime,
                     MealLog.planned_datetime <= end_datetime,
                     MealLog.consumed_datetime.is_(None),
-                    MealLog.was_skipped == False
+                    MealLog.was_skipped == False,
+                    or_(MealLog.meal_plan_id.is_(None), MealPlan.is_active.is_(True))
                 )
             ).order_by(
                 MealLog.planned_datetime
@@ -477,17 +322,6 @@ class TrackingRepository(ITrackingRepository):
         start_date: date,
         end_date: date
     ) -> List[MealLog]:
-        """
-        Get external meals (meals with external_meal JSON data).
-
-        Args:
-            user_id: User ID
-            start_date: Start date (inclusive)
-            end_date: End date (inclusive)
-
-        Returns:
-            List of external meal logs
-        """
         try:
             start_datetime = datetime.combine(start_date, datetime.min.time())
             end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -516,18 +350,6 @@ class TrackingRepository(ITrackingRepository):
         start_date: date,
         end_date: date
     ) -> List[MealLog]:
-        """
-        Get meal logs for a specific recipe.
-
-        Args:
-            user_id: User ID
-            recipe_id: Recipe ID
-            start_date: Start date (inclusive)
-            end_date: End date (inclusive)
-
-        Returns:
-            List of meal logs for that recipe
-        """
         try:
             start_datetime = datetime.combine(start_date, datetime.min.time())
             end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -551,9 +373,6 @@ class TrackingRepository(ITrackingRepository):
             logger.error(f"Error getting meals for recipe {recipe_id}: {e}")
             raise
 
-    # =========================================================================
-    # MEAL LOGGING OPERATIONS
-    # =========================================================================
 
     async def mark_as_consumed(
         self,
@@ -563,24 +382,6 @@ class TrackingRepository(ITrackingRepository):
         portion_multiplier: float,
         notes: Optional[str] = None
     ) -> MealLog:
-        """
-        Mark meal log as consumed.
-
-        Source: backend/app/api/tracking.py:155-176
-
-        Args:
-            meal_log_id: ID of meal log
-            user_id: User ID for validation
-            consumed_at: Timestamp when consumed
-            portion_multiplier: Portion size multiplier
-            notes: Optional consumption notes
-
-        Returns:
-            Updated meal log
-
-        Raises:
-            ValueError: If meal log not found or already consumed/skipped
-        """
         try:
             meal_log = await self.get_by_id(meal_log_id, user_id)
 
@@ -618,22 +419,6 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         reason: Optional[str] = None
     ) -> MealLog:
-        """
-        Mark meal log as skipped.
-
-        Source: backend/app/agents/tracking_agent.py:627-680
-
-        Args:
-            meal_log_id: ID of meal log
-            user_id: User ID for validation
-            reason: Optional skip reason
-
-        Returns:
-            Updated meal log
-
-        Raises:
-            ValueError: If meal log not found or already consumed/skipped
-        """
         try:
             meal_log = await self.get_by_id(meal_log_id, user_id)
 
@@ -671,21 +456,6 @@ class TrackingRepository(ITrackingRepository):
         external_meal_data: dict,
         notes: Optional[str] = None
     ) -> MealLog:
-        """
-        Create a new meal log for an external meal (restaurant, eating out).
-
-        Source: backend/app/api/tracking.py:988-1010
-
-        Args:
-            user_id: User ID
-            meal_type: Meal type (breakfast, lunch, dinner, snack)
-            consumed_at: When the meal was consumed
-            external_meal_data: Nutrition data as dict
-            notes: Optional notes
-
-        Returns:
-            Created meal log
-        """
         try:
             meal_log = MealLog(
                 user_id=user_id,
@@ -720,24 +490,6 @@ class TrackingRepository(ITrackingRepository):
         external_meal_data: dict,
         notes: Optional[str] = None
     ) -> MealLog:
-        """
-        Replace a planned meal with an external meal.
-
-        Source: backend/app/api/tracking.py:954-985
-
-        Args:
-            meal_log_id: ID of planned meal to replace
-            user_id: User ID for validation
-            consumed_at: When external meal was consumed
-            external_meal_data: Nutrition data as dict
-            notes: Optional notes
-
-        Returns:
-            Updated meal log
-
-        Raises:
-            ValueError: If meal log not found or already consumed
-        """
         try:
             meal_log = await self.get_by_id(meal_log_id, user_id)
 
@@ -747,10 +499,9 @@ class TrackingRepository(ITrackingRepository):
             if meal_log.consumed_datetime:
                 raise ValueError("This meal has already been logged")
 
-            # Replace with external meal
             meal_log.consumed_datetime = consumed_at
             meal_log.external_meal = external_meal_data
-            meal_log.recipe_id = None  # Clear recipe link
+            meal_log.recipe_id = None
             if notes:
                 meal_log.notes = notes
 
@@ -767,9 +518,6 @@ class TrackingRepository(ITrackingRepository):
             logger.error(f"Error replacing planned meal with external: {e}")
             raise
 
-    # =========================================================================
-    # ANALYTICS QUERIES
-    # =========================================================================
 
     async def count_meals_by_status(
         self,
@@ -777,22 +525,6 @@ class TrackingRepository(ITrackingRepository):
         start_date: date,
         end_date: date
     ) -> dict:
-        """
-        Count meals by status (consumed, skipped, pending).
-
-        Args:
-            user_id: User ID
-            start_date: Start date (inclusive)
-            end_date: End date (inclusive)
-
-        Returns:
-            Dict with counts: {
-                "total": 21,
-                "consumed": 15,
-                "skipped": 3,
-                "pending": 3
-            }
-        """
         try:
             start_datetime = datetime.combine(start_date, datetime.min.time())
             end_datetime = datetime.combine(end_date, datetime.max.time())
@@ -845,19 +577,6 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         days: int
     ) -> float:
-        """
-        Calculate adherence rate (consumed / total planned meals).
-
-        Adherence = consumed_meals / (consumed_meals + skipped_meals)
-
-        Args:
-            user_id: User ID
-            days: Number of days to look back
-
-        Returns:
-            Adherence rate as float (0.0 to 1.0)
-            Returns 1.0 if no meals logged
-        """
         try:
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
@@ -881,16 +600,6 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         days: int
     ) -> List[dict]:
-        """
-        Get average consumption times by meal type.
-
-        Args:
-            user_id: User ID
-            days: Number of days to analyze
-
-        Returns:
-            List of dicts with timing patterns per meal type
-        """
         try:
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
@@ -972,16 +681,6 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         days: int
     ) -> dict:
-        """
-        Get skip frequency for each meal type.
-
-        Args:
-            user_id: User ID
-            days: Number of days to analyze
-
-        Returns:
-            Dict mapping meal type to skip rate
-        """
         try:
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
@@ -1033,16 +732,6 @@ class TrackingRepository(ITrackingRepository):
         user_id: int,
         days: int
     ) -> dict:
-        """
-        Get portion size statistics.
-
-        Args:
-            user_id: User ID
-            days: Number of days to analyze
-
-        Returns:
-            Dict with portion statistics
-        """
         try:
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
@@ -1108,17 +797,6 @@ class TrackingRepository(ITrackingRepository):
         days: int,
         limit: int = 10
     ) -> List[Tuple[int, str, int, float]]:
-        """
-        Get recipes with highest skip rates.
-
-        Args:
-            user_id: User ID
-            days: Number of days to analyze
-            limit: Maximum number of recipes to return
-
-        Returns:
-            List of tuples: (recipe_id, recipe_name, skip_count, skip_rate)
-        """
         try:
             end_date = datetime.utcnow().date()
             start_date = end_date - timedelta(days=days)
@@ -1161,23 +839,11 @@ class TrackingRepository(ITrackingRepository):
             logger.error(f"Error getting most skipped recipes: {e}")
             raise
 
-    # =========================================================================
-    # BULK OPERATIONS
-    # =========================================================================
 
     async def bulk_create_meal_logs(
         self,
         meal_logs: List[MealLog]
     ) -> List[MealLog]:
-        """
-        Create multiple meal logs in one transaction.
-
-        Args:
-            meal_logs: List of MealLog entities to create
-
-        Returns:
-            List of created meal logs with IDs
-        """
         try:
             self.db.add_all(meal_logs)
             self.db.commit()
@@ -1198,16 +864,6 @@ class TrackingRepository(ITrackingRepository):
         meal_log_ids: List[int],
         user_id: int
     ) -> int:
-        """
-        Delete multiple meal logs in one transaction.
-
-        Args:
-            meal_log_ids: List of meal log IDs to delete
-            user_id: User ID for validation
-
-        Returns:
-            Number of meal logs deleted
-        """
         try:
             result = self.db.query(MealLog).filter(
                 and_(

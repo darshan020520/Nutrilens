@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 import logging
 
 from app.services.consumption_service_v2 import ConsumptionServiceV2
@@ -12,11 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class DashboardOrchestrator(BaseOrchestrator):
-    """
-    Dashboard orchestrator for aggregating dashboard data.
 
-    Coordinates multiple services to provide dashboard summary and activity data.
-    """
     def __init__(
         self,
         consumption_service: ConsumptionServiceV2,
@@ -50,8 +46,17 @@ class DashboardOrchestrator(BaseOrchestrator):
                 "next_meal_time": next_meal_info["time"]
             }
 
-            total_macros = today_summary.get("total_macros", {})
-            targets = today_summary.get("targets", {})
+            total_macros = {
+                "protein_g": today_summary.get("total_protein_g", 0),
+                "carbs_g": today_summary.get("total_carbs_g", 0),
+                "fat_g": today_summary.get("total_fat_g", 0),
+            }
+            targets = {
+                "calories": today_summary.get("target_calories", 2000),
+                "protein_g": today_summary.get("target_protein_g", 150),
+                "carbs_g": today_summary.get("target_carbs_g", 200),
+                "fat_g": today_summary.get("target_fat_g", 67),
+            }
 
             macros_card = {
                 "calories_consumed": round(today_summary.get("total_calories", 0), 1),

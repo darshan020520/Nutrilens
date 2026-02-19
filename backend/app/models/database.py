@@ -2,29 +2,26 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, JSON, DateTime, ForeignKey, Text, Boolean, Time, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 from app.core.config import settings
 
-# Add these enums
-class NotificationProvider(str, enum.Enum):  # Changed from Enum to enum.Enum
+class NotificationProvider(str, enum.Enum):
     PUSH = "push"
     EMAIL = "email"
     SMS = "sms"
     WHATSAPP = "whatsapp"
 
-class NotificationStatus(str, enum.Enum):  # Changed from Enum to enum.Enum
+class NotificationStatus(str, enum.Enum):
     SENT = "sent"
     FAILED = "failed"
     PENDING = "pending"
 
 Base = declarative_base()
 
-# Create engine
 engine = create_engine(settings.database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Dependency for FastAPI
 def get_db():
     db = SessionLocal()
     try:
@@ -32,7 +29,6 @@ def get_db():
     finally:
         db.close()
 
-# Enums
 class GoalType(str, enum.Enum):
     MUSCLE_GAIN = "muscle_gain"
     FAT_LOSS = "fat_loss"
@@ -61,12 +57,16 @@ class DietaryType(str, enum.Enum):
     VEGAN = "vegan"
     PESCATARIAN = "pescatarian"
 
-# User Tables
+
 class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
+    email_verified = Column(Boolean, default=False, nullable=False)
+    email_verification_token = Column(String(255), unique=True, index=True, nullable=True)
+    email_verification_sent_at = Column(DateTime, nullable=True)
+    email_verified_at = Column(DateTime, nullable=True)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -80,7 +80,7 @@ class User(Base):
     onboarding_started_at = Column(DateTime, nullable=True)
     onboarding_completed_at = Column(DateTime, nullable=True)
     
-    # Relationships
+
     profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     goal = relationship("UserGoal", back_populates="user", uselist=False, cascade="all, delete-orphan")
     path = relationship("UserPath", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -101,15 +101,15 @@ class UserProfile(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     name = Column(String(255))
-    age = Column(Integer)
+    age = Column(Integer) 
     height_cm = Column(Float)
     weight_kg = Column(Float)
-    sex = Column(String(10))  # male/female
+    sex = Column(String(10))
     activity_level = Column(Enum(ActivityLevel))
     medical_conditions = Column(JSON, default=list)
-    bmr = Column(Float, nullable=True)  # Calculated
-    tdee = Column(Float, nullable=True)  # Calculated
-    goal_calories = Column(Float, nullable=True)  # Calculated based on goal
+    bmr = Column(Float, nullable=True)
+    tdee = Column(Float, nullable=True)
+    goal_calories = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -124,7 +124,7 @@ class UserGoal(Base):
     target_weight = Column(Float, nullable=True)
     target_date = Column(DateTime, nullable=True)
     target_body_fat_percentage = Column(Float, nullable=True)
-    macro_targets = Column(JSON)  # {"protein": 0.3, "carbs": 0.45, "fat": 0.25}
+    macro_targets = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     
@@ -137,7 +137,7 @@ class UserPath(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     path_type = Column(Enum(PathType), nullable=False)
     meals_per_day = Column(Integer)
-    meal_windows = Column(JSON)  # [{"meal": "breakfast", "start": "08:00", "end": "09:00"}]
+    meal_windows = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="path")
@@ -148,36 +148,36 @@ class UserPreference(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     dietary_type = Column(Enum(DietaryType))
-    allergies = Column(JSON, default=list)  # ["nuts", "dairy"]
+    allergies = Column(JSON, default=list)
     disliked_ingredients = Column(JSON, default=list)
-    cuisine_preferences = Column(JSON, default=list)  # ["indian", "continental"]
-    max_prep_time_weekday = Column(Integer, default=30)  # minutes
-    max_prep_time_weekend = Column(Integer, default=60)  # minutes
+    cuisine_preferences = Column(JSON, default=list)
+    max_prep_time_weekday = Column(Integer, default=30)
+    max_prep_time_weekend = Column(Integer, default=60)
     
     user = relationship("User", back_populates="preferences")
 
-# Nutrition Tables
+
 class Item(Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
     canonical_name = Column(String(255), unique=True, index=True)
-    aliases = Column(JSON, default=list)  # ["whole wheat flour", "atta", "ww flour"]
-    category = Column(String(50))  # grains, protein, vegetables, etc.
+    aliases = Column(JSON, default=list)
+    category = Column(String(50))
     unit = Column(String(50), default="g")
     barcode = Column(String(100), nullable=True, index=True)
     fdc_id = Column(String(50), nullable=True)
-    nutrition_per_100g = Column(JSON)  # {"calories": 340, "protein_g": 13.2, ...}
+    nutrition_per_100g = Column(JSON)
     is_staple = Column(Boolean, default=False)
     density_g_per_ml = Column(Float, nullable=True)
 
-    # Vector embeddings for semantic search
-    embedding = Column(Text, nullable=True)  # Stored as text, cast to vector(1536) in queries
-    embedding_model = Column(String(50), nullable=True)  # e.g., "text-embedding-3-small"
-    embedding_version = Column(Integer, nullable=True)  # For future model upgrades
-    source = Column(String(20), nullable=True)  # "manual", "usda_fdc", "llm_created"
 
-    # Relationships
+    embedding = Column(Text, nullable=True)
+    embedding_model = Column(String(50), nullable=True)
+    embedding_version = Column(Integer, nullable=True)
+    source = Column(String(20), nullable=True)
+
+
     inventory_items = relationship("UserInventory", back_populates="item")
     recipe_ingredients = relationship("RecipeIngredient", back_populates="item")
 
@@ -187,26 +187,26 @@ class Recipe(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), index=True)
     description = Column(Text)
-    goals = Column(JSON, default=list)  # ["muscle_gain", "fat_loss"]
-    tags = Column(JSON, default=list)  # ["high_protein", "quick", "meal_prep_friendly"]
-    dietary_tags = Column(JSON, default=list)  # ["vegetarian", "gluten_free"]
-    suitable_meal_times = Column(JSON, default=list)  # ["breakfast", "lunch", "dinner"]
-    instructions = Column(JSON, default=list)  # List of steps
+    goals = Column(JSON, default=list)
+    tags = Column(JSON, default=list)
+    dietary_tags = Column(JSON, default=list)
+    suitable_meal_times = Column(JSON, default=list)
+    instructions = Column(JSON, default=list)
     cuisine = Column(String(50))
     prep_time_min = Column(Integer)
     cook_time_min = Column(Integer)
-    difficulty_level = Column(String(20))  # easy, medium, hard
+    difficulty_level = Column(String(20))
     servings = Column(Integer, default=1)
-    macros_per_serving = Column(JSON)  # {"calories": 450, "protein_g": 45, ...}
+    macros_per_serving = Column(JSON)
     meal_prep_notes = Column(Text, nullable=True)
     chef_tips = Column(Text, nullable=True)
 
-    # Vector embeddings for semantic search
-    embedding = Column(Text, nullable=True)  # Stored as text, cast to vector(1536) in queries
-    source = Column(String(20), nullable=True)  # "manual", "spoonacular", "llm_generated"
-    external_id = Column(String(100), nullable=True)  # For API source tracking (e.g., Spoonacular ID)
 
-    # Relationships
+    embedding = Column(Text, nullable=True)
+    source = Column(String(20), nullable=True)
+    external_id = Column(String(100), nullable=True)
+
+
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
     meal_logs = relationship("MealLog", back_populates="recipe")
 
@@ -226,7 +226,7 @@ class Recipe(Base):
             'macros_per_serving': self.macros_per_serving,
             'prep_time_min': self.prep_time_min or 0,
             'cook_time_min': self.cook_time_min or 0,
-            'ingredients': []  # Empty for plan storage, populated when needed
+            'ingredients': []
         }
 
 class RecipeIngredient(Base):
@@ -237,13 +237,13 @@ class RecipeIngredient(Base):
     item_id = Column(Integer, ForeignKey("items.id"))
     quantity_grams = Column(Float)
     is_optional = Column(Boolean, default=False)
-    preparation_notes = Column(String(255), nullable=True)  # "diced", "minced", etc.
+    preparation_notes = Column(String(255), nullable=True)
 
-    # Audit columns for tracking ingredient matching quality
-    normalized_confidence = Column(Float, nullable=True)  # Confidence score from normalizer
-    original_ingredient_text = Column(Text, nullable=True)  # Original text from recipe source
 
-    # Relationships
+    normalized_confidence = Column(Float, nullable=True)
+    original_ingredient_text = Column(Text, nullable=True)
+
+
     recipe = relationship("Recipe", back_populates="ingredients")
     item = relationship("Item", back_populates="recipe_ingredients")
 
@@ -254,10 +254,10 @@ class MealPlan(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     week_start_date = Column(DateTime, index=True)
-    plan_data = Column(JSON)  # Complete week structure
-    grocery_list = Column(JSON)  # Aggregated shopping list
+    plan_data = Column(JSON)
+    grocery_list = Column(JSON)
     total_calories = Column(Float)
-    avg_macros = Column(JSON)  # Average daily macros
+    avg_macros = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     
@@ -270,18 +270,18 @@ class MealLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)
-    meal_type = Column(String(20))  # breakfast, lunch, dinner, snack
+    meal_type = Column(String(20))
     planned_datetime = Column(DateTime, index=True)
     consumed_datetime = Column(DateTime, nullable=True)
     was_skipped = Column(Boolean, default=False)
     skip_reason = Column(String(255), nullable=True)
     portion_multiplier = Column(Float, default=1.0)
     notes = Column(Text, nullable=True)
-    external_meal = Column(JSON, nullable=True)  # For eating out
+    external_meal = Column(JSON, nullable=True)
 
-    # Link to meal plan for tracking and swapping
+
     meal_plan_id = Column(Integer, ForeignKey("meal_plans.id", ondelete="SET NULL"), nullable=True, index=True)
-    day_index = Column(Integer, nullable=True)  # 0-6 for day of week in plan
+    day_index = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="meal_logs")
     recipe = relationship("Recipe", back_populates="meal_logs")
@@ -295,14 +295,14 @@ class UserInventory(Base):
     item_id = Column(Integer, ForeignKey("items.id"))
     quantity_grams = Column(Float)
     purchase_date = Column(DateTime, default=datetime.utcnow)
-    expiry_date = Column(DateTime, nullable=True)
+    expiry_date = Column(DateTime(timezone=True), nullable=True)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    source = Column(String(20))  # manual, ocr, deduction
+    source = Column(String(20))
     
     user = relationship("User", back_populates="pantry")
     item = relationship("Item", back_populates="inventory_items")
 
-# Tracking Tables
+
 class ReceiptUpload(Base):
     __tablename__ = "receipt_uploads"
     
@@ -311,7 +311,7 @@ class ReceiptUpload(Base):
     file_url = Column(String(500))
     ocr_raw_text = Column(Text, nullable=True)
     parsed_items = Column(JSON, nullable=True)
-    processing_status = Column(String(20))  # pending, processing, completed, failed
+    processing_status = Column(String(20))
     processed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -322,8 +322,8 @@ class AgentInteraction(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    agent_type = Column(String(50))  # planning, tracking, nutrition, whatsapp
-    interaction_type = Column(String(50))  # command, query, notification
+    agent_type = Column(String(50))
+    interaction_type = Column(String(50))
     input_text = Column(Text, nullable=True)
     response_text = Column(Text, nullable=True)
     context_data = Column(JSON, nullable=True)
@@ -337,7 +337,7 @@ class WhatsappLog(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    message_type = Column(String(20))  # incoming, outgoing
+    message_type = Column(String(20))
     command = Column(String(50), nullable=True)
     message = Column(Text)
     delivered = Column(Boolean, default=False)

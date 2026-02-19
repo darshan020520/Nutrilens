@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     #Firebase
     firebase_credentials_path: str
 
-    sendgrid_api_key: str
+    sendgrid_api_key: str = ""
     from_email: str
 
     twilio_account_sid: str
@@ -66,6 +66,15 @@ class Settings(BaseSettings):
 
     # Receipt Processing Settings
     receipt_auto_add_threshold: float
+
+    # Auth/email verification
+    frontend_url: str = "http://localhost:3000"
+    email_verification_expire_hours: int = 24
+    email_verification_provider: str = "sendgrid"  # sendgrid | gmail
+    gmail_smtp_host: str = "smtp.gmail.com"
+    gmail_smtp_port: int = 587
+    gmail_smtp_user: str = ""
+    gmail_smtp_app_password: str = ""
 
     @property
     def database_url(self) -> str:

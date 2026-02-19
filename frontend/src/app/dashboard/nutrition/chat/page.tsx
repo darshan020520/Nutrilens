@@ -86,7 +86,7 @@ export default function NutritionChatPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/nutrition/chat/v2", {
+      const response = await fetch("http://localhost:8000/api/nutrition/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,9 +1,3 @@
-"""
-Core domain models for notification system.
-
-These are pure domain models with no infrastructure dependencies.
-"""
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum

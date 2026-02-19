@@ -1,9 +1,3 @@
-"""
-Email channel implementation using SendGrid.
-
-Sends notifications via email using SendGrid API.
-"""
-
 import logging
 from typing import Dict, Any
 from sendgrid import SendGridAPIClient
@@ -14,19 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 class EmailChannel:
-    """
-    Email notification channel using SendGrid.
-
-    Strategy Pattern implementation for email delivery.
-    """
-
     def __init__(self, api_key: str = None):
-        """
-        Initialize email channel.
 
-        Args:
-            api_key: SendGrid API key (defaults to settings.SENDGRID_API_KEY)
-        """
         self.api_key = api_key or getattr(settings, "SENDGRID_API_KEY", None)
         self.from_email = getattr(settings, "SENDGRID_FROM_EMAIL", "noreply@nutrilens.com")
         self.from_name = getattr(settings, "SENDGRID_FROM_NAME", "NutriLens")
@@ -44,23 +27,11 @@ class EmailChannel:
         body: str,
         data: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """
-        Send email via SendGrid.
 
-        Args:
-            user_email: Recipient email address
-            title: Email subject
-            body: Email body (HTML)
-            data: Additional metadata
-
-        Returns:
-            {"success": bool, "channel": "email", "error": str, "external_id": str}
-        """
         try:
             if not self.client:
                 raise Exception("SendGrid client not initialized")
 
-            # Create email
             message = Mail(
                 from_email=Email(self.from_email, self.from_name),
                 to_emails=To(user_email),
@@ -68,10 +39,8 @@ class EmailChannel:
                 html_content=Content("text/html", body)
             )
 
-            # Send via SendGrid
             response = self.client.send(message)
 
-            # Check response
             if response.status_code in [200, 201, 202]:
                 logger.info(f"Email sent to {user_email}")
                 return {
@@ -100,17 +69,7 @@ class EmailChannel:
             }
 
     def validate(self, user_email: str) -> bool:
-        """
-        Validate that email can be sent to user.
-
-        Args:
-            user_email: User's email address
-
-        Returns:
-            True if valid email address
-        """
         return bool(user_email and "@" in user_email)
 
     def get_channel_type(self) -> str:
-        """Get channel type."""
         return "email"

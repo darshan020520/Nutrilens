@@ -9,19 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class VectorMatcherHandler(IMatchHandler):
-    """
-    Handler for vector similarity matching
-
-    Responsibilities:
-    - Generate embedding for input text (or use cached from context)
-    - Store embedding in context for reuse by LLM matcher
-    - Query vector database for similar items
-    - Store top candidates in context
-    - Mark context as matched if best match >= threshold
-
-    Chain Position: Third matcher in chain (after ExactMatcher, AliasMatcher)
-    Chain Behavior: Stops chain if match found, continues otherwise
-    """
 
     def __init__(
         self,
@@ -29,47 +16,38 @@ class VectorMatcherHandler(IMatchHandler):
         item_repository: ItemRepository,
         threshold: float = 0.85
     ):
-        """
-        Args:
-            embedding_adapter: IEmbeddingAdapter for generating embeddings
-            item_repository: ItemRepository for vector search
-            threshold: Minimum similarity score (0-1)
-        """
+
         super().__init__()
         self.embedding_adapter = embedding_adapter
         self.item_repo = item_repository
         self.threshold = threshold
 
     async def _process(self, context: MatchContext) -> None:
-        """
-        Try to match text using vector similarity
 
-        Args:
-            context: Shared context containing user_text
-        """
-        # Generate embedding if not already in context
         if context.embedding is None:
             context.embedding = await self.embedding_adapter.get_embedding(context.user_text)
             context.add_log(f"VectorMatcher: Generated embedding for '{context.user_text}'")
 
-        # Query vector database (get top 5 for potential LLM verification)
         results = self.item_repo.vector_search(
             embedding=context.embedding,
             limit=5
         )
 
+        print(f"  [VectorMatcher] user_text='{context.user_text}', results_count={len(results) if results else 0}")
+        if results:
+            for r in results[:3]:
+                print(f"    candidate: id={r[0]}, name='{r[1]}', similarity={r[2]:.4f}")
+
         if not results:
             context.add_log("VectorMatcher: No vector results found")
-            logger.debug(f"Vector search returned no results for '{context.user_text}'")
+            print(f"  [VectorMatcher] NO RESULTS - embeddings missing?")
             return
 
-        # Store candidates in context for LLM matcher
         context.vector_candidates = [
             {"item_id": item_id, "item_name": item_name, "similarity": similarity}
             for item_id, item_name, similarity in results
         ]
 
-        # Check if best match exceeds threshold
         best_item_id, best_item_name, best_similarity = results[0]
 
         if best_similarity >= self.threshold:
