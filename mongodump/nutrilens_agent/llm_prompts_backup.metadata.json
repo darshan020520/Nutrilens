@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"c242f82a3c8b4b77a2f7d9a7205fc077","collectionName":"llm_prompts_backup","type":"collection"}
