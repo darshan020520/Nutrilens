@@ -27,7 +27,6 @@ from app.schemas.tracking import (
     SkipMealResponse,
     TodaySummaryResponse,
     ConsumptionHistoryResponse,
-    InventoryStatusResponse,
     ExpiringItemsResponse,
     RestockListResponse,
     ExternalMealEstimateResponse,
@@ -301,51 +300,10 @@ async def get_consumption_history(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get("/inventory-status", response_model=InventoryStatusResponse)
-async def get_inventory_status(
-    current_user: User = Depends(get_current_user),
-    inventory_service: InventoryManagementService = Depends(get_inventory_management_service)
-):
-    try:
-        logger.info(f"GET /tracking/v2/inventory-status - User {current_user.id}")
-
-        result = await inventory_service.calculate_inventory_status(
-            user_id=current_user.id
-        )
-
-        if not result.get("success"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to calculate inventory status"
-            )
-
-        items_by_category = {}
-        if result.get("category_breakdown"):
-            for category, data in result["category_breakdown"].items():
-                items_by_category[category] = data.get("total_items", 0)
-
-        return InventoryStatusResponse(
-            total_items=result.get("total_items_tracked", 0),
-            items_by_category=items_by_category,
-            overall_stock_level=result.get("overall_percentage", 0),
-            low_stock_items=result.get("low_stock_items", []),
-            critical_items=result.get("critical_items", []),
-            expiring_soon=result.get("expiring_soon", []),
-            overstocked_items=result.get("well_stocked", []),
-            recommendations=result.get("recommendations", [])
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting inventory status: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
 @router.get("/expiring-items", response_model=ExpiringItemsResponse)
 async def get_expiring_items(
     days: int = Query(default=3, ge=1, le=14, description="Days threshold for expiry warning (1-14)"),
-    filter_mode: str = Query(default="both", regex="^(date_only|consumption_only|both)$",
+    filter_mode: str = Query(default="date_only", regex="^(date_only|consumption_only|both)$",
                               description="Filter mode: date_only, consumption_only, or both"),
     current_user: User = Depends(get_current_user),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service)

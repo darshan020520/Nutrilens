@@ -8,7 +8,7 @@ class InventoryAlertNotification(BaseNotification):
         return "inventory_alert"
 
     def determine_channels(self) -> List[str]:
-        return ["push", "email"]
+        return ["email", "whatsapp"]
 
     def calculate_priority(self) -> str:
         return "normal"

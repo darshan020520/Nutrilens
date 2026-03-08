@@ -7,7 +7,7 @@ class ProgressUpdateNotification(BaseNotification):
         return "progress_update"
 
     def determine_channels(self) -> List[str]:
-        return ["push", "email"]
+        return ["whatsapp", "email"]
 
     def calculate_priority(self) -> str:
         return "normal"

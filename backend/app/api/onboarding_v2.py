@@ -7,7 +7,7 @@ from app.models.database import User
 from app.schemas.user import (
     ProfileCreate,
     GoalCreate, PathSelection, PreferenceCreate,
-    OnboardingTargets, BasicInfoResponse
+    OnboardingTargets, BasicInfoResponse, TargetLockCreate
 )
 from app.services.onboarding import OnboardingService
 from app.dependencies import get_onboarding_service, get_current_user
@@ -65,7 +65,7 @@ async def select_goal(
             }
         )
 
-    goal = onboarding_service.complete_goal_selection(
+    goal = await onboarding_service.complete_goal_selection(
         current_user.id,
         goal_data.dict()
     )
@@ -160,4 +160,28 @@ async def get_calculated_targets(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+
+
+@router.post("/lock-targets", response_model=StepResponse)
+async def lock_targets(
+    lock_data: TargetLockCreate,
+    current_user: User = Depends(get_current_user),
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
+):
+    try:
+        goal = onboarding_service.lock_macro_targets(current_user.id, lock_data.dict())
+        return StepResponse(
+            success=True,
+            data={
+                "goal_type": goal.goal_type,
+                "macro_targets": goal.macro_targets,
+                "goal_calories": lock_data.goal_calories,
+            },
+            message="Targets locked successfully",
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )

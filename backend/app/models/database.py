@@ -202,6 +202,7 @@ class Recipe(Base):
     chef_tips = Column(Text, nullable=True)
 
 
+    image_url = Column(String(500), nullable=True)
     embedding = Column(Text, nullable=True)
     source = Column(String(20), nullable=True)
     external_id = Column(String(100), nullable=True)
@@ -274,6 +275,7 @@ class MealLog(Base):
     planned_datetime = Column(DateTime, index=True)
     consumed_datetime = Column(DateTime, nullable=True)
     was_skipped = Column(Boolean, default=False)
+    was_missed = Column(Boolean, default=False, nullable=False)
     skip_reason = Column(String(255), nullable=True)
     portion_multiplier = Column(Float, default=1.0)
     notes = Column(Text, nullable=True)

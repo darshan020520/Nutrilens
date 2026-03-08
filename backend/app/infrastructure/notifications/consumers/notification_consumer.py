@@ -227,14 +227,13 @@ class NotificationConsumer:
         user: User,
         available_channels: list
     ) -> list:
-        """Return channels in priority order, filtered by notification type AND user preferences."""
-        channel_priority = ["push", "email", "sms", "whatsapp"]
+        """Return channels in the notification's declared order, filtered by user preferences."""
         enabled = set(available_channels)
         # Intersect with user's enabled providers if preference exists
         pref = user.notification_preference
         if pref and pref.enabled_providers:
             enabled = enabled.intersection(set(pref.enabled_providers))
-        return [ch for ch in channel_priority if ch in enabled]
+        return [ch for ch in available_channels if ch in enabled]
 
     def _validate_user_channel(
         self,

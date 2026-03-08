@@ -5,8 +5,8 @@ Defines contract for recipe data access operations.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict
-from app.models.database import Recipe, RecipeIngredient
+from typing import Optional, List, Dict, Tuple
+from app.models.database import Recipe, RecipeIngredient, Item
 
 
 class IRecipeRepository(ABC):
@@ -153,4 +153,24 @@ class IRecipeRepository(ABC):
         Returns:
             List of recipes matching all filters (as dicts for optimizer compatibility)
         """
+        pass
+
+    @abstractmethod
+    async def get_titles_and_embeddings(self) -> List[Tuple[str, Optional[str]]]:
+        """Return (title, embedding_json_str) for all recipes, for duplicate detection."""
+        pass
+
+    @abstractmethod
+    async def create_recipe(self, recipe: Recipe) -> Recipe:
+        """Persist a new Recipe row and flush to obtain its id."""
+        pass
+
+    @abstractmethod
+    async def add_recipe_ingredient(self, recipe_ingredient: RecipeIngredient) -> None:
+        """Persist a RecipeIngredient row (no commit — caller controls transaction)."""
+        pass
+
+    @abstractmethod
+    async def get_items_by_canonical_names(self, names: List[str]) -> Dict[str, Item]:
+        """Return {canonical_name: Item} for the given names (used when seeding ingredients)."""
         pass

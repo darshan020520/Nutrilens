@@ -371,20 +371,16 @@ class MealLoggingOrchestrator:
             daily_summary = {k: v for k, v in today_summary.items() if k != "success"}
             meals = daily_summary.get("meals", [])
 
-            # Step 3: Get inventory status
-            inventory_status = await self.inventory.calculate_inventory_status(user_id)
-
-            # Step 4: Get expiring items
+            # Step 3: Get expiring items
             expiring_items = await self.inventory.check_expiring_items(
                 user_id=user_id,
                 filter_mode="both",
                 days_threshold=3
             )
 
-            # Step 5: Generate recommendations
+            # Step 4: Generate recommendations
             recommendations = self._generate_daily_recommendations(
                 daily_summary=daily_summary,
-                inventory_status=inventory_status,
                 expiring_items=expiring_items
             )
 
@@ -392,7 +388,6 @@ class MealLoggingOrchestrator:
                 "date": target_date.isoformat(),
                 "meals": meals,
                 "daily_summary": daily_summary,
-                "inventory_status": inventory_status,
                 "expiring_items": expiring_items.get("items", []),
                 "recommendations": recommendations
             }
@@ -400,65 +395,6 @@ class MealLoggingOrchestrator:
         except Exception as e:
             logger.error(f"Error getting daily overview: {e}")
             raise Exception(f"Failed to get daily overview: {str(e)}")
-
-    async def get_inventory_overview(
-        self,
-        user_id: int
-    ) -> Dict[str, Any]:
-        """
-        Orchestrate getting comprehensive inventory overview.
-
-        Workflow:
-        1. Get inventory status (InventoryManagementService)
-        2. Get expiring items (InventoryManagementService)
-        3. Get restock list (InventoryManagementService)
-        4. Aggregate and return
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dict: {
-                "inventory_status": {...},
-                "expiring_items": [...],
-                "restock_list": [...],
-                "summary": {...}
-            }
-        """
-        try:
-            logger.info(f"Getting inventory overview for user {user_id}")
-
-            # Step 1: Get inventory status
-            inventory_status = await self.inventory.calculate_inventory_status(user_id)
-
-            # Step 2: Get expiring items
-            expiring_items = await self.inventory.check_expiring_items(
-                user_id=user_id,
-                filter_mode="both",
-                days_threshold=3
-            )
-
-            # Step 3: Get restock list
-            restock_list = await self.inventory.generate_restock_list(user_id)
-
-            # Step 4: Generate summary
-            summary = {
-                "total_items": inventory_status.get("overall_percentage", 0),
-                "critical_items": len(inventory_status.get("critical_items", [])),
-                "expiring_items": len(expiring_items.get("items", [])),
-                "restock_needed": len(restock_list.get("items", []))
-            }
-
-            return {
-                "inventory_status": inventory_status,
-                "expiring_items": expiring_items.get("items", []),
-                "restock_list": restock_list.get("items", []),
-                "summary": summary
-            }
-
-        except Exception as e:
-            logger.error(f"Error getting inventory overview: {e}")
-            raise Exception(f"Failed to get inventory overview: {str(e)}")
 
     # ===== Private Helper Methods - Event Publishing =====
 
@@ -591,7 +527,6 @@ class MealLoggingOrchestrator:
     def _generate_daily_recommendations(
         self,
         daily_summary: Dict,
-        inventory_status: Dict,
         expiring_items: Dict
     ) -> List[str]:
         """Generate daily recommendations based on all data."""
@@ -607,11 +542,6 @@ class MealLoggingOrchestrator:
         elif total_calories > target_calories * 1.1:
             over = int(total_calories - target_calories)
             recommendations.append(f"You're {over} calories over target - consider lighter meals")
-
-        # Inventory recommendations
-        critical_items = inventory_status.get("critical_items", [])
-        if critical_items:
-            recommendations.append(f"Restock needed: {len(critical_items)} critical items")
 
         # Expiring items recommendations
         expiring_count = len(expiring_items.get("items", []))

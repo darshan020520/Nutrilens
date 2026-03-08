@@ -2,9 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from app.api import auth_v2, onboarding_v2, recipes_v2, inventory_v2, meal_plan_v2, tracking_v2, websocket, dashboard_v2, receipt_v2, nutrition_chat, whatsapp_webhook
+from app.api import auth_v2, onboarding_v2, recipes_v2, inventory_v2, meal_plan_v2, tracking_v2, dashboard_v2, receipt_v2, nutrition_chat, whatsapp_webhook
 from app.core.config import settings
-from app.services.websocket_manager import websocket_manager
+# from app.services.websocket_manager import websocket_manager  # WebSocket disabled
 from app.core.events import event_bus
 from app.core.mongodb import init_mongodb_collections, close_mongo_clients
 from app.agents.graph_instance import initialize_nutrition_graph
@@ -21,8 +21,8 @@ async def lifespan(app: FastAPI):
     await get_openai_client()
     print("✅ LLM clients initialized")
 
-    await websocket_manager.initialize_redis()
-    print("✅ WebSocket manager initialized")
+    # await websocket_manager.initialize_redis()
+    # print("✅ WebSocket manager initialized")
 
     try:
         init_mongodb_collections()
@@ -48,8 +48,8 @@ async def lifespan(app: FastAPI):
             yield  # Application runs here with both graphs available
 
     # Shutdown: Close all connections gracefully
-    await websocket_manager.close_all_connections()
-    print("✅ WebSocket manager closed")
+    # await websocket_manager.close_all_connections()
+    # print("✅ WebSocket manager closed")
 
     # Shutdown: Close MongoDB clients
     close_mongo_clients()
@@ -126,6 +126,7 @@ app.include_router(recipes_v2.router, prefix="/api")
 app.include_router(inventory_v2.router, prefix="/api") 
 app.include_router(meal_plan_v2.router_v2, prefix="/api")
 app.include_router(tracking_v2.router, prefix="/api")
+# app.include_router(websocket.router)  # WebSocket disabled
 app.include_router(dashboard_v2.router, prefix="/api")
 app.include_router(receipt_v2.router, prefix="/api")
 app.include_router(nutrition_chat.router, prefix="/api")

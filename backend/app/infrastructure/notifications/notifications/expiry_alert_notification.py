@@ -8,7 +8,7 @@ class ExpiryAlertNotification(BaseNotification):
         return "expiry_alert"
 
     def determine_channels(self) -> List[str]:
-        return ["push", "email", "sms"]
+        return ["email", "whatsapp"]
 
     def calculate_priority(self) -> str:
         days_until_expiry = self.metadata.get("days_until_expiry", 7)

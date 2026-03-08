@@ -19,6 +19,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.models.database import engine
 from app.infrastructure.events.event_publisher import EventPublisher
 from app.services.consumption_service_v2 import ConsumptionServiceV2
+from app.core.redis_client import get_redis_client
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class NotificationWorker:
         self.session_factory = sessionmaker(bind=engine)
         self.scheduler = AsyncIOScheduler()
         self.should_stop = False
+        self.redis = get_redis_client()
 
         # Handle graceful shutdown
         signal.signal(signal.SIGTERM, self._handle_shutdown)
@@ -71,7 +73,8 @@ class NotificationWorker:
             trigger=CronTrigger(hour=21, minute=0),
             id='daily_summaries',
             name='Daily Summaries',
-            replace_existing=True
+            replace_existing=True,
+            misfire_grace_time=1800,  # 30 min — nightly, exact second irrelevant
         )
         logger.info("Scheduled: Daily summaries at 9 PM UTC")
 
@@ -81,7 +84,8 @@ class NotificationWorker:
         #     trigger=CronTrigger(day_of_week='sun', hour=20, minute=0),
         #     id='weekly_reports',
         #     name='Weekly Reports',
-        #     replace_existing=True
+        #     replace_existing=True,
+        #     misfire_grace_time=1800,
         # )
         logger.info("Scheduled: Weekly reports on Sunday at 8 PM UTC")
 
@@ -91,7 +95,8 @@ class NotificationWorker:
             trigger=CronTrigger(minute='*/5'),
             id='meal_reminders',
             name='Meal Reminders',
-            replace_existing=True
+            replace_existing=True,
+            misfire_grace_time=120,  # 2 min — dedup key prevents double-firing within window
         )
         logger.info("Scheduled: Meal reminders every 5 minutes")
 
@@ -101,9 +106,22 @@ class NotificationWorker:
             trigger=CronTrigger(hour=8, minute=0),
             id='inventory_alerts',
             name='Inventory Alerts',
-            replace_existing=True
+            replace_existing=True,
+            misfire_grace_time=1800,  # 30 min — nightly, exact second irrelevant
         )
         logger.info("Scheduled: Inventory alerts at 8 AM UTC")
+
+        # Transition past-pending meal logs to missed (every day at 00:30 IST = 19:00 UTC)
+        # Marks unresolved logs whose planned_datetime is before today midnight IST.
+        self.scheduler.add_job(
+            self._transition_missed_meals,
+            trigger=CronTrigger(hour=19, minute=0),
+            id='transition_missed_meals',
+            name='Transition Missed Meals',
+            replace_existing=True,
+            misfire_grace_time=1800,  # 30 min — nightly, idempotent bulk update
+        )
+        logger.info("Scheduled: Missed meal transition at 00:30 IST (19:00 UTC)")
 
         # Start scheduler
         self.scheduler.start()
@@ -131,10 +149,12 @@ class NotificationWorker:
         try:
             from app.repositories.meal_log_repository import MealLogRepository
 
-            # Find meals that need reminders (30 minutes from now)
+            # Find meals that need reminders (30 minutes from now).
+            # Window is ±3min (6min total) so consecutive 5-min cron runs have 1-min
+            # overlap — dedup below ensures each meal only fires once.
             reminder_time = datetime.utcnow() + timedelta(minutes=30)
-            reminder_window_start = reminder_time - timedelta(minutes=2)
-            reminder_window_end = reminder_time + timedelta(minutes=2)
+            reminder_window_start = reminder_time - timedelta(minutes=3)
+            reminder_window_end = reminder_time + timedelta(minutes=3)
 
             meal_log_repo = MealLogRepository(db)
             upcoming_meals = await meal_log_repo.get_upcoming_meals_in_time_window(
@@ -146,25 +166,27 @@ class NotificationWorker:
 
             for meal in upcoming_meals:
                 try:
+                    # Dedup: one reminder per meal log, regardless of how many times
+                    # the scheduler runs within the window.
+                    dedup_key = f"meal_reminder_sent:{meal.id}"
+                    if await self.redis.exists(dedup_key):
+                        continue
+                    await self.redis.setex(dedup_key, 7200, "1")  # 2-hour TTL
+
                     time_until = int((meal.planned_datetime - datetime.utcnow()).total_seconds() / 60)
 
-                    if 25 <= time_until <= 35:
-                        # Publish event via EventPublisher
-                        # Map to observer expectations:
-                            # - time_until (not time_until_minutes)
-                            # - scheduled_time (formatted from planned_datetime)
-                            await self.event_publisher.publish(
-                                event_type="scheduled_meal_reminder",
-                                data={
-                                    "user_id": meal.user_id,
-                                    "meal_type": meal.meal_type,
-                                    "recipe_name": meal.recipe.title if meal.recipe else "Your meal",
-                                    "time_until": time_until,
-                                    "scheduled_time": meal.planned_datetime.strftime("%I:%M %p"),
-                                }
-                            )
-                            reminder_count += 1
-                            logger.info(f"Meal reminder event published for user {meal.user_id}")
+                    await self.event_publisher.publish(
+                        event_type="scheduled_meal_reminder",
+                        data={
+                            "user_id": meal.user_id,
+                            "meal_type": meal.meal_type,
+                            "recipe_name": meal.recipe.title if meal.recipe else "Your meal",
+                            "time_until": time_until,
+                            "scheduled_time": meal.planned_datetime.strftime("%I:%M %p"),
+                        }
+                    )
+                    reminder_count += 1
+                    logger.info(f"Meal reminder event published for user {meal.user_id}")
 
                 except Exception as e:
                     logger.error(f"Error publishing meal reminder for meal {meal.id}: {str(e)}")
@@ -207,7 +229,7 @@ class NotificationWorker:
 
             for user in active_users:
                 try:
-                    summary = consumption_service.get_today_summary(user.id)
+                    summary = await consumption_service.get_today_summary(user.id)
 
                     if summary.get("success"):
                         # Publish event via EventPublisher
@@ -222,7 +244,7 @@ class NotificationWorker:
                                 "meals_consumed": summary.get("meals_consumed", 0),
                                 "compliance_rate": summary.get("compliance_rate", 0.0),
                                 "calories_consumed": summary.get("total_calories", 0),
-                                "protein_g": summary.get("total_macros", {}).get("protein_g", 0),
+                                "protein_g": summary.get("total_protein_g", 0),
                             }
                         )
                         logger.info(f"Daily summary event published for user {user.id}")
@@ -296,6 +318,50 @@ class NotificationWorker:
     #         logger.error(f"Error in _trigger_weekly_reports: {str(e)}")
     #     finally:
     #         db.close()
+
+    async def _transition_missed_meals(self):
+        """
+        Bulk-transition past-pending meal logs to was_missed = True.
+
+        Runs nightly at 00:30 IST (19:00 UTC). Marks every MealLog where:
+          - consumed_datetime IS NULL   (never eaten)
+          - was_skipped = False         (never explicitly skipped)
+          - was_missed = False          (not already transitioned)
+          - planned_datetime < today midnight IST
+
+        Meals planned for today are intentionally left as pending — they may
+        still be logged or skipped by the user during the day.
+
+        Phase 1: DB state only. API response status fields stay "pending"
+        until Phase 2 when the frontend is updated to handle "missed".
+        """
+        db = self.session_factory()
+        try:
+            from app.models.database import MealLog
+            from app.core.ist_datetime import today_ist
+            from datetime import time
+
+            today_midnight = datetime.combine(today_ist(), time.min)
+
+            updated = db.query(MealLog).filter(
+                MealLog.consumed_datetime.is_(None),
+                MealLog.was_skipped == False,
+                MealLog.was_missed == False,
+                MealLog.planned_datetime < today_midnight
+            ).update({"was_missed": True}, synchronize_session=False)
+
+            db.commit()
+
+            if updated:
+                logger.info(f"Transitioned {updated} meal log(s) to missed (cutoff: {today_midnight})")
+            else:
+                logger.info("No meal logs to transition to missed")
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error in _transition_missed_meals: {str(e)}")
+        finally:
+            db.close()
 
     async def _trigger_inventory_alerts(self):
         """

@@ -304,6 +304,7 @@ class TrackingRepository(ITrackingRepository):
                     MealLog.planned_datetime <= end_datetime,
                     MealLog.consumed_datetime.is_(None),
                     MealLog.was_skipped == False,
+                    MealLog.was_missed == False,
                     or_(MealLog.meal_plan_id.is_(None), MealPlan.is_active.is_(True))
                 )
             ).order_by(

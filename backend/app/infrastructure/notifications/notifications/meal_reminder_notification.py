@@ -7,7 +7,7 @@ class MealReminderNotification(BaseNotification):
         return "meal_reminder"
 
     def determine_channels(self) -> List[str]:
-        return ["push", "sms"]
+        return ["whatsapp"]
 
     def calculate_priority(self) -> str:
         time_until = self.metadata.get("time_until", 30)

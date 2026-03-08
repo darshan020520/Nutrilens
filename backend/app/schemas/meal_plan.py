@@ -31,7 +31,8 @@ class RecipeBase(BaseModel):
     servings: int = 1
     goals: Optional[List[str]] = []
     dietary_tags: Optional[List[str]] = []
-    
+    image_url: Optional[str] = None
+
     class Config:
         orm_mode = True
 

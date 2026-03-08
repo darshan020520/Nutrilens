@@ -29,6 +29,7 @@ class RecipeResponse(BaseModel):
     instructions: List[str]
     meal_prep_notes: Optional[str]
     chef_tips: Optional[str]
+    image_url: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -61,6 +62,7 @@ class RecipeDetailResponse(BaseModel):
     instructions: List[str]
     meal_prep_notes: Optional[str]
     chef_tips: Optional[str]
+    image_url: Optional[str] = None
     ingredients: List[IngredientResponse]
 
     class Config:
@@ -111,7 +113,8 @@ async def search_recipes(
                 "macros_per_serving": recipe.macros_per_serving or {},
                 "instructions": recipe.instructions or [],
                 "meal_prep_notes": recipe.meal_prep_notes,
-                "chef_tips": recipe.chef_tips
+                "chef_tips": recipe.chef_tips,
+                "image_url": recipe.image_url
             }
             recipe_list.append(recipe_dict)
 
@@ -161,6 +164,7 @@ async def get_recipe(
             "instructions": recipe.instructions or [],
             "meal_prep_notes": recipe.meal_prep_notes,
             "chef_tips": recipe.chef_tips,
+            "image_url": recipe.image_url,
             "ingredients": ingredients
         }
 

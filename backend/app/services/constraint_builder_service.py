@@ -60,22 +60,16 @@ class ConstraintBuilderService:
                 max_recipe_repeat_in_days=2
             )
 
-        # COPY-PASTED FROM planning_agent.py:856-864 - NO CHANGES
-        # Get macro ratios from UserGoal.macro_targets JSON field
+        # Read macro targets as absolute grams (stored by onboarding service)
         if goal and goal.macro_targets:
-            protein_ratio = goal.macro_targets.get('protein', 0.30)
-            carb_ratio = goal.macro_targets.get('carbs', 0.40)
-            fat_ratio = goal.macro_targets.get('fat', 0.30)
+            mt = goal.macro_targets
+            daily_protein_g = mt["protein_g"]
+            daily_carbs_g = mt["carbs_g"]
+            daily_fat_g = mt["fat_g"]
         else:
-            protein_ratio = 0.30
-            carb_ratio = 0.40
-            fat_ratio = 0.30
-
-        # COPY-PASTED FROM planning_agent.py:866-869 - NO CHANGES
-        # Calculate gram amounts from ratios
-        daily_protein_g = (profile.goal_calories * protein_ratio) / 4
-        daily_carbs_g = (profile.goal_calories * carb_ratio) / 4
-        daily_fat_g = (profile.goal_calories * fat_ratio) / 9
+            daily_protein_g = 120.0
+            daily_carbs_g = 250.0
+            daily_fat_g = 65.0
 
         # COPY-PASTED FROM planning_agent.py:871-884 - NO CHANGES
         # Build constraints with actual data
@@ -88,7 +82,7 @@ class ConstraintBuilderService:
             daily_fat_min=daily_fat_g * 0.8,
             daily_fat_max=daily_fat_g * 1.2,
             meals_per_day=path.meals_per_day if path else 3,
-            max_recipe_repeat_in_days=2,
+            max_recipe_repeat_in_days=3,
             dietary_restrictions=[preferences.dietary_type.value] if preferences and preferences.dietary_type else [],
             allergens=preferences.allergies if preferences and preferences.allergies else []
         )

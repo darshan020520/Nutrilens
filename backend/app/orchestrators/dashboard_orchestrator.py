@@ -2,7 +2,7 @@ from typing import Dict, Any
 import logging
 
 from app.services.consumption_service_v2 import ConsumptionServiceV2
-from app.services.inventory_management_service import InventoryManagementService
+from app.services.intelligent_inventory_service_v2 import IntelligentInventoryServiceV2
 from app.services.meal_plan_service_v2 import MealPlanServiceV2
 from app.services.onboarding import OnboardingService
 from app.repositories.activity_repository import ActivityRepository
@@ -16,7 +16,7 @@ class DashboardOrchestrator(BaseOrchestrator):
     def __init__(
         self,
         consumption_service: ConsumptionServiceV2,
-        inventory_service: InventoryManagementService,
+        inventory_service: IntelligentInventoryServiceV2,
         meal_plan_service: MealPlanServiceV2,
         onboarding_service: OnboardingService,
         activity_repo: ActivityRepository
@@ -85,12 +85,12 @@ class DashboardOrchestrator(BaseOrchestrator):
                 )
             }
 
-            inventory_status = await self.inventory.calculate_inventory_status(user_id)
+            inventory_status = await self.inventory.get_inventory_status(user_id)
 
             inventory_card = {
                 "expiring_soon_count": len(inventory_status.get("expiring_soon", [])),
-                "low_stock_count": len(inventory_status.get("low_stock_items", [])),
-                "out_of_stock_count": inventory_status.get("out_of_stock_count", 0),
+                "low_stock_count": len(inventory_status.get("low_stock", [])),
+                "out_of_stock_count": 0,
                 "total_items": inventory_status.get("total_items", 0)
             }
 
@@ -117,15 +117,10 @@ class DashboardOrchestrator(BaseOrchestrator):
     ) -> Dict[str, Any]:
 
         try:
-            activities = await self.activity_repo.get_recent_activity(
+            return await self.activity_repo.get_recent_activity(
                 user_id=user_id,
                 limit=limit
             )
-
-            return {
-                "activities": activities,
-                "total_count": len(activities)
-            }
 
         except Exception as e:
             logger.error(f"Error fetching recent activity: {str(e)}")

@@ -152,12 +152,24 @@ class ConsumptionServiceV2:
                 "logged_meal": {
                     "id": meal_log.id,
                     "meal_type": meal_log.meal_type,
-                    "recipe": meal_log.recipe.title if hasattr(meal_log, 'recipe') and meal_log.recipe else "External",
+                    "recipe": meal_log.recipe.title if hasattr(meal_log, 'recipe') and meal_log.recipe else (meal_log.external_meal.get("dish_name", "External meal") if meal_log.external_meal else "External meal"),
                     "consumed_at": consumed_at.isoformat(),
                     "portion_multiplier": portion_multiplier,
                     "macros": macros
                 },
-                "updated_totals": daily_totals.get("total_macros", {}),
+                "updated_totals": {
+                    "total_calories": daily_totals.get("total_calories", 0),
+                    "total_protein_g": daily_totals.get("total_protein_g", 0),
+                    "total_carbs_g": daily_totals.get("total_carbs_g", 0),
+                    "total_fat_g": daily_totals.get("total_fat_g", 0),
+                    "target_calories": daily_totals.get("target_calories", 2000),
+                    "target_protein_g": daily_totals.get("target_protein_g", 0),
+                    "target_carbs_g": daily_totals.get("target_carbs_g", 0),
+                    "target_fat_g": daily_totals.get("target_fat_g", 0),
+                    "compliance_rate": daily_totals.get("compliance_rate", 0),
+                    "meals_planned": daily_totals.get("meals_planned", 0),
+                    "meals_consumed": daily_totals.get("meals_consumed", 0),
+                },
                 "remaining_targets": remaining_targets,
                 "inventory_changes": inventory_changes
             }
@@ -484,11 +496,18 @@ class ConsumptionServiceV2:
                         meals_by_date[log_date] = []
 
                     # Build meal detail matching v1 structure exactly
-                    status = "logged" if log.consumed_datetime else ("skipped" if log.was_skipped else "pending")
+                    if log.consumed_datetime:
+                        status = "logged"
+                    elif log.was_skipped:
+                        status = "skipped"
+                    elif log.was_missed:
+                        status = "missed"
+                    else:
+                        status = "pending"
 
                     meals_by_date[log_date].append({
                         "meal_type": log.meal_type,
-                        "recipe_name": log.recipe.title if log.recipe else "External",
+                        "recipe_name": log.recipe.title if log.recipe else (log.external_meal.get("dish_name", "External meal") if log.external_meal else "External meal"),
                         "status": status,
                         "time": log.consumed_datetime.isoformat() if log.consumed_datetime else log.planned_datetime.isoformat()
                     })

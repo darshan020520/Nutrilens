@@ -12,6 +12,7 @@ from app.services.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.dependencies import get_auth_service, get_current_user
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth/v2", tags=["auth-v2"])
@@ -61,7 +62,10 @@ async def register(
 
     try:
         user = auth_service.register_user(user_create)
-        await auth_service.send_verification_email(user)
+        if settings.skip_email_verification:
+            auth_service.auth_repo.mark_email_verified(user.id)
+        else:
+            await auth_service.send_verification_email(user)
         return UserResponse.from_orm(user)
     except ValueError as e:
         status_code = (

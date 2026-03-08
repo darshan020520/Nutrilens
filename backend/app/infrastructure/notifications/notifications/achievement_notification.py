@@ -7,7 +7,7 @@ class AchievementNotification(BaseNotification):
         return "achievement"
 
     def determine_channels(self) -> List[str]:
-        return ["push", "email", "whatsapp"]
+        return ["whatsapp", "email"]
 
     def calculate_priority(self) -> str:
         return "high"

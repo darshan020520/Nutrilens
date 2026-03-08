@@ -157,13 +157,13 @@ class UserContext:
             result = await self.onboarding_service.get_calculated_targets(self.user_id)
 
             goal_calories = result.get("goal_calories", 2000)
-            macro_targets = result.get("macro_targets", {"protein": 0.3, "carbs": 0.4, "fat": 0.3})
+            mt = result.get("macro_targets", {})
 
             return {
                 "calories": goal_calories,
-                "protein_g": (goal_calories * macro_targets.get("protein", 0.3)) / 4,
-                "carbs_g": (goal_calories * macro_targets.get("carbs", 0.4)) / 4,
-                "fat_g": (goal_calories * macro_targets.get("fat", 0.3)) / 9,
+                "protein_g": mt.get("protein_g", 100.0),
+                "carbs_g": mt.get("carbs_g", 250.0),
+                "fat_g": mt.get("fat_g", 65.0),
                 "fiber_g": result.get("fiber_g", 25)
             }
         except Exception as e:
@@ -390,7 +390,10 @@ class UserContext:
                 include_zero_quantity=False
             )
 
+            print(f"\n[DEBUG UserContext.get_makeable_recipes] inventory_items count: {len(inventory_items) if inventory_items else 0}")
+
             if not inventory_items:
+                print("[DEBUG UserContext.get_makeable_recipes] No inventory items — returning []")
                 return []
 
             # Convert to dict for recipe matching
@@ -398,13 +401,21 @@ class UserContext:
                 inv.item_id: inv.quantity_grams
                 for inv in inventory_items
             }
+            print(f"[DEBUG UserContext.get_makeable_recipes] user_item_quantities: {user_item_quantities}")
 
-            # Get makeable recipe candidates
+            # Get makeable recipe candidates — use a large scan limit so the
+            # unordered DB query doesn't cut off results before Python filtering.
+            # The repo applies limit*3 internally, so passing 50 scans 150 rows.
             candidates = await self.recipe_repo.get_makeable_recipe_candidates(
                 user_item_quantities=user_item_quantities,
                 min_match_pct=80.0,
-                limit=limit
+                limit=50
             )
+
+            print(f"[DEBUG UserContext.get_makeable_recipes] candidates returned from repo: {len(candidates)}")
+            for c in candidates:
+                r = c.get("recipe")
+                print(f"  candidate: title={r.title if r else 'None'}, match={c.get('match_percentage')}%, available={c.get('available_items')}, missing={c.get('missing_items')}")
 
             # Format response
             result = []
@@ -421,9 +432,12 @@ class UserContext:
                         "missing_items": candidate.get("missing_items", [])
                     })
 
+            result = result[:limit]
+            print(f"[DEBUG UserContext.get_makeable_recipes] final result sent to tool: {result}")
             return result
         except Exception as e:
             logger.error(f"Error getting makeable recipes: {str(e)}")
+            print(f"[DEBUG UserContext.get_makeable_recipes] EXCEPTION: {e}")
             return []
 
     async def get_goal_aligned_recipes(self, count: int = 20) -> List[Dict[str, Any]]:

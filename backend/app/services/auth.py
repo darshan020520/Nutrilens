@@ -107,7 +107,7 @@ class AuthService:
         user = self.auth_repo.get_by_email(email)
         if not user or not verify_password(password, user.hashed_password):
             return None
-        if not user.email_verified:
+        if not user.email_verified and not settings.skip_email_verification:
             raise ValueError("Email not verified. Please verify your email before logging in.")
         return user
 
