@@ -110,10 +110,11 @@ def get_onboarding_repository(db: Session = Depends(get_db)) -> IOnboardingRepos
     return OnboardingRepository(db)
 
 
-def get_onboarding_service(
+async def get_onboarding_service(
     onboarding_repo: IOnboardingRepository = Depends(get_onboarding_repository)
 ) -> OnboardingService:
-    return OnboardingService(onboarding_repo=onboarding_repo)
+    llm_orchestrator = await get_llm_orchestrator()
+    return OnboardingService(onboarding_repo=onboarding_repo, llm_orchestrator=llm_orchestrator)
 
 
 def get_receipt_repository(db: Session = Depends(get_db)) -> IReceiptRepository:
@@ -331,6 +332,7 @@ async def get_intelligent_inventory_service_v2(
         item_repo=item_repo,
         db=db,
         llm_orchestrator=llm_orchestrator,
+        embedding_adapter=embedding_adapter,
         user_profile_repo=user_profile_repo,
         meal_plan_repo=meal_plan_repo
     )
@@ -547,7 +549,7 @@ def get_activity_repository(db: Session = Depends(get_db)) -> ActivityRepository
 
 def get_dashboard_orchestrator(
     consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
-    inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
+    inventory_service: IntelligentInventoryServiceV2 = Depends(get_intelligent_inventory_service_v2),
     meal_plan_service: MealPlanServiceV2 = Depends(get_meal_plan_service_v2),
     onboarding_service: OnboardingService = Depends(get_onboarding_service),
     activity_repo: ActivityRepository = Depends(get_activity_repository)
@@ -633,13 +635,13 @@ def initialize_event_publisher():
     if _event_publisher is None:
         _event_publisher = EventPublisher()
 
-        _websocket_observer = create_websocket_observer()
+        # _websocket_observer = create_websocket_observer()  # WebSocket disabled
         _notification_observer = create_notification_observer()
 
-        _event_publisher.attach(_websocket_observer)
+        # _event_publisher.attach(_websocket_observer)  # WebSocket disabled
         _event_publisher.attach(_notification_observer)
 
-        logger.info("EventPublisher initialized with 2 observers attached")
+        logger.info("EventPublisher initialized with 1 observer attached (WebSocket disabled)")
 
     return _event_publisher
 

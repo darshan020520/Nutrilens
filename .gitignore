@@ -42,3 +42,7 @@ secrets.json
 # Coverage
 .coverage
 htmlcov/
+
+# Playwright artifacts
+test-results/
+playwright-report/

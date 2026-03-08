@@ -11,6 +11,19 @@ import { User, Mail, Target } from "lucide-react";
 import { authAPI } from "@/lib/api";
 import { toast } from "sonner";
 
+type MeResponse = {
+  data?: {
+    user?: {
+      email?: string;
+      goal_type?: string;
+    };
+  };
+  user?: {
+    email?: string;
+    goal_type?: string;
+  };
+};
+
 export default function ProfilePage() {
   const [email, setEmail] = useState("user@example.com");
   const [displayName, setDisplayName] = useState("");
@@ -22,11 +35,12 @@ export default function ProfilePage() {
 
     authAPI
       .getMe()
-      .then((data: any) => {
-        const userEmail = data?.data?.user?.email || data?.user?.email;
+      .then((data: unknown) => {
+        const payload = data as MeResponse;
+        const userEmail = payload?.data?.user?.email || payload?.user?.email;
         if (userEmail) setEmail(userEmail);
 
-        const goalType = data?.data?.user?.goal_type || data?.user?.goal_type;
+        const goalType = payload?.data?.user?.goal_type || payload?.user?.goal_type;
         if (goalType) setGoal(goalType);
       })
       .catch(() => {

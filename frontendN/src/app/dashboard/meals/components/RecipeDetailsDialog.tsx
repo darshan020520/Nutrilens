@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { api, getEndpoint } from "@/lib/api";
+import Image from "next/image";
 
 interface RecipeDetails {
   id: number;
@@ -53,13 +54,7 @@ export default function RecipeDetailsDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open && recipeId) {
-      fetchRecipeDetails();
-    }
-  }, [open, recipeId]);
-
-  const fetchRecipeDetails = async () => {
+  const fetchRecipeDetails = useCallback(async () => {
     if (!recipeId) return;
 
     setLoading(true);
@@ -67,16 +62,34 @@ export default function RecipeDetailsDialog({
     try {
       const response = await api.get(getEndpoint(`/recipes/${recipeId}`));
       setRecipe(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to load recipe details");
+    } catch (err: unknown) {
+      const message =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === "string"
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : "Failed to load recipe details";
+      setError(message ?? "Failed to load recipe details");
     } finally {
       setLoading(false);
     }
-  };
+  }, [recipeId]);
+
+  useEffect(() => {
+    if (open && recipeId) {
+      fetchRecipeDetails();
+    }
+  }, [fetchRecipeDetails, open, recipeId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className={!recipe ? "sr-only" : undefined}>
+          <DialogTitle className={recipe ? "text-2xl" : undefined}>
+            {recipe?.title ?? "Recipe details"}
+          </DialogTitle>
+        </DialogHeader>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -85,18 +98,18 @@ export default function RecipeDetailsDialog({
           <div className="text-center py-12 text-red-500">{error}</div>
         ) : recipe ? (
           <>
-            <DialogHeader>
-              <DialogTitle className="text-2xl">{recipe.title}</DialogTitle>
-            </DialogHeader>
-
             <div className="space-y-6">
               {/* Image */}
               {recipe.image_url && (
-                <img
-                  src={recipe.image_url}
-                  alt={recipe.title}
-                  className="w-full h-64 object-cover rounded-lg"
-                />
+                <div className="relative h-64 w-full overflow-hidden rounded-lg">
+                  <Image
+                    src={recipe.image_url}
+                    alt={recipe.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 768px"
+                  />
+                </div>
               )}
 
               {/* Tags */}

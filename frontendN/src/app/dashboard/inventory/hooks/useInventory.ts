@@ -13,6 +13,19 @@ import {
   BulkAddFromRestockResponse,
 } from "../types";
 
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+};
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  const detail = (error as ApiErrorLike)?.response?.data?.detail;
+  return typeof detail === "string" ? detail : fallback;
+}
+
 // Fetch inventory status with AI insights
 export function useInventoryStatus() {
   return useQuery<InventoryStatus>({
@@ -74,8 +87,8 @@ export function useAddItems() {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to add items");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to add items"));
     },
   });
 }
@@ -85,7 +98,7 @@ export function useConfirmItem() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    any,
+    { item?: string },
     Error,
     { original_text: string; item_id: number; quantity_grams: number }
   >({
@@ -94,11 +107,11 @@ export function useConfirmItem() {
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(`${data.item} added to inventory`);
+      toast.success(`${data.item ?? "Item"} added to inventory`);
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to confirm item");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to confirm item"));
     },
   });
 }
@@ -107,7 +120,7 @@ export function useConfirmItem() {
 export function useDeleteItem() {
   const queryClient = useQueryClient();
 
-  return useMutation<any, Error, number>({
+  return useMutation<unknown, Error, number>({
     mutationFn: async (inventoryId) => {
       const response = await api.delete(getEndpoint(`/inventory/item/${inventoryId}`));
       return response.data;
@@ -116,8 +129,8 @@ export function useDeleteItem() {
       toast.success("Item removed from inventory");
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to delete item");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to delete item"));
     },
   });
 }
@@ -155,22 +168,22 @@ export function useBulkAddFromRestock() {
   return useMutation<
     BulkAddFromRestockResponse,
     Error,
-    { items: BulkAddFromRestockItem[] }
+    { items: BulkAddFromRestockItem[]; suppressToast?: boolean }
   >({
-    mutationFn: async (data) => {
+    mutationFn: async ({ items }) => {
       const response = await api.post(
         getEndpoint("/inventory/bulk-add-from-restock"),
-        data
+        { items }
       );
       return response.data;
     },
-    onSuccess: (data) => {
-      if (data.successfully_added > 0) {
+    onSuccess: (data, variables) => {
+      if (!variables?.suppressToast && data.successfully_added > 0) {
         toast.success(
           `${data.successfully_added} item${data.successfully_added > 1 ? "s" : ""} added to inventory!`
         );
       }
-      if (data.failed_count > 0) {
+      if (!variables?.suppressToast && data.failed_count > 0) {
         toast.error(
           `Failed to add ${data.failed_count} item${data.failed_count > 1 ? "s" : ""}`
         );
@@ -178,10 +191,8 @@ export function useBulkAddFromRestock() {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["tracking", "restock-list"] });
     },
-    onError: (error: any) => {
-      toast.error(
-        error.response?.data?.detail || "Failed to add items to inventory"
-      );
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to add items to inventory"));
     },
   });
 }

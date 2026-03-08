@@ -78,7 +78,7 @@ export default function ReceiptUpload({
 
       setSelectedFile(null);
       setPreview(null);
-    } catch (error) {
+    } catch {
       // Error is caught by the hook's toast.error
     }
   };
@@ -133,7 +133,9 @@ export default function ReceiptUpload({
     onOpenChange(false);
   };
 
-  const hasPending = (pendingData?.count ?? 0) > 0;
+  const pendingCount = pendingData?.count ?? 0;
+  const pendingItems = pendingData?.items ?? [];
+  const hasPending = pendingCount > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -306,7 +308,7 @@ export default function ReceiptUpload({
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-semibold text-sm flex items-center gap-2 text-yellow-700">
                     <AlertTriangle className="h-4 w-4" />
-                    Items Needing Confirmation ({pendingData.count})
+                    Items Needing Confirmation ({pendingCount})
                   </h4>
                   <Button
                     size="sm"
@@ -323,7 +325,7 @@ export default function ReceiptUpload({
                 </div>
 
                 <div className="space-y-3">
-                  {pendingData.items.map((item) => {
+                  {pendingItems.map((item) => {
                     const isLowConfidence = (item.enrichment_confidence ?? 0) < 0.5;
 
                     return (
@@ -334,7 +336,7 @@ export default function ReceiptUpload({
                             <div className="space-y-2">
                               <div>
                                 <p className="text-xs text-muted-foreground">
-                                  From receipt: "{item.item_name}"
+                                  From receipt: &quot;{item.item_name}&quot;
                                 </p>
                                 <p className="text-sm font-medium text-orange-700 mt-1">
                                   {item.canonical_name || item.item_name}
@@ -345,7 +347,7 @@ export default function ReceiptUpload({
                               </div>
                               <Alert className="border-orange-200 bg-orange-50/50">
                                 <AlertDescription className="text-xs text-orange-800">
-                                  We'll add this item to our database shortly. Skip for now.
+                                  We&apos;ll add this item to our database shortly. Skip for now.
                                 </AlertDescription>
                               </Alert>
                               <Button
@@ -366,7 +368,7 @@ export default function ReceiptUpload({
                                 <div className="flex-1 space-y-2">
                                   <div>
                                     <p className="text-xs text-muted-foreground">
-                                      From receipt: "{item.item_name}"
+                                      From receipt: &quot;{item.item_name}&quot;
                                     </p>
                                   </div>
 

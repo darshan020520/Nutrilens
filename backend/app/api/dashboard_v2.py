@@ -59,7 +59,7 @@ class DashboardSummary(BaseModel):
 
 
 class ActivityItem(BaseModel):
-    id: int
+    id: str
     type: str
     description: str
     timestamp: datetime

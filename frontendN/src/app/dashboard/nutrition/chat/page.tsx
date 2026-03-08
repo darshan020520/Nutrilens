@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const WELCOME_MESSAGE = [
 ].join("\n");
 
 export default function NutritionChatPage() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -56,10 +58,19 @@ export default function NutritionChatPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const promptFromQuery = searchParams.get("q");
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (!promptFromQuery?.trim()) return;
+    setInput(promptFromQuery.trim());
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, [promptFromQuery]);
 
   const startNewChat = () => {
     const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -109,7 +120,7 @@ export default function NutritionChatPage() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

@@ -49,9 +49,12 @@ export default function InventoryStatus() {
 
   if (!status) return null;
 
-  const hasExpiringItems = status.expiring_soon && status.expiring_soon.length > 0;
-  const hasExpiredItems = status.expired_items && status.expired_items.length > 0;
-  const hasLowStock = status.low_stock && status.low_stock.length > 0;
+  const expiringSoonItems = status.expiring_soon ?? [];
+  const expiredItems = status.expired_items ?? [];
+  const lowStockItems = status.low_stock ?? [];
+  const hasExpiringItems = expiringSoonItems.length > 0;
+  const hasExpiredItems = expiredItems.length > 0;
+  const hasLowStock = lowStockItems.length > 0;
 
   return (
     <div className="space-y-4">
@@ -81,12 +84,12 @@ export default function InventoryStatus() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(status.expiring_soon?.length || 0) + (status.expired_items?.length || 0)}
+              {expiringSoonItems.length + expiredItems.length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {hasExpiredItems ? (
                 <span className="text-red-600 font-medium">
-                  {status.expired_items.length} already expired
+                  {expiredItems.length} already expired
                 </span>
               ) : hasExpiringItems ? (
                 <span className="text-orange-600 font-medium">
@@ -107,7 +110,7 @@ export default function InventoryStatus() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {status.low_stock?.length || 0}
+              {lowStockItems.length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {hasLowStock ? (

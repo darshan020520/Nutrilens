@@ -1,0 +1,206 @@
+[
+  {
+    "canonical_name": "onion",
+    "aliases": ["onions", "yellow onion", "white onion", "red onion", "pyaz"],
+    "category": "vegetables",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "HIGH",
+    "reason": "Core base for all Indian cooking. Needed in dal tadka, chicken curry, sabzi.",
+    "nutrition_per_100g": {
+      "calories": 40,
+      "protein_g": 1.1,
+      "carbs_g": 9.3,
+      "fat_g": 0.1,
+      "fiber_g": 1.7,
+      "sodium_mg": 4.0
+    }
+  },
+  {
+    "canonical_name": "paneer",
+    "aliases": ["indian cottage cheese", "fresh paneer", "homemade paneer"],
+    "category": "dairy",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "HIGH",
+    "reason": "Primary vegetarian Indian protein source. Without it we cannot create any authentic Indian veg high-protein meals.",
+    "nutrition_per_100g": {
+      "calories": 265,
+      "protein_g": 18.3,
+      "carbs_g": 3.5,
+      "fat_g": 20.8,
+      "fiber_g": 0.0,
+      "sodium_mg": 28.0
+    }
+  },
+  {
+    "canonical_name": "chickpeas",
+    "aliases": ["chole", "garbanzo beans", "kabuli chana", "chick peas"],
+    "category": "legumes",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "HIGH",
+    "reason": "High-protein legume used in Mediterranean bowls (hummus, salads) and Indian chole. Used in several existing named recipes (186-213).",
+    "nutrition_per_100g": {
+      "calories": 164,
+      "protein_g": 8.9,
+      "carbs_g": 27.4,
+      "fat_g": 2.6,
+      "fiber_g": 7.6,
+      "sodium_mg": 24.0
+    }
+  },
+  {
+    "canonical_name": "turmeric",
+    "aliases": ["haldi", "turmeric powder"],
+    "category": "spices",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "HIGH",
+    "reason": "Used in nearly every Indian recipe. Zero macro impact but required for authenticity and anti-inflammatory properties.",
+    "nutrition_per_100g": {
+      "calories": 354,
+      "protein_g": 7.8,
+      "carbs_g": 64.9,
+      "fat_g": 9.9,
+      "fiber_g": 21.1,
+      "sodium_mg": 38.0
+    }
+  },
+  {
+    "canonical_name": "cumin_seeds",
+    "aliases": ["jeera", "cumin", "ground cumin", "cumin powder"],
+    "category": "spices",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "HIGH",
+    "reason": "Used in dal tadka, rice, and most Indian recipes as tempering spice.",
+    "nutrition_per_100g": {
+      "calories": 375,
+      "protein_g": 17.8,
+      "carbs_g": 44.2,
+      "fat_g": 22.3,
+      "fiber_g": 10.5,
+      "sodium_mg": 168.0
+    }
+  },
+  {
+    "canonical_name": "coriander_powder",
+    "aliases": ["dhania powder", "ground coriander", "coriander"],
+    "category": "spices",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "HIGH",
+    "reason": "Core Indian spice for curries and marinades.",
+    "nutrition_per_100g": {
+      "calories": 298,
+      "protein_g": 12.4,
+      "carbs_g": 55.0,
+      "fat_g": 17.8,
+      "fiber_g": 41.9,
+      "sodium_mg": 35.0
+    }
+  },
+  {
+    "canonical_name": "chili_powder",
+    "aliases": ["lal mirch", "red chili powder", "cayenne pepper", "red pepper"],
+    "category": "spices",
+    "unit": "g",
+    "is_staple": true,
+    "priority": "MEDIUM",
+    "reason": "Heat/flavor for Indian and Mexican recipes.",
+    "nutrition_per_100g": {
+      "calories": 282,
+      "protein_g": 13.5,
+      "carbs_g": 49.7,
+      "fat_g": 14.3,
+      "fiber_g": 34.8,
+      "sodium_mg": 30.0
+    }
+  },
+  {
+    "canonical_name": "chicken_thigh",
+    "aliases": ["chicken thigh", "boneless chicken thigh", "skinless chicken thigh"],
+    "category": "proteins",
+    "unit": "g",
+    "is_staple": false,
+    "priority": "MEDIUM",
+    "reason": "More flavorful than breast; different fat profile. Used in Indian curries, grilled dishes.",
+    "nutrition_per_100g": {
+      "calories": 177,
+      "protein_g": 19.7,
+      "carbs_g": 0.0,
+      "fat_g": 10.9,
+      "fiber_g": 0.0,
+      "sodium_mg": 75.0
+    }
+  },
+  {
+    "canonical_name": "low_fat_milk",
+    "aliases": ["milk", "toned milk", "skimmed milk", "2% milk"],
+    "category": "dairy",
+    "unit": "ml",
+    "is_staple": true,
+    "priority": "MEDIUM",
+    "reason": "Needed for overnight oats, smoothie bowls, and protein shakes. Adds protein and carbs.",
+    "nutrition_per_100g": {
+      "calories": 42,
+      "protein_g": 3.4,
+      "carbs_g": 5.0,
+      "fat_g": 1.0,
+      "fiber_g": 0.0,
+      "sodium_mg": 44.0
+    }
+  },
+  {
+    "canonical_name": "kidney_beans",
+    "aliases": ["rajma", "red kidney beans", "cooked kidney beans"],
+    "category": "legumes",
+    "unit": "g",
+    "is_staple": false,
+    "priority": "MEDIUM",
+    "reason": "High-fiber, high-protein legume for rajma bowls and Mexican recipes.",
+    "nutrition_per_100g": {
+      "calories": 127,
+      "protein_g": 8.7,
+      "carbs_g": 22.8,
+      "fat_g": 0.5,
+      "fiber_g": 6.4,
+      "sodium_mg": 2.0
+    }
+  },
+  {
+    "canonical_name": "cottage_cheese",
+    "aliases": ["low fat cottage cheese", "paneer substitute", "quark"],
+    "category": "dairy",
+    "unit": "g",
+    "is_staple": false,
+    "priority": "LOW",
+    "reason": "Western substitute for paneer; high protein, low fat alternative.",
+    "nutrition_per_100g": {
+      "calories": 98,
+      "protein_g": 11.1,
+      "carbs_g": 3.4,
+      "fat_g": 4.3,
+      "fiber_g": 0.0,
+      "sodium_mg": 364.0
+    }
+  },
+  {
+    "canonical_name": "whole_wheat_flour",
+    "aliases": ["atta", "whole wheat atta", "chapati flour"],
+    "category": "grains",
+    "unit": "g",
+    "is_staple": false,
+    "priority": "LOW",
+    "reason": "For making rotis from scratch instead of using pre-made roti weight.",
+    "nutrition_per_100g": {
+      "calories": 340,
+      "protein_g": 13.2,
+      "carbs_g": 72.6,
+      "fat_g": 2.5,
+      "fiber_g": 10.7,
+      "sodium_mg": 2.0
+    }
+  }
+]

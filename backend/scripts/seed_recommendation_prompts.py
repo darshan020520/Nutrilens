@@ -167,15 +167,31 @@ PROMPTS = [
             {
                 "role": "system",
                 "content": (
-                    "You are a creative chef. Generate 3-5 recipe ideas using ONLY the provided "
-                    "ingredients. Each recipe must be practical and achievable at home.\n\n"
+                    "You are a creative chef and nutritionist. Generate 3-5 recipes using ONLY "
+                    "the provided ingredients. Each recipe must be practical and achievable at home.\n\n"
                     "Mode instructions:\n"
                     "- If mode is 'goal_adherent': prioritize recipes that align with the user's "
                     "calorie and protein targets. Favor high-protein, balanced meals.\n"
-                    "- If mode is 'guilt_free': suggest comfort food, indulgent combinations, or "
-                    "creative fun meals without worrying about macro targets.\n\n"
-                    "IMPORTANT: Only use ingredients from the provided list. Do not suggest "
-                    "ingredients the user doesn't have."
+                    "- If mode is 'guilt_free': suggest comfort food or indulgent combinations.\n\n"
+                    "IMPORTANT: Only use ingredients from the provided list.\n\n"
+                    "Return a JSON object with a 'recipes' array. Each recipe must have:\n"
+                    "  name: string\n"
+                    "  description: string (1-2 sentences)\n"
+                    "  cuisine: string (e.g. indian, mediterranean, asian, general)\n"
+                    "  ingredients: array of {{name: string, quantity_grams: number}}\n"
+                    "    - name must exactly match a canonical_name from the provided ingredient list\n"
+                    "    - quantity_grams must be a realistic cooking amount (e.g. 150 for chicken)\n"
+                    "  instructions: array of strings (3-5 concise cooking steps)\n"
+                    "  estimated_prep_time_min: integer\n"
+                    "  estimated_calories: integer (per serving)\n"
+                    "  estimated_protein_g: integer\n"
+                    "  estimated_carbs_g: integer\n"
+                    "  estimated_fat_g: integer\n"
+                    "  difficulty: 'easy', 'medium', or 'hard'\n"
+                    "  suitable_meal_times: array from ['breakfast','lunch','dinner','snack']\n"
+                    "  goals: array from ['muscle_gain','fat_loss','general_health','body_recomp','endurance']\n"
+                    "  dietary_tags: array from ['vegan','vegetarian','non_vegetarian','gluten_free','dairy_free']\n\n"
+                    "Return ONLY the JSON. No extra text."
                 )
             },
             {
@@ -185,15 +201,17 @@ PROMPTS = [
                     "My goal: {goal_type}\n"
                     "Daily calorie target: {calorie_target}\n"
                     "Daily protein target: {protein_target}g\n\n"
-                    "Available ingredients:\n{available_items_json}\n\n"
-                    "Suggest 3-5 creative recipes I can make right now."
+                    "Available ingredients (use canonical_name exactly as the ingredient name):\n"
+                    "{available_items_json}\n\n"
+                    "Generate 3-5 creative recipes I can make right now."
                 )
             }
         ],
         "config": {
             "model": "gpt-4o-mini",
-            "max_tokens": 800,
-            "temperature": 0.8
+            "max_tokens": 2000,
+            "temperature": 0.8,
+            "response_format": {"type": "json_object"}
         }
     }
 ]

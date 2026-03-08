@@ -172,20 +172,19 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
 
             targets = {}
             if user and user.profile and user.profile.goal_calories and user.goal and user.goal.macro_targets:
-                goal_cal = user.profile.goal_calories
-                ratios = user.goal.macro_targets
+                mt = user.goal.macro_targets
                 targets = {
-                    "calories": goal_cal,
-                    "protein_g": round((goal_cal * ratios.get("protein", 0.3)) / 4, 1),
-                    "carbs_g": round((goal_cal * ratios.get("carbs", 0.4)) / 4, 1),
-                    "fat_g": round((goal_cal * ratios.get("fat", 0.3)) / 9, 1),
+                    "calories": user.profile.goal_calories,
+                    "protein_g": mt["protein_g"],
+                    "carbs_g": mt["carbs_g"],
+                    "fat_g": mt["fat_g"],
                 }
             else:
                 # Default targets if onboarding incomplete
                 targets = {
                     "calories": 2000,
-                    "protein_g": 150,
-                    "carbs_g": 200,
+                    "protein_g": 120,
+                    "carbs_g": 250,
                     "fat_g": 65
                 }
 
@@ -221,11 +220,14 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             meal_details = []
 
             for meal in all_meals:
-                status = "pending"
                 if meal.consumed_datetime:
-                    status = "consumed"
+                    status = "logged"
                 elif meal.was_skipped:
                     status = "skipped"
+                elif meal.was_missed:
+                    status = "missed"
+                else:
+                    status = "pending"
 
                 # Calculate macros for ALL meals (matching v1: consumption_services.py:418)
                 meal_macros = {}
@@ -284,7 +286,7 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
                     "meal_type": meal.meal_type,
                     "planned_time": meal.planned_datetime.isoformat(),
                     "recipe_id": meal.recipe.id if meal.recipe else None,
-                    "recipe": meal.recipe.title if meal.recipe else "External",
+                    "recipe": meal.recipe.title if meal.recipe else (meal.external_meal.get("dish_name", "External meal") if meal.external_meal else "External meal"),
                     "status": status,
                     "macros": meal_macros
                 }
@@ -315,7 +317,7 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
             if meals_planned > 0:
                 compliance_rate = meals_consumed / meals_planned
             else:
-                compliance_rate = 1.0
+                compliance_rate = 0.0
 
             return {
                 "date": target_date.isoformat(),
@@ -923,20 +925,19 @@ class ConsumptionAnalyticsRepository(IConsumptionAnalyticsRepository):
 
             targets = {}
             if user and user.profile and user.profile.goal_calories and user.goal and user.goal.macro_targets:
-                goal_cal = user.profile.goal_calories
-                ratios = user.goal.macro_targets
+                mt = user.goal.macro_targets
                 targets = {
-                    "calories": goal_cal,
-                    "protein_g": round((goal_cal * ratios.get("protein", 0.3)) / 4, 1),
-                    "carbs_g": round((goal_cal * ratios.get("carbs", 0.4)) / 4, 1),
-                    "fat_g": round((goal_cal * ratios.get("fat", 0.3)) / 9, 1),
+                    "calories": user.profile.goal_calories,
+                    "protein_g": mt["protein_g"],
+                    "carbs_g": mt["carbs_g"],
+                    "fat_g": mt["fat_g"],
                 }
             else:
                 # Default targets if onboarding incomplete
                 targets = {
                     "calories": 2000,
-                    "protein_g": 150,
-                    "carbs_g": 200,
+                    "protein_g": 120,
+                    "carbs_g": 250,
                     "fat_g": 65
                 }
 

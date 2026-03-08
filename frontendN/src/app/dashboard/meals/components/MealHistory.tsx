@@ -4,7 +4,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,7 +20,7 @@ import { api, getEndpoint } from "@/lib/api";
 interface MealLog {
   meal_type: string;
   recipe_name: string;
-  status: "logged" | "pending" | "skipped";
+  status: "logged" | "pending" | "skipped" | "missed";
   time?: string;
 }
 
@@ -81,6 +80,8 @@ export function MealHistory() {
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
       case "skipped":
         return <Badge variant="secondary">Skipped</Badge>;
+      case "missed":
+        return <Badge className="bg-red-50 text-red-600">Missed</Badge>;
       default:
         return null;
     }

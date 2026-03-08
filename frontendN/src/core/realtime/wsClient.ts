@@ -2,6 +2,22 @@ import type { TrackingEvent } from "@/core/api/types";
 
 type TrackingHandler = (event: TrackingEvent) => void;
 
+function resolveTrackingSocketUrl(token: string): string {
+  const envBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (envBase) {
+    try {
+      const parsed = new URL(envBase);
+      const wsProtocol = parsed.protocol === "https:" ? "wss:" : "ws:";
+      return `${wsProtocol}//${parsed.host}/ws/tracking?token=${token}`;
+    } catch {
+      // Fall through to local default.
+    }
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${protocol}://localhost:8000/ws/tracking?token=${token}`;
+}
+
 export class TrackingSocketClient {
   private socket: WebSocket | null = null;
   private reconnectTimer: number | null = null;
@@ -11,9 +27,7 @@ export class TrackingSocketClient {
   connect(token: string) {
     if (this.socket || !token) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const host = "localhost:8000";
-    const url = `${protocol}://${host}/ws/tracking?token=${token}`;
+    const url = resolveTrackingSocketUrl(token);
 
     this.socket = new WebSocket(url);
 

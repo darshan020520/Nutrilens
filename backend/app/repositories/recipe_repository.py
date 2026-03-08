@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import cast, String, func, case, and_, or_, Float
 from collections import defaultdict
@@ -201,7 +201,8 @@ class RecipeRepository(IRecipeRepository):
                         'cook_time_min': recipe.cook_time_min or 0,
                         'servings': recipe.servings or 1,
                         'goals': recipe.goals or [],
-                        'dietary_tags': recipe.dietary_tags or []
+                        'dietary_tags': recipe.dietary_tags or [],
+                        'image_url': recipe.image_url
                     },
                     'similarity_score': round(total_score, 3),
                     'calorie_difference': round(macros['calories'] - orig_macros['calories'], 1),
@@ -349,3 +350,19 @@ class RecipeRepository(IRecipeRepository):
             result[ing.recipe_id].append(ing)
 
         return dict(result)
+
+    async def get_titles_and_embeddings(self) -> List[Tuple[str, Optional[str]]]:
+        rows = self.db.query(Recipe.title, Recipe.embedding).all()
+        return [(r.title, r.embedding) for r in rows]
+
+    async def create_recipe(self, recipe: Recipe) -> Recipe:
+        self.db.add(recipe)
+        self.db.flush()
+        return recipe
+
+    async def add_recipe_ingredient(self, recipe_ingredient: RecipeIngredient) -> None:
+        self.db.add(recipe_ingredient)
+
+    async def get_items_by_canonical_names(self, names: List[str]) -> Dict[str, Item]:
+        items = self.db.query(Item).filter(Item.canonical_name.in_(names)).all()
+        return {item.canonical_name: item for item in items}

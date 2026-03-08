@@ -31,6 +31,14 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+type ApiErrorLike = {
+  response?: {
+    status?: number;
+    data?: {
+      detail?: string;
+    };
+  };
+};
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -54,11 +62,12 @@ export default function RegisterPage() {
       await registerUser(values.email, values.password);
       toast.success('Account created. Please verify your email before logging in.');
       router.push(`/login?verify_pending=1&email=${encodeURIComponent(values.email)}`);
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
+    } catch (error: unknown) {
+      const apiError = error as ApiErrorLike;
+      const detail = apiError?.response?.data?.detail;
       const message = typeof detail === 'string' ? detail : 'Registration failed';
 
-      if (error?.response?.status === 409 || /already registered/i.test(message)) {
+      if (apiError?.response?.status === 409 || /already registered/i.test(message)) {
         form.setError('email', {
           type: 'server',
           message: 'This email is already registered',
@@ -122,7 +131,7 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="********"
                         {...field}
                         disabled={isLoading}
                       />
@@ -141,7 +150,7 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="********"
                         {...field}
                         disabled={isLoading}
                       />

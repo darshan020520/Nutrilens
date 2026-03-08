@@ -6,10 +6,29 @@ import { toast } from "sonner";
 import {
   ReceiptUploadResult,
   PendingItem,
-  EnrichedPendingItem,
   ReceiptPendingItemsResponse,
   ConfirmAndSeedResponse
 } from "../types";
+
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+  message?: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  const casted = error as ApiErrorLike;
+  if (typeof casted?.response?.data?.detail === "string") {
+    return casted.response.data.detail;
+  }
+  if (typeof casted?.message === "string") {
+    return casted.message;
+  }
+  return fallback;
+}
 
 // Upload receipt for OCR processing
 export function useUploadReceipt() {
@@ -48,13 +67,13 @@ export function useUploadReceipt() {
 
       return processResponse.data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("AI is processing your receipt!");
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["receipt"] });
     },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to process receipt");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to process receipt"));
     },
   });
 }
@@ -117,8 +136,8 @@ export function useConfirmAndSeedItems() {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["receipt"] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to confirm items");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to confirm items"));
     },
   });
 }
@@ -151,8 +170,8 @@ export function useConfirmReceiptItems() {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["receipt", "pending"] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to confirm items");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to confirm items"));
     },
   });
 }

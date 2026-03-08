@@ -226,9 +226,30 @@ class MealLogRepository(IMealLogRepository):
                 func.date(MealLog.planned_datetime) == today,
                 MealLog.consumed_datetime.is_(None),
                 MealLog.was_skipped == False,
+                MealLog.was_missed == False,
                 or_(MealLog.meal_plan_id.is_(None), MealPlan.is_active.is_(True))
             )
         ).order_by(MealLog.planned_datetime).all()
+
+    async def delete_future_orphan_logs(
+        self,
+        user_id: int,
+        cutoff_datetime: datetime
+    ) -> int:
+        inactive_plan_ids = self.db.query(MealPlan.id).filter(
+            MealPlan.user_id == user_id,
+            MealPlan.is_active == False
+        ).subquery()
+
+        deleted = self.db.query(MealLog).filter(
+            MealLog.meal_plan_id.in_(inactive_plan_ids),
+            MealLog.planned_datetime >= cutoff_datetime,
+            MealLog.consumed_datetime.is_(None),
+            MealLog.was_skipped == False
+        ).delete(synchronize_session=False)
+
+        self.db.commit()
+        return deleted
 
     async def get_upcoming_meals_in_time_window(
         self,
@@ -249,6 +270,7 @@ class MealLogRepository(IMealLogRepository):
                 MealLog.planned_datetime <= end_datetime,
                 MealLog.consumed_datetime.is_(None),
                 MealLog.was_skipped == False,
+                MealLog.was_missed == False,
                 User.is_active == True
             )
         ).all()

@@ -1,0 +1,789 @@
+[
+  {
+    "title": "Lentil Quinoa Dinner Bowl",
+    "description": "A hearty vegan dinner bowl with lentils and quinoa. High in plant protein and complex carbs for muscle recovery.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook lentils until tender and set aside.",
+      "Cook quinoa separately according to package instructions.",
+      "Combine lentils and quinoa in a bowl with sauteed onion and spices.",
+      "Top with roasted sweet potato and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "lentils", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "quinoa", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "sweet_potato", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Veggie Paneer Biryani",
+    "description": "A fragrant Indian biryani with paneer and vegetables cooked in aromatic basmati rice. Rich in protein and flavor.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 15,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Marinate paneer in yogurt and spices for 15 minutes.",
+      "Cook basmati rice until 80% done.",
+      "Layer paneer and sauteed vegetables with rice in a pot.",
+      "Cover and cook on low heat for 15 minutes until fully done."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "white_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "greek_yogurt", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Tikka Masala Brown Rice",
+    "description": "Classic restaurant-style chicken tikka masala served with brown rice. High protein and satisfying Indian dinner.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 15,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Marinate chicken in yogurt and tandoori spices for 15 minutes and grill.",
+      "Saute onion, garlic, and tomatoes with masala spices.",
+      "Add grilled chicken to the sauce and simmer for 10 minutes.",
+      "Serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "greek_yogurt", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Beef Enchilada Bowl",
+    "description": "A hearty Mexican-style beef and bean bowl with enchilada flavors. High protein and calorie-dense for athletes.",
+    "cuisine": "mexican",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook ground beef with onion, cumin, and chili powder.",
+      "Add black beans and tomato sauce and simmer.",
+      "Serve over brown rice in a bowl.",
+      "Top with shredded cheese and avocado."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "black_beans", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tofu Vegetable Thai Curry",
+    "description": "A fragrant Thai-style vegan tofu curry with vegetables. Rich in plant protein and coconut milk fats.",
+    "cuisine": "asian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Fry tofu cubes in coconut oil until golden.",
+      "Saute onion, garlic, and curry paste in the same pan.",
+      "Add broccoli, bell pepper, and coconut milk.",
+      "Simmer for 10 minutes and serve with jasmine rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "tofu", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "broccoli", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "coconut_oil", "quantity_grams": 10, "is_optional": false},
+      {"canonical_name": "white_rice", "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Grilled Salmon Asparagus Dinner",
+    "description": "A classic grilled salmon and asparagus dinner. Loaded with omega-3s and vitamins for recovery.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Season salmon fillet with olive oil, garlic, and lemon.",
+      "Grill salmon for 5 minutes per side.",
+      "Roast broccoli and zucchini with olive oil at 200C.",
+      "Serve salmon alongside vegetables."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "broccoli", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "zucchini", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Saag with Millet",
+    "description": "Creamy spinach-based paneer saag served with protein-rich millet. A nutrient-dense vegetarian Indian dinner.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Blanch and puree spinach.",
+      "Saute onion, garlic, ginger, and spices in oil.",
+      "Add paneer cubes and spinach puree and simmer.",
+      "Serve with cooked millet."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "millet", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Thigh Cauliflower Rice Bowl",
+    "description": "A low-carb chicken thigh bowl with cauliflower rice. Great for body recomposition and fat loss.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Season chicken thigh and pan-cook until done.",
+      "Grate cauliflower and stir-fry briefly as rice substitute.",
+      "Serve chicken over cauliflower rice.",
+      "Add fresh spinach and lemon on the side."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_thigh", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "cauliflower", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Pasta Primavera",
+    "description": "A Mediterranean-style tuna pasta with spring vegetables. Balanced protein and carbs for active individuals.",
+    "cuisine": "mediterranean",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook whole wheat pasta until al dente.",
+      "Saute zucchini, tomato, and garlic in olive oil.",
+      "Add drained tuna and pasta and toss together.",
+      "Season with salt, pepper, and herbs and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "zucchini", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chickpea Lentil Power Salad",
+    "description": "A filling vegan salad with chickpeas, lentils, and roasted vegetables. Excellent protein and fiber combination.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook lentils until tender and cool.",
+      "Drain and rinse chickpeas.",
+      "Roast bell pepper and zucchini with olive oil.",
+      "Toss all together with lemon dressing and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "lentils", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "chickpeas", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "zucchini", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Lamb Brown Rice Pilaf",
+    "description": "A Middle Eastern-inspired lamb and brown rice pilaf with spices. Protein-dense and aromatic dinner.",
+    "cuisine": "middle_eastern",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Brown ground beef (lamb-style) with onion and garlic.",
+      "Add brown rice, cinnamon, cumin, and broth.",
+      "Bring to a boil and simmer covered for 25 minutes.",
+      "Fluff with a fork and serve with fresh parsley."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chole Bhature",
+    "description": "A classic North Indian vegetarian meal of spiced chickpeas with fried bread. High in plant protein and deeply satisfying.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["vegetarian"],
+    "suitable_meal_times": ["lunch"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Saute onion, ginger, garlic, and tomatoes with chole masala.",
+      "Add chickpeas and water and simmer for 20 minutes.",
+      "Cook roti in a pan with a small amount of oil.",
+      "Serve hot chole with roti."
+    ],
+    "ingredients": [
+      {"canonical_name": "chickpeas", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "roti", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Teriyaki Salmon Rice Bowl",
+    "description": "A Japanese teriyaki salmon bowl with brown rice and edamame. Rich in omega-3s and complex carbs.",
+    "cuisine": "japanese",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Marinate salmon in soy sauce, ginger, and honey.",
+      "Bake or pan-cook salmon for 12-15 minutes.",
+      "Cook brown rice and prepare a side of steamed broccoli.",
+      "Serve salmon over rice with broccoli."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "broccoli", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tempeh Quinoa Veggie Bowl",
+    "description": "A vegan tempeh and quinoa bowl with roasted vegetables. Dense plant protein and complex carbs for muscle building.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "general_health", "body_recomp"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook quinoa and set aside.",
+      "Pan-fry sliced tempeh until golden.",
+      "Roast sweet potato and bell pepper in olive oil.",
+      "Assemble bowl with quinoa, tempeh, and roasted vegetables."
+    ],
+    "ingredients": [
+      {"canonical_name": "tempeh", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "sweet_potato", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Brown Rice Masala Bowl",
+    "description": "A nourishing Indian vegetarian bowl with masala paneer and brown rice. High protein and fiber-rich.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook brown rice and set aside.",
+      "Fry paneer cubes until golden.",
+      "Saute onion, tomato, and masala spices.",
+      "Add paneer and simmer briefly, then serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Breast Vegetable Soup",
+    "description": "A light and nourishing chicken and vegetable soup. High protein and low calorie, perfect for fat loss.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Dice chicken breast and simmer in broth.",
+      "Add carrot, celery, onion, and garlic.",
+      "Cook until vegetables are tender and chicken is cooked through.",
+      "Season with salt, pepper, and fresh herbs."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "carrot", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Fried Cauliflower Rice",
+    "description": "A low-carb shrimp fried rice made with cauliflower. High protein and vegetable-rich for body recomposition.",
+    "cuisine": "asian",
+    "goals": ["fat_loss", "general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Grate cauliflower into rice-size pieces.",
+      "Stir-fry shrimp in a wok with garlic and ginger.",
+      "Add cauliflower rice and cook for 5 minutes.",
+      "Season with soy sauce and scrambled egg bits."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "cauliflower", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Soy Chunk Rajma Masala",
+    "description": "A protein-packed vegan combination of soy chunks and kidney beans in masala. Excellent plant protein source.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "body_recomp"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Soak and drain soy chunks.",
+      "Cook kidney beans or use canned.",
+      "Saute onion, tomato, and spices and add both proteins.",
+      "Simmer for 15 minutes and serve with brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "soy_chunks", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "kidney_beans", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Egg Fried Rice with Broccoli",
+    "description": "A quick and satisfying egg fried rice with broccoli. High protein and vegetable-dense vegetarian dinner.",
+    "cuisine": "asian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Heat oil in a wok and scramble eggs, then push aside.",
+      "Add cooked brown rice and stir-fry.",
+      "Add broccoli florets and cook for 3 minutes.",
+      "Season with soy sauce and sesame oil."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "broccoli", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Lentil Power Plate",
+    "description": "A nutrient-dense plate combining omega-3-rich salmon with lentils. Great for recovery and body recomposition.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook red lentils with onion and spices until thick.",
+      "Pan-sear salmon fillet in olive oil.",
+      "Serve salmon on a bed of lentils.",
+      "Add steamed spinach on the side."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "red_lentils", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Eggplant Chickpea Stew",
+    "description": "A hearty vegan Middle Eastern stew with eggplant and chickpeas. Filling and rich in plant protein and fiber.",
+    "cuisine": "middle_eastern",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cube and roast eggplant with olive oil at 200C for 15 minutes.",
+      "Saute onion and garlic, add chickpeas and tomatoes.",
+      "Add roasted eggplant and simmer for 10 minutes.",
+      "Season with cumin, coriander, and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggplant", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "chickpeas", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Turkey Chickpea One-Pan Dinner",
+    "description": "A simple one-pan dinner with ground turkey and chickpeas. Lean protein and legume combination for athletes.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Brown turkey in a pan with olive oil and garlic.",
+      "Add chickpeas, diced tomatoes, and spices.",
+      "Simmer for 15 minutes until flavors meld.",
+      "Add spinach at the end, cook until wilted, and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "turkey_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "chickpeas", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Beef Keema Quinoa Bowl",
+    "description": "A hearty dinner bowl with spiced ground beef keema and quinoa. High in protein and iron for strength athletes.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Saute onion and garlic in oil.",
+      "Add ground beef with garam masala, cumin, and tomato.",
+      "Cook until beef is done and sauce thickens.",
+      "Serve over cooked quinoa with green peas."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "green_peas", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Moong Dal Khichdi",
+    "description": "A comforting Indian vegan one-pot meal with moong dal and rice. Easily digestible and high in plant protein.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "fat_loss"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Rinse moong dal and rice together.",
+      "Pressure cook with turmeric, cumin, and salt.",
+      "Temper with ghee (or coconut oil), mustard seeds, and curry leaves.",
+      "Serve hot with yogurt or pickle."
+    ],
+    "ingredients": [
+      {"canonical_name": "moong_dal", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "white_rice", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 60, "is_optional": true}
+    ]
+  },
+  {
+    "title": "Cottage Cheese Spinach Quesadilla",
+    "description": "A protein-rich vegetarian quesadilla with cottage cheese and spinach. Quick lunch with balanced macros.",
+    "cuisine": "mexican",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian"],
+    "suitable_meal_times": ["lunch"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Spread cottage cheese on a whole wheat tortilla.",
+      "Add fresh spinach and season with salt and chili flakes.",
+      "Fold tortilla in half and cook in a dry pan until golden.",
+      "Serve with salsa or yogurt dip."
+    ],
+    "ingredients": [
+      {"canonical_name": "cottage_cheese", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 80, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Taco Salad Bowl",
+    "description": "A Mexican-inspired chicken taco salad bowl with avocado and beans. High protein and fiber for body recomposition.",
+    "cuisine": "mexican",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Season and cook chicken breast with taco spices.",
+      "Slice chicken over a bed of cabbage.",
+      "Add black beans, diced tomato, and avocado.",
+      "Drizzle with Greek yogurt and lime juice."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "black_beans", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 70, "is_optional": false},
+      {"canonical_name": "cabbage", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "greek_yogurt", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Barley Mushroom Risotto",
+    "description": "A hearty vegan barley mushroom risotto with herbs. Rich in beta-glucans, fiber, and umami flavor.",
+    "cuisine": "mediterranean",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 35,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Saute onion and garlic in olive oil.",
+      "Add sliced mushrooms and cook for 5 minutes.",
+      "Add barley and broth and simmer for 30 minutes stirring occasionally.",
+      "Season with thyme, salt, and fresh parsley."
+    ],
+    "ingredients": [
+      {"canonical_name": "barley", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "mushrooms", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Quinoa Greek Bowl",
+    "description": "A Greek-style bowl with grilled chicken, quinoa, and cucumber-tomato salad. Balanced protein and healthy fats.",
+    "cuisine": "mediterranean",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook quinoa and cool.",
+      "Grill chicken breast with olive oil, lemon, and oregano.",
+      "Slice chicken and serve over quinoa.",
+      "Add diced cucumber, tomato, and a dollop of Greek yogurt."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "quinoa", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "greek_yogurt", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Smoked Mackerel Sweet Potato Mash",
+    "description": "A rich dinner of smoked mackerel with sweet potato mash. High in omega-3s and beta-carotene.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Boil or microwave sweet potato until soft.",
+      "Mash with a little olive oil and season.",
+      "Flake smoked salmon onto the plate alongside mash.",
+      "Add steamed spinach on the side and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "sweet_potato", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Couscous Roasted Vegetable Salad",
+    "description": "A vegan couscous salad with roasted Mediterranean vegetables. Light on calories but rich in nutrients.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["lunch"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Pour boiling water over couscous and leave covered for 5 minutes.",
+      "Roast bell pepper, zucchini, and cherry tomatoes with olive oil.",
+      "Fluff couscous with a fork and combine with roasted vegetables.",
+      "Dress with lemon juice, olive oil, and fresh herbs."
+    ],
+    "ingredients": [
+      {"canonical_name": "couscous", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "zucchini", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Turkey Barley Stuffed Peppers",
+    "description": "Bell peppers stuffed with lean turkey and barley. A fiber-rich, protein-dense meal for body recomposition.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Halve bell peppers and remove seeds.",
+      "Cook turkey with onion, garlic, and cooked barley.",
+      "Fill peppers and bake at 190C for 25 minutes.",
+      "Serve hot with a side salad."
+    ],
+    "ingredients": [
+      {"canonical_name": "turkey_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "barley", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Cauliflower Chickpea Tikka",
+    "description": "A bold vegan tikka with cauliflower and chickpeas in a spiced yogurt marinade. Packed with plant protein.",
+    "cuisine": "indian",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Marinate cauliflower florets and chickpeas in spiced tomato paste.",
+      "Roast at 220C for 20 minutes until charred.",
+      "Serve on a bed of brown rice or with roti.",
+      "Garnish with lemon juice and fresh coriander."
+    ],
+    "ingredients": [
+      {"canonical_name": "cauliflower", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "chickpeas", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  }
+]

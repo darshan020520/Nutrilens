@@ -2,44 +2,57 @@ import { httpClient } from "@/core/api/httpClient";
 import { getEndpoint } from "@/core/api/endpoints";
 import type { DashboardSummaryVM } from "@/core/api/types";
 
+export interface RecentActivityItem {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: string;
+  icon: string;
+}
+
+export interface RecentActivityResponse {
+  activities: RecentActivityItem[];
+  total_count: number;
+}
+
 export interface DashboardClient {
   getSummary: () => Promise<DashboardSummaryVM>;
-  getRecentActivity: (limit?: number) => Promise<any>;
+  getRecentActivity: (limit?: number) => Promise<RecentActivityResponse>;
 }
 
 export interface MealPlanClient {
-  getCurrentPlanWithStatus: () => Promise<any>;
-  generate: (payload: Record<string, unknown>) => Promise<any>;
-  swapMeal: (planId: number, payload: Record<string, unknown>) => Promise<any>;
-  getAlternatives: (planId: number, recipeId: number, count?: number) => Promise<any>;
+  getCurrentPlanWithStatus: () => Promise<unknown>;
+  generate: (payload: Record<string, unknown>) => Promise<unknown>;
+  swapMeal: (planId: number, payload: Record<string, unknown>) => Promise<unknown>;
+  getAlternatives: (planId: number, recipeId: number, count?: number) => Promise<unknown>;
 }
 
 export interface TrackingClient {
-  getToday: () => Promise<any>;
-  getHistory: (days: number) => Promise<any>;
+  getToday: () => Promise<unknown>;
+  getHistory: (days: number) => Promise<unknown>;
 }
 
 export interface InventoryClient {
-  getStatus: () => Promise<any>;
-  getItems: (params?: URLSearchParams) => Promise<any>;
+  getStatus: () => Promise<unknown>;
+  getItems: (params?: URLSearchParams) => Promise<unknown>;
 }
 
 export interface ReceiptClient {
-  initiate: (payload: Record<string, unknown>) => Promise<any>;
-  process: (payload: Record<string, unknown>) => Promise<any>;
+  initiate: (payload: Record<string, unknown>) => Promise<unknown>;
+  process: (payload: Record<string, unknown>) => Promise<unknown>;
 }
 
 export interface NutritionClient {
-  chat: (payload: Record<string, unknown>) => Promise<any>;
-  context: (minimal?: boolean) => Promise<any>;
+  chat: (payload: Record<string, unknown>) => Promise<unknown>;
+  context: (minimal?: boolean) => Promise<unknown>;
 }
 
 export interface AuthClient {
-  me: () => Promise<any>;
+  me: () => Promise<unknown>;
 }
 
 export interface OnboardingClient {
-  submitBasicInfo: (payload: Record<string, unknown>) => Promise<any>;
+  submitBasicInfo: (payload: Record<string, unknown>) => Promise<unknown>;
 }
 
 export const dashboardClient: DashboardClient = {

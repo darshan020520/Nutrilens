@@ -4,6 +4,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, getEndpoint } from "@/lib/api";
 import { toast } from "sonner";
 
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+};
+
 // Fetch alternative recipes for swapping
 export function useRecipeAlternatives(planId: number, recipeId: number | null, count: number = 5) {
   return useQuery({
@@ -43,8 +51,9 @@ export function useSwapMeal(planId: number) {
       queryClient.invalidateQueries({ queryKey: ["meal-plan"] });
       toast.success("Meal swapped successfully!");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to swap meal");
+    onError: (error: unknown) => {
+      const detail = (error as ApiErrorLike)?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Failed to swap meal");
     },
   });
 }

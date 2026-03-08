@@ -16,7 +16,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,6 +26,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { onboardingAPI } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import StepTransitionOverlay from '../components/StepTransitionOverlay';
+import { extractFirstName, setOnboardingFirstName } from '../components/onboardingSession';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -38,6 +40,10 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+type BasicInfoResponse = {
+  next_step: string;
+};
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (
@@ -56,7 +62,11 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 export default function BasicInfoPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
+  const [requestReady, setRequestReady] = useState(false);
+  const [nextStep, setNextStep] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,64 +81,119 @@ export default function BasicInfoPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
+    setRequestReady(false);
+    setNextStep(null);
+
+    const parsedFirstName = extractFirstName(values.name);
+    setFirstName(parsedFirstName);
+    setOnboardingFirstName(parsedFirstName);
+
+    const openTimer = window.setTimeout(() => {
+      setShowTransition(true);
+    }, 300);
+
     try {
-      const response = await onboardingAPI.submitBasicInfo({
+      const response = (await onboardingAPI.submitBasicInfo({
         ...values,
         medical_conditions: [],
-      });
-      
-      toast.success('Basic information saved!');
-      router.push(response.next_step);
+      })) as BasicInfoResponse;
+
+      setNextStep(response.next_step);
+      setRequestReady(true);
     } catch (error: unknown) {
+      window.clearTimeout(openTimer);
+      setShowTransition(false);
+      setIsSubmitting(false);
+      setRequestReady(false);
       toast.error(getErrorMessage(error, 'Failed to save information'));
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  const disableInputs = isSubmitting;
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-[18px] border border-white/75 bg-white/92 p-7 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.45)] transition-transform duration-300 md:p-8',
+        showTransition ? 'scale-[0.995]' : 'scale-100'
+      )}
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-gray-900">Tell us about yourself</h2>
-        <p className="text-gray-600">We will use this information to personalize your nutrition plan</p>
+        <h2 className="text-2xl font-semibold tracking-[-0.015em] text-slate-900">Tell us about yourself</h2>
+        <p className="text-sm leading-6 text-slate-600">
+          We&apos;ll use this to personalize your nutrition starting point.
+        </p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-7 space-y-5">
           <FormField
             control={form.control}
             name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} disabled={isLoading} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              const hasValue = field.value.trim().length > 0;
+              return (
+                <FormItem>
+                  <div className="relative">
+                    <FormControl>
+                      <Input
+                        placeholder=" "
+                        autoComplete="name"
+                        {...field}
+                        disabled={disableInputs}
+                        className="peer h-14 rounded-[16px] border-slate-200 bg-white/85 px-4 pt-6 text-[15px] transition-[border-color,box-shadow] duration-200 focus-visible:border-emerald-400 focus-visible:ring-4 focus-visible:ring-emerald-100"
+                      />
+                    </FormControl>
+                    <FormLabel
+                      className={cn(
+                        'pointer-events-none absolute left-4 text-slate-500 transition-all duration-200 peer-focus:top-2 peer-focus:text-xs peer-focus:text-emerald-700',
+                        hasValue ? 'top-2 text-xs text-slate-600' : 'top-1/2 -translate-y-1/2 text-sm'
+                      )}
+                    >
+                      Full name
+                    </FormLabel>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="age"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Age</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="25"
-                      value={field.value}
-                      onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const hasValue = Number.isFinite(field.value);
+                return (
+                  <FormItem>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder=" "
+                          value={field.value}
+                          onChange={(event) => field.onChange(event.target.valueAsNumber)}
+                          disabled={disableInputs}
+                          className="peer h-14 rounded-[16px] border-slate-200 bg-white/85 px-4 pt-6 text-[15px] transition-[border-color,box-shadow] duration-200 focus-visible:border-emerald-400 focus-visible:ring-4 focus-visible:ring-emerald-100"
+                        />
+                      </FormControl>
+                      <FormLabel
+                        className={cn(
+                          'pointer-events-none absolute left-4 text-slate-500 transition-all duration-200 peer-focus:top-2 peer-focus:text-xs peer-focus:text-emerald-700',
+                          hasValue ? 'top-2 text-xs text-slate-600' : 'top-1/2 -translate-y-1/2 text-sm'
+                        )}
+                      >
+                        Age
+                      </FormLabel>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -136,14 +201,14 @@ export default function BasicInfoPage() {
               name="sex"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sex</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                  <FormLabel className="text-xs font-medium uppercase tracking-[0.1em] text-slate-500">Sex</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={disableInputs}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-12 w-full rounded-[16px] border-slate-200 bg-white/90 transition-[border-color,box-shadow] duration-200 focus-visible:border-emerald-400 focus-visible:ring-4 focus-visible:ring-emerald-100">
                         <SelectValue placeholder="Select sex" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="rounded-[14px] border-slate-200 bg-white/96">
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
                     </SelectContent>
@@ -154,47 +219,73 @@ export default function BasicInfoPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="height_cm"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Height (cm)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="170"
-                      value={field.value}
-                      onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <FormDescription>Your height in centimeters</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const hasValue = Number.isFinite(field.value);
+                return (
+                  <FormItem>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder=" "
+                          value={field.value}
+                          onChange={(event) => field.onChange(event.target.valueAsNumber)}
+                          disabled={disableInputs}
+                          className="peer h-14 rounded-[16px] border-slate-200 bg-white/85 px-4 pt-6 text-[15px] transition-[border-color,box-shadow] duration-200 focus-visible:border-emerald-400 focus-visible:ring-4 focus-visible:ring-emerald-100"
+                        />
+                      </FormControl>
+                      <FormLabel
+                        className={cn(
+                          'pointer-events-none absolute left-4 text-slate-500 transition-all duration-200 peer-focus:top-2 peer-focus:text-xs peer-focus:text-emerald-700',
+                          hasValue ? 'top-2 text-xs text-slate-600' : 'top-1/2 -translate-y-1/2 text-sm'
+                        )}
+                      >
+                        Height (cm)
+                      </FormLabel>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
               control={form.control}
               name="weight_kg"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Weight (kg)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="70"
-                      value={field.value}
-                      onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <FormDescription>Your current weight in kilograms</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const hasValue = Number.isFinite(field.value);
+                return (
+                  <FormItem>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder=" "
+                          value={field.value}
+                          onChange={(event) => field.onChange(event.target.valueAsNumber)}
+                          disabled={disableInputs}
+                          className="peer h-14 rounded-[16px] border-slate-200 bg-white/85 px-4 pt-6 text-[15px] transition-[border-color,box-shadow] duration-200 focus-visible:border-emerald-400 focus-visible:ring-4 focus-visible:ring-emerald-100"
+                        />
+                      </FormControl>
+                      <FormLabel
+                        className={cn(
+                          'pointer-events-none absolute left-4 text-slate-500 transition-all duration-200 peer-focus:top-2 peer-focus:text-xs peer-focus:text-emerald-700',
+                          hasValue ? 'top-2 text-xs text-slate-600' : 'top-1/2 -translate-y-1/2 text-sm'
+                        )}
+                      >
+                        Weight (kg)
+                      </FormLabel>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </div>
 
@@ -203,64 +294,68 @@ export default function BasicInfoPage() {
             name="activity_level"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Activity Level</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                <FormLabel className="text-xs font-medium uppercase tracking-[0.1em] text-slate-500">
+                  Activity level
+                </FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={disableInputs}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 w-full rounded-[16px] border-slate-200 bg-white/90 transition-[border-color,box-shadow] duration-200 focus-visible:border-emerald-400 focus-visible:ring-4 focus-visible:ring-emerald-100">
                       <SelectValue placeholder="Select activity level" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="sedentary">
-                      <div>
-                        <div className="font-medium">Sedentary</div>
-                        <div className="text-xs text-gray-500">Little or no exercise</div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="lightly_active">
-                      <div>
-                        <div className="font-medium">Lightly Active</div>
-                        <div className="text-xs text-gray-500">Exercise 1-3 times/week</div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="moderately_active">
-                      <div>
-                        <div className="font-medium">Moderately Active</div>
-                        <div className="text-xs text-gray-500">Exercise 4-5 times/week</div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="very_active">
-                      <div>
-                        <div className="font-medium">Very Active</div>
-                        <div className="text-xs text-gray-500">Intense exercise 6-7 times/week</div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="extra_active">
-                      <div>
-                        <div className="font-medium">Extra Active</div>
-                        <div className="text-xs text-gray-500">Very intense exercise daily</div>
-                      </div>
-                    </SelectItem>
+                  <SelectContent className="rounded-[14px] border-slate-200 bg-white/96">
+                    <SelectItem value="sedentary">Sedentary</SelectItem>
+                    <SelectItem value="lightly_active">Lightly active</SelectItem>
+                    <SelectItem value="moderately_active">Moderately active</SelectItem>
+                    <SelectItem value="very_active">Very active</SelectItem>
+                    <SelectItem value="extra_active">Extra active</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>How active are you on a typical week?</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <div className="pt-1">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={disableInputs}
+              className="relative h-12 w-full overflow-hidden rounded-[16px] bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_16px_30px_-20px_rgba(5,150,105,0.7)] transition-all duration-200 hover:from-emerald-500 hover:to-teal-500 hover:shadow-[0_20px_34px_-20px_rgba(5,150,105,0.82)]"
+            >
+              <span className={cn('transition-opacity duration-200', disableInputs ? 'opacity-0' : 'opacity-100')}>
+                Continue
+              </span>
+              <span
+                className={cn(
+                  'pointer-events-none absolute inset-0 flex items-center justify-center gap-2 transition-opacity duration-200',
+                  disableInputs ? 'opacity-100' : 'opacity-0'
+                )}
+              >
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Saving...
-              </>
-            ) : (
-              'Continue'
-            )}
-          </Button>
+              </span>
+            </Button>
+          </div>
         </form>
       </Form>
+
+      <StepTransitionOverlay
+        open={showTransition}
+        ready={requestReady}
+        title="Building your starting profile..."
+        description="Analyzing your body metrics and activity level."
+        checkpoints={[
+          'Estimating daily energy needs',
+          'Adjusting for activity',
+          'Calibrating baseline targets',
+        ]}
+        completionTitle={firstName ? `Nice work, ${firstName}.` : 'Nice work.'}
+        completionDescription="Let's define your goal."
+        onComplete={() => {
+          if (nextStep) router.push(nextStep);
+        }}
+      />
     </div>
   );
 }

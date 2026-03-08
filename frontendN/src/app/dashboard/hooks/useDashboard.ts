@@ -1,19 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { dashboardClient } from "@/core/api/clients";
+import { dashboardClient, type RecentActivityResponse } from "@/core/api/clients";
 import { toDashboardSummaryVM } from "@/core/api/adapters";
-
-interface ActivityItem {
-  id: number;
-  type: string;
-  description: string;
-  timestamp: string;
-  icon: string;
-}
-
-interface RecentActivityData {
-  activities: ActivityItem[];
-  total_count: number;
-}
 
 export function useDashboard() {
   const {
@@ -36,7 +23,7 @@ export function useDashboard() {
     isLoading: activityLoading,
     error: activityError,
     refetch: refetchActivity,
-  } = useQuery<RecentActivityData>({
+  } = useQuery<RecentActivityResponse>({
     queryKey: ["dashboard-activity"],
     queryFn: async () => dashboardClient.getRecentActivity(5),
     refetchInterval: 60000,

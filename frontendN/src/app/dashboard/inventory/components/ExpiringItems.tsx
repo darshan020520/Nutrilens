@@ -59,7 +59,9 @@ export default function ExpiringItems() {
 
   if (!data) return null;
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (
+    priority: string
+  ): "destructive" | "warning" | "secondary" | "outline" => {
     switch (priority) {
       case "expired":
         return "destructive";
@@ -223,7 +225,7 @@ export default function ExpiringItems() {
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="font-semibold">{item.item_name}</h3>
                       <Badge
-                        variant={getPriorityColor(item.priority) as any}
+                        variant={getPriorityColor(item.priority)}
                         className="text-xs"
                       >
                         {getPriorityIcon(item.priority)}

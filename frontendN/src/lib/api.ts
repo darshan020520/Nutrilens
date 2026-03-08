@@ -39,28 +39,38 @@ export const authAPI = {
 };
 
 export const onboardingAPI = {
-  submitBasicInfo: async (data: any) => {
+  submitBasicInfo: async (data: Record<string, unknown>) => {
     const response = await api.post(getEndpoint("/onboarding/basic-info"), data);
     return response.data;
   },
 
-  submitGoal: async (data: any) => {
+  submitGoal: async (data: Record<string, unknown>) => {
     const response = await api.post(getEndpoint("/onboarding/goal-selection"), data);
     return response.data;
   },
 
-  submitPath: async (data: any) => {
+  submitPath: async (data: Record<string, unknown>) => {
     const response = await api.post(getEndpoint("/onboarding/path-selection"), data);
     return response.data;
   },
 
-  submitPreferences: async (data: any) => {
+  submitPreferences: async (data: Record<string, unknown>) => {
     const response = await api.post(getEndpoint("/onboarding/preferences"), data);
     return response.data;
   },
 
   getCalculatedTargets: async () => {
     const response = await api.get(getEndpoint("/onboarding/calculated-targets"));
+    return response.data;
+  },
+
+  lockTargets: async (data: {
+    goal_calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  }) => {
+    const response = await api.post(getEndpoint("/onboarding/lock-targets"), data);
     return response.data;
   },
 };

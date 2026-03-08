@@ -195,14 +195,26 @@ export interface RestockList {
   shopping_strategy: string[];
 }
 
+export interface AIRecipeIngredient {
+  name: string;
+  quantity_grams: number;
+}
+
 export interface AIRecipeSuggestion {
   name: string;
   description: string;
-  ingredients_used: string[];
+  cuisine: string;
+  ingredients: AIRecipeIngredient[];
+  instructions: string[];
   estimated_prep_time_min: number;
   estimated_calories: number;
   estimated_protein_g: number;
+  estimated_carbs_g: number;
+  estimated_fat_g: number;
   difficulty: string;
+  suitable_meal_times: string[];
+  goals: string[];
+  dietary_tags: string[];
 }
 
 export interface BulkAddFromRestockItem {

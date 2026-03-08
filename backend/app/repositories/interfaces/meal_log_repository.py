@@ -239,6 +239,32 @@ class IMealLogRepository(ABC):
         pass
 
     @abstractmethod
+    async def delete_future_orphan_logs(
+        self,
+        user_id: int,
+        cutoff_datetime: datetime
+    ) -> int:
+        """
+        Delete unresolved meal logs from inactive plans that are scheduled
+        on or after cutoff_datetime.
+
+        "Unresolved" = consumed_datetime IS NULL AND was_skipped = False.
+        These are phantom future slots left behind when the user generated a
+        new plan before finishing the previous one. Past unresolved rows
+        (genuine misses) are intentionally preserved for history accuracy.
+
+        Args:
+            user_id: User ID
+            cutoff_datetime: Delete orphan logs with planned_datetime >= this value.
+                             Should be now_ist_naive() captured just before
+                             deactivating the old plans.
+
+        Returns:
+            Number of logs deleted
+        """
+        pass
+
+    @abstractmethod
     async def get_upcoming_meals_in_time_window(
         self,
         start_datetime: datetime,

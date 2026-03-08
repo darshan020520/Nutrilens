@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -29,8 +28,16 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+type ApiErrorLike = {
+  response?: {
+    status?: number;
+    data?: {
+      detail?: string;
+    };
+  };
+};
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -64,20 +71,30 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const onboardingStatus = await login(values.email, values.password);
+      const nextPath = searchParams.get("next");
+      const safeNext =
+        typeof nextPath === "string" && nextPath.startsWith("/dashboard")
+          ? nextPath
+          : null;
       
       toast.success('Welcome back!');
       
       // Redirect based on onboarding status
-      router.push(onboardingStatus.redirect_to);
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
+      const destination =
+        onboardingStatus.redirect_to === "/dashboard" && safeNext
+          ? safeNext
+          : onboardingStatus.redirect_to;
+      router.push(destination);
+    } catch (error: unknown) {
+      const apiError = error as ApiErrorLike;
+      const detail = apiError?.response?.data?.detail;
       const message = typeof detail === 'string' ? detail : 'Login failed';
 
-      if (error?.response?.status === 403 && /not verified/i.test(message)) {
+      if (apiError?.response?.status === 403 && /not verified/i.test(message)) {
         form.setError('email', { type: 'server', message: 'Email is not verified' });
         setUnverifiedEmail(values.email);
         setServerError(message);
-      } else if (error?.response?.status === 400 && /invalid email format/i.test(message)) {
+      } else if (apiError?.response?.status === 400 && /invalid email format/i.test(message)) {
         form.setError('email', { type: 'server', message: 'Invalid email address' });
         setServerError(message);
       } else {
@@ -98,8 +115,8 @@ export default function LoginPage() {
     try {
       await authAPI.resendVerification(unverifiedEmail);
       toast.success('Verification email sent. Please check your inbox.');
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
+    } catch (error: unknown) {
+      const detail = (error as ApiErrorLike)?.response?.data?.detail;
       const message = typeof detail === 'string' ? detail : 'Failed to resend verification email';
       toast.error(message);
     } finally {
@@ -156,7 +173,7 @@ export default function LoginPage() {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="********"
                         {...field}
                         disabled={isLoading}
                       />
@@ -197,7 +214,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="text-center text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-green-600 hover:text-green-700 font-medium">
               Sign up
             </Link>
@@ -205,5 +222,25 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoginPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+          <p className="text-gray-600">Loading login...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

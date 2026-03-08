@@ -32,6 +32,27 @@ interface SwapMealDialogProps {
   mealType: string;
 }
 
+interface AlternativeRecipe {
+  id: number;
+  title: string;
+  macros_per_serving: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  };
+  tags?: string[];
+}
+
+interface MealAlternative {
+  recipe: AlternativeRecipe;
+  similarity_score: number;
+  calorie_difference: number;
+  protein_difference: number;
+  carbs_difference: number;
+  fat_difference: number;
+}
+
 export default function SwapMealDialog({
   open,
   onOpenChange,
@@ -47,6 +68,7 @@ export default function SwapMealDialog({
     currentRecipe?.id || null,
     5
   );
+  const typedAlternatives = Array.isArray(alternatives) ? (alternatives as MealAlternative[]) : [];
 
   const swapMeal = useSwapMeal(planId);
 
@@ -112,7 +134,7 @@ export default function SwapMealDialog({
             </div>
           )}
 
-          {!isLoading && alternatives && alternatives.length === 0 && (
+          {!isLoading && typedAlternatives.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <p>No suitable alternatives found.</p>
               <p className="text-sm mt-2">
@@ -121,15 +143,15 @@ export default function SwapMealDialog({
             </div>
           )}
 
-          {!isLoading && alternatives && alternatives.length > 0 && (
+          {!isLoading && typedAlternatives.length > 0 && (
             <>
               <div className="text-sm text-muted-foreground mb-4">
-                Found {alternatives.length} alternative{alternatives.length > 1 ? "s" : ""} with
+                Found {typedAlternatives.length} alternative{typedAlternatives.length > 1 ? "s" : ""} with
                 similar macros
               </div>
 
               <div className="space-y-3">
-                {alternatives.map((alt: any) => {
+                {typedAlternatives.map((alt) => {
                   const recipe = alt.recipe;
                   const isSelected = selectedAlternative === recipe.id;
 

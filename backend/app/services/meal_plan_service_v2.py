@@ -130,9 +130,26 @@ class MealPlanServiceV2:
                 hour=0, minute=0, second=0, microsecond=0
             )
 
+            # Capture cutoff before deactivating — any slot scheduled at or
+            # after this moment in the old plan is a phantom future slot.
+            cutoff_datetime = now_ist_naive()
+
             # COPY-PASTED FROM planning_agent.py:992-995 - NO CHANGES
             # Deactivate existing active plans
             await self.meal_plan_repo.deactivate_active_plans(user_id)
+
+            # Remove unresolved future slots from the now-inactive plans.
+            # Slots scheduled before cutoff_datetime are kept as genuine history
+            # (consumed, skipped, or legitimately missed).
+            deleted_count = await self.meal_log_repo.delete_future_orphan_logs(
+                user_id=user_id,
+                cutoff_datetime=cutoff_datetime
+            )
+            if deleted_count:
+                logger.info(
+                    f"Cleaned up {deleted_count} orphan future logs for user {user_id} "
+                    f"(cutoff: {cutoff_datetime})"
+                )
 
             # COPY-PASTED FROM planning_agent.py:1000-1016 - NO CHANGES
             # Create new plan (using repository)
@@ -191,26 +208,7 @@ class MealPlanServiceV2:
         return MealPlanResponse.model_validate(meal_plan)
 
     async def get_active_meal_plan_with_status(self, user_id: int) -> Dict:
-        """
-        Get active meal plan enriched with meal log statuses.
 
-        BUSINESS LOGIC COPY-PASTED FROM: meal_plan_v2.py:86-181
-        REFACTORED: Moved from API layer to service layer.
-
-        Handles:
-        1. Fetch active meal plan
-        2. If no plan, return empty response
-        3. Fetch meal logs for the week
-        4. Build status map (logged/skipped/pending)
-        5. Enrich plan data with statuses
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dict with enriched meal plan or empty response
-        """
-        # COPY-PASTED FROM meal_plan_v2.py:87-100 - NO CHANGES
         plan = await self.get_active_meal_plan(user_id)
 
         if not plan:
@@ -226,8 +224,6 @@ class MealPlanServiceV2:
                 "message": "No meal plan found for this week. Generate a new plan to get started!"
             }
 
-        # COPY-PASTED FROM meal_plan_v2.py:105-113 - NO CHANGES
-        # Normalize week_start to midnight to include all meals on the first day
         week_start = plan.week_start_date.replace(hour=0, minute=0, second=0, microsecond=0)
         week_end = week_start + timedelta(days=7)
 
@@ -238,8 +234,6 @@ class MealPlanServiceV2:
             end_datetime=week_end
         )
 
-        # COPY-PASTED FROM meal_plan_v2.py:117-128 - NO CHANGES (removed print statements)
-        # Create status lookup map
         status_map = {}
         for log in meal_logs:
             key = f"{log.planned_datetime.date()}_{log.meal_type}"
@@ -247,6 +241,8 @@ class MealPlanServiceV2:
                 status_map[key] = "logged"
             elif log.was_skipped:
                 status_map[key] = "skipped"
+            elif log.was_missed:
+                status_map[key] = "missed"
             else:
                 status_map[key] = "pending"
 

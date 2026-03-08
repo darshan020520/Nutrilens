@@ -2,17 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, BarChart3, Settings, User, Utensils } from "lucide-react";
+import {
+  Home,
+  Package,
+  BarChart3,
+  Settings,
+  User,
+  Utensils,
+  ChefHat,
+  ShoppingCart,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/dashboard/meals", label: "Meals", icon: Utensils },
-  { href: "/dashboard/inventory", label: "Inventory", icon: Package },
+  { href: "/dashboard/kitchen", label: "Kitchen", icon: ChefHat },
+  { href: "/dashboard/pantry", label: "Pantry", icon: Package },
+  { href: "/dashboard/restock", label: "Restock", icon: ShoppingCart },
   { href: "/dashboard/nutrition", label: "Nutrition", icon: BarChart3 },
   { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
+
+function isItemActive(pathname: string, href: string): boolean {
+  if (href === "/dashboard") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -34,7 +50,7 @@ export function Sidebar() {
       <nav className="p-3 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isItemActive(pathname, item.href);
           return (
             <Link
               key={item.href}

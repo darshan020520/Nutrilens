@@ -10,7 +10,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-transparent text-foreground">
       <Sidebar />
       <div className="md:pl-64 min-h-screen pb-20 md:pb-0">
         <TopBar />

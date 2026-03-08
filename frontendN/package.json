@@ -10,7 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:mobile": "playwright test src/tests/e2e/mobile-smoke.spec.ts",
+    "test:e2e:cross-browser": "playwright test -c playwright.cross-browser.config.ts",
+    "test:e2e:mobile-cross-browser": "playwright test -c playwright.mobile-cross-browser.config.ts",
+    "verify:release": "npm run lint && npm run typecheck && npm run test && npm run test:e2e",
+    "verify:cutover": "npm run verify:release && npm run test:e2e:cross-browser && npm run test:e2e:mobile-cross-browser"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

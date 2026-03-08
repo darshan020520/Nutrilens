@@ -118,16 +118,14 @@ class GoalCreate(BaseModel):
     target_weight: Optional[float] = None
     target_date: Optional[datetime] = None
     target_body_fat_percentage: Optional[float] = Field(None, ge=5, le=50)
-    macro_targets: Dict[str, float] = Field(
-        default={"protein": 0.3, "carbs": 0.45, "fat": 0.25}
-    )
-    
-    @validator('macro_targets')
-    def validate_macros(cls, v):
-        total = sum(v.values())
-        if not (0.99 <= total <= 1.01):  # Allow for floating point errors
-            raise ValueError(f'Macro targets must sum to 1.0, got {total}')
-        return v
+    # macro_targets is computed server-side from body weight + goal_type; not accepted as input
+
+
+class TargetLockCreate(BaseModel):
+    goal_calories: float = Field(..., ge=800, le=8000)
+    protein_g: float = Field(..., ge=30, le=400)
+    carbs_g: float = Field(..., ge=0, le=1000)
+    fat_g: float = Field(..., ge=20, le=300)
 
 # Path Schemas
 class MealWindow(BaseModel):
@@ -160,7 +158,8 @@ class OnboardingTargets(BaseModel):
     bmr: float
     tdee: float
     goal_calories: float
-    macro_targets: Dict[str, float]
+    macro_targets: Dict[str, float]   # absolute grams: {"protein_g": 144.0, "carbs_g": 428.0, "fat_g": 84.7}
+    macro_ratios: Dict[str, float]    # derived for display: {"protein": 0.19, "carbs": 0.56, "fat": 0.25}
     meal_windows: List[MealWindow]
     meals_per_day: int
 

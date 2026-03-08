@@ -1,0 +1,850 @@
+[
+  {
+    "title": "Masala Oatmeal Bowl",
+    "description": "Creamy spiced oatmeal cooked in milk with banana and almonds for a protein-rich start.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "endurance", "general_health"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Bring low_fat_milk to a simmer in a saucepan over medium heat.",
+      "Stir in oats and cook for 7-8 minutes, stirring frequently, until thick.",
+      "Remove from heat, slice banana on top, and scatter almonds.",
+      "Drizzle with honey if desired and serve warm."
+    ],
+    "ingredients": [
+      {"canonical_name": "oats",         "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "low_fat_milk", "quantity_grams": 250, "is_optional": false},
+      {"canonical_name": "banana",       "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "almonds",      "quantity_grams": 20,  "is_optional": false},
+      {"canonical_name": "honey",        "quantity_grams": 10,  "is_optional": true}
+    ]
+  },
+  {
+    "title": "Paneer Spinach Scramble",
+    "description": "Crumbled paneer scrambled with spinach, tomato and aromatic spices — a high-protein vegetarian breakfast.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast", "brunch"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Heat olive_oil in a non-stick pan over medium heat.",
+      "Add cumin_seeds and let them splutter for 30 seconds.",
+      "Add chopped garlic and ginger, sauté 1 minute.",
+      "Add onion and cook until translucent, about 3 minutes.",
+      "Add tomato and cook until soft, 2-3 minutes.",
+      "Add chili_powder and turmeric, stir to combine.",
+      "Crumble in paneer and mix well, cook 2-3 minutes.",
+      "Add spinach and toss until wilted. Season with salt and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer",         "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach",        "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "tomato",         "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",          "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",         "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "ginger",         "quantity_grams": 4,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",    "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",   "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",       "quantity_grams": 1,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Masala Egg Bhurji",
+    "description": "Spiced scrambled eggs with onion, tomato and spinach — a classic Indian high-protein breakfast.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp", "general_health"],
+    "dietary_tags": ["vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast", "brunch"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Heat olive_oil in a pan over medium heat.",
+      "Add cumin_seeds and let them splutter.",
+      "Add garlic and ginger, cook 30 seconds.",
+      "Add onion and sauté until soft, about 3 minutes.",
+      "Stir in tomato, chili_powder and turmeric, cook 3 minutes.",
+      "Add spinach and toss until wilted.",
+      "Pour in beaten eggs, stir continuously on low heat until just set. Serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs",           "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "onion",          "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "tomato",         "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "spinach",        "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",         "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "ginger",         "quantity_grams": 3,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",    "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",   "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",       "quantity_grams": 1,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chia Banana Pudding",
+    "description": "Overnight chia seed pudding set in milk, topped with banana and almonds — high in omega-3 and protein.",
+    "cuisine": "continental",
+    "goals": ["endurance", "general_health", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Mix chia_seeds with low_fat_milk in a jar or bowl.",
+      "Stir well, cover and refrigerate overnight (or at least 4 hours).",
+      "In the morning, slice banana on top.",
+      "Scatter almonds and drizzle honey before serving."
+    ],
+    "ingredients": [
+      {"canonical_name": "chia_seeds",    "quantity_grams": 40,  "is_optional": false},
+      {"canonical_name": "low_fat_milk",  "quantity_grams": 300, "is_optional": false},
+      {"canonical_name": "banana",        "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "almonds",       "quantity_grams": 20,  "is_optional": false},
+      {"canonical_name": "honey",         "quantity_grams": 10,  "is_optional": true}
+    ]
+  },
+  {
+    "title": "Grilled Chicken Egg Bowl",
+    "description": "Sliced grilled chicken with fluffy scrambled eggs, sautéed spinach and bell pepper — a power-packed non-veg breakfast.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast", "brunch"],
+    "servings": 1,
+    "prep_time_min": 8,
+    "cook_time_min": 15,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Season chicken_breast with chili_powder, garlic and a little oil. Grill or pan-sear 6-7 minutes per side until cooked through. Rest and slice.",
+      "In the same pan, heat remaining olive_oil and sauté bell_pepper 2 minutes.",
+      "Add spinach and toss until wilted.",
+      "Push vegetables to the side, add beaten eggs and scramble until just set.",
+      "Plate sliced chicken alongside eggs and vegetables. Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "eggs",           "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "bell_pepper",    "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",         "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "chili_powder",   "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Avocado Toast",
+    "description": "Flaked smoked salmon over whole wheat toast with creamy avocado and fresh spinach — omega-3 and protein rich.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "endurance", "general_health", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Toast whole_wheat_bread until golden.",
+      "Mash avocado with lemon_juice and a pinch of black_pepper.",
+      "Spread mashed avocado generously over the toast.",
+      "Pan-sear salmon 2-3 minutes per side, then flake over the toast.",
+      "Top with fresh spinach and serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon",           "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread","quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "avocado",          "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "spinach",          "quantity_grams": 50,  "is_optional": false},
+      {"canonical_name": "lemon_juice",      "quantity_grams": 15,  "is_optional": false},
+      {"canonical_name": "black_pepper",     "quantity_grams": 1,   "is_optional": true}
+    ]
+  },
+  {
+    "title": "Tuna Veggie Scramble",
+    "description": "Canned tuna scrambled with eggs, onion, tomato and bell pepper — a fast high-protein non-veg breakfast.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast", "brunch"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 8,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Drain tuna and break into flakes.",
+      "Heat olive_oil in a pan over medium heat. Sauté garlic 30 seconds.",
+      "Add onion and bell_pepper, cook 3 minutes until softened.",
+      "Add diced tomato and chili_powder, cook 2 minutes.",
+      "Add tuna, stir to combine, then push to the side.",
+      "Pour in beaten eggs and scramble until cooked through. Mix everything together and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna",         "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "eggs",         "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",        "quantity_grams": 50,  "is_optional": false},
+      {"canonical_name": "tomato",       "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "bell_pepper",  "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "olive_oil",    "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",       "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "chili_powder", "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+
+  {
+    "title": "Spiced Paneer Bites",
+    "description": "Pan-seared paneer cubes marinated in spices with bell pepper — quick high-protein vegetarian snack.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 8,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cube paneer into bite-sized pieces.",
+      "Toss with chili_powder, turmeric, cumin_seeds and a squeeze of lemon_juice.",
+      "Heat olive_oil in a non-stick pan over medium-high heat.",
+      "Sear paneer cubes 2 minutes per side until golden.",
+      "Add diced bell_pepper in the last minute. Serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer",        "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper",   "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",     "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "lemon_juice",   "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "chili_powder",  "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",   "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",      "quantity_grams": 1,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Cottage Cheese Fruit Bowl",
+    "description": "Creamy cottage cheese with banana and almonds — a simple, high-protein vegetarian snack.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "general_health", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack", "breakfast"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Spoon cottage_cheese into a bowl.",
+      "Slice banana and arrange on top.",
+      "Scatter almonds over the banana.",
+      "Drizzle with honey and serve chilled."
+    ],
+    "ingredients": [
+      {"canonical_name": "cottage_cheese", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "banana",         "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "almonds",        "quantity_grams": 20,  "is_optional": false},
+      {"canonical_name": "honey",          "quantity_grams": 8,   "is_optional": true}
+    ]
+  },
+  {
+    "title": "Peanut Butter Banana Toast",
+    "description": "Toasted whole wheat bread spread thick with peanut butter and topped with banana — great pre- or post-workout snack.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "endurance", "general_health", "weight_training"],
+    "dietary_tags": ["vegetarian", "dairy_free"],
+    "suitable_meal_times": ["snack", "breakfast"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 2,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Toast whole_wheat_bread until golden and crisp.",
+      "Spread peanut_butter generously over the toast.",
+      "Slice banana and layer on top. Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "peanut_butter",     "quantity_grams": 30,  "is_optional": false},
+      {"canonical_name": "banana",            "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Moong Dal Chaat",
+    "description": "Sprouted moong dal with onion, tomato and tangy spices — a light, protein-rich vegan snack.",
+    "cuisine": "indian",
+    "goals": ["general_health", "fat_loss", "endurance", "body_recomp", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Wash moong_dal and pressure cook with water for 2 whistles (or boil 15 min) until soft but not mushy.",
+      "Drain and cool.",
+      "Finely chop onion, tomato and cilantro.",
+      "Mix dal with onion, tomato, chili_powder, cumin_seeds, coriander_powder and lemon_juice.",
+      "Garnish with cilantro and serve at room temperature."
+    ],
+    "ingredients": [
+      {"canonical_name": "moong_dal",          "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",              "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "tomato",             "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "lemon_juice",        "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "cilantro",           "quantity_grams": 10,  "is_optional": true},
+      {"canonical_name": "chili_powder",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",        "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "coriander_powder",   "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Salad Bites",
+    "description": "Canned tuna tossed with bell pepper, onion and a light dressing — a zero-cook high-protein non-veg snack.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Drain tuna thoroughly and break into flakes.",
+      "Dice bell_pepper and onion finely.",
+      "Combine tuna, bell_pepper, onion, olive_oil, lemon_juice and chili_powder.",
+      "Toss well and serve immediately or chill for 15 minutes."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna",         "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "bell_pepper",  "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",        "quantity_grams": 40,  "is_optional": false},
+      {"canonical_name": "olive_oil",    "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "lemon_juice",  "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "chili_powder", "quantity_grams": 1,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Tikka Bites",
+    "description": "Bite-sized chicken marinated in spiced yogurt and grilled — a classic high-protein Indian non-veg snack.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cube chicken_breast and mix with greek_yogurt, chili_powder, turmeric, cumin_seeds, garlic, ginger, lemon_juice and olive_oil.",
+      "Marinate at least 20 minutes (or overnight in fridge).",
+      "Thread on skewers alternating with bell_pepper chunks.",
+      "Grill or pan-sear on high heat 4-5 minutes per side until charred and cooked through.",
+      "Serve hot with a wedge of lemon."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast",  "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "greek_yogurt",    "quantity_grams": 50,  "is_optional": false},
+      {"canonical_name": "bell_pepper",     "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",       "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "lemon_juice",     "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",          "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "ginger",          "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "chili_powder",    "quantity_grams": 3,   "is_optional": false},
+      {"canonical_name": "turmeric",        "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",     "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Spicy Shrimp Skewers",
+    "description": "Garlic-spiced shrimp grilled on skewers with bell pepper — a fast, zero-carb non-veg protein snack.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 6,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Toss shrimp with olive_oil, garlic, chili_powder and lemon_juice. Let sit 5 minutes.",
+      "Thread shrimp and bell_pepper chunks alternately on skewers.",
+      "Grill or cook in a hot pan 2-3 minutes per side until pink and cooked through.",
+      "Squeeze extra lemon_juice over and serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp",       "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "bell_pepper",  "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "olive_oil",    "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "lemon_juice",  "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",       "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "chili_powder", "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+
+  {
+    "title": "Palak Paneer with Brown Rice",
+    "description": "Creamy spinach-paneer curry in a tomato-onion gravy served over brown rice — a classic muscle-building vegetarian meal.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook brown_rice with 1.5× water until tender, about 25 minutes.",
+      "Blanch spinach in boiling water 1 minute, drain and roughly chop.",
+      "Heat olive_oil in a pan. Add cumin_seeds, then garlic and ginger. Sauté 1 minute.",
+      "Add onion and cook until golden, about 5 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until tomatoes soften.",
+      "Stir in spinach, add cubed paneer and simmer 5 minutes.",
+      "Serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach",           "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "brown_rice",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chickpea Spinach Curry",
+    "description": "Hearty chickpeas simmered with spinach and aromatic spices — a vegan high-fiber, high-protein lunch.",
+    "cuisine": "indian",
+    "goals": ["general_health", "fat_loss", "endurance", "body_recomp", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 25,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Heat olive_oil in a heavy pan. Add cumin_seeds, then garlic and ginger.",
+      "Add onion and cook until golden, 5 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until oil separates, 5 minutes.",
+      "Add chickpeas and 100 ml water. Simmer 10 minutes.",
+      "Stir in spinach and cook 3 more minutes. Serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "chickpeas",         "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach",           "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tofu Veggie Stir Fry with Quinoa",
+    "description": "Crispy tofu with broccoli and bell pepper tossed in a ginger-garlic soy sauce over fluffy quinoa.",
+    "cuisine": "asian",
+    "goals": ["muscle_gain", "general_health", "body_recomp", "fat_loss"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Rinse quinoa and cook with 1.5× water for 15 minutes until fluffy.",
+      "Press tofu dry with paper towels and cube it.",
+      "Heat sesame_oil in a wok over high heat. Fry tofu until golden, about 5 minutes. Remove.",
+      "In remaining oil, stir-fry garlic and ginger 30 seconds.",
+      "Add onion, broccoli and bell_pepper. Stir-fry 4-5 minutes on high heat.",
+      "Return tofu, add soy_sauce and toss to coat.",
+      "Serve over quinoa."
+    ],
+    "ingredients": [
+      {"canonical_name": "tofu",         "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa",       "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "broccoli",     "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper",  "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",        "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "soy_sauce",    "quantity_grams": 15,  "is_optional": false},
+      {"canonical_name": "sesame_oil",   "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",       "quantity_grams": 6,   "is_optional": false},
+      {"canonical_name": "ginger",       "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Rajma Brown Rice Bowl",
+    "description": "Kidney beans slow-cooked in a rich tomato gravy served over brown rice — a high-protein, high-fiber vegan classic.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "endurance", "body_recomp"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 30,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook brown_rice until tender.",
+      "Heat olive_oil in a pan. Add cumin_seeds, then garlic and ginger.",
+      "Add onion and cook until deep golden, 6-7 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until thick, 5 minutes.",
+      "Add kidney_beans and 150 ml water. Simmer 15 minutes until sauce thickens.",
+      "Serve rajma over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "kidney_beans",      "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Thigh Masala with Brown Rice",
+    "description": "Succulent chicken thigh cooked in a spiced tomato-onion masala served over brown rice — satisfying and protein-dense.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "general_health"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook brown_rice until tender.",
+      "Heat olive_oil in a heavy pan. Add cumin_seeds, garlic and ginger.",
+      "Add onion and cook until golden, 5-6 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until oil separates.",
+      "Add chicken_thigh pieces, stir to coat in masala. Cover and cook on medium heat 20 minutes until cooked through.",
+      "Uncover, increase heat 2 minutes to reduce sauce. Serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_thigh",     "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Stir Fry with Brown Rice",
+    "description": "Juicy shrimp and vegetables wok-tossed in ginger-garlic soy sauce over brown rice — quick and high-protein.",
+    "cuisine": "asian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 8,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook brown_rice until tender.",
+      "Heat olive_oil in a wok or pan over high heat.",
+      "Stir-fry garlic and ginger 30 seconds.",
+      "Add onion and bell_pepper, stir-fry 3 minutes.",
+      "Add broccoli florets, stir-fry 3 more minutes.",
+      "Add shrimp and soy_sauce. Toss everything 2-3 minutes until shrimp are pink.",
+      "Serve immediately over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp",       "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",   "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "broccoli",     "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper",  "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",        "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "soy_sauce",    "quantity_grams": 15,  "is_optional": false},
+      {"canonical_name": "olive_oil",    "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",       "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",       "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Brown Rice Power Bowl",
+    "description": "Flaked tuna with broccoli, spinach and brown rice drizzled with lemon-garlic dressing — a lean muscle-building bowl.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 25,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook brown_rice until tender. Steam broccoli 5 minutes until tender-crisp.",
+      "Drain tuna and flake into a bowl.",
+      "Whisk together olive_oil, lemon_juice and garlic for dressing.",
+      "Assemble bowl with brown rice, broccoli, spinach and tuna.",
+      "Drizzle dressing over everything and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna",         "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",   "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "broccoli",     "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach",      "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",    "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "lemon_juice",  "quantity_grams": 15,  "is_optional": false},
+      {"canonical_name": "garlic",       "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+
+  {
+    "title": "Red Lentil Spinach Soup with Quinoa",
+    "description": "Warming red lentil soup loaded with spinach and quinoa in a spiced tomato broth — a complete one-pot vegan meal.",
+    "cuisine": "indian",
+    "goals": ["general_health", "fat_loss", "body_recomp", "endurance", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 30,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Heat olive_oil in a pot. Add cumin_seeds, garlic and ginger.",
+      "Add onion and cook 4 minutes. Add tomato, turmeric, chili_powder and coriander_powder.",
+      "Rinse red_lentils and quinoa, add to pot with 600 ml water.",
+      "Bring to a boil, reduce heat and simmer 20 minutes until lentils are soft.",
+      "Stir in spinach and cook 3 minutes. Adjust seasoning and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "red_lentils",       "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "quinoa",            "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "spinach",           "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tofu Curry with Millet",
+    "description": "Silken tofu in a fragrant coconut-free curry sauce over fluffy millet — a satisfying vegan dinner.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "body_recomp", "fat_loss"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 8,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Rinse millet and cook with 2× water for 20 minutes until fluffy.",
+      "Press tofu dry and cube. Lightly pan-fry in half the olive_oil until golden, set aside.",
+      "Heat remaining oil. Add cumin_seeds, garlic, ginger. Sauté 1 minute.",
+      "Add onion and cook until soft, 4 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until thick.",
+      "Add tofu and spinach, stir gently. Simmer 5 minutes.",
+      "Serve over millet."
+    ],
+    "ingredients": [
+      {"canonical_name": "tofu",             "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "millet",           "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "spinach",          "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "tomato",           "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "onion",            "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",        "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",           "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",           "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",     "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",         "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder", "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Egg Curry with Brown Rice",
+    "description": "Hard-boiled eggs simmered in a spiced tomato-onion gravy served over brown rice — a comforting Indian dinner.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "body_recomp", "weight_training"],
+    "dietary_tags": ["vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Hard-boil eggs, peel and halve. Cook brown_rice until tender.",
+      "Heat olive_oil in a pan. Add cumin_seeds, garlic and ginger.",
+      "Add onion and cook until golden, 5-6 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until oil separates, 6 minutes.",
+      "Add 100 ml water, bring to simmer.",
+      "Gently add halved eggs to the gravy. Simmer 5 minutes.",
+      "Serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs",              "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Vegetable Quinoa Biryani",
+    "description": "Spiced quinoa cooked with broccoli, bell pepper and green peas in biryani style — a fragrant high-protein vegan dinner.",
+    "cuisine": "indian",
+    "goals": ["general_health", "endurance", "body_recomp", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 25,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Heat olive_oil in a wide pan. Add cumin_seeds, garlic and ginger.",
+      "Add onion and fry until golden, 5 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook 3 minutes.",
+      "Add broccoli, bell_pepper and green_peas. Stir-fry 3 minutes.",
+      "Add rinsed quinoa and 180 ml water. Season well.",
+      "Cover and cook on low heat 15 minutes until quinoa is fluffy and water absorbed.",
+      "Fluff with a fork and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "quinoa",           "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "broccoli",         "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper",      "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "green_peas",       "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "tomato",           "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",            "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",        "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",           "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",           "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",         "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "chili_powder",     "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "coriander_powder", "quantity_grams": 2,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Baked Salmon with Quinoa and Broccoli",
+    "description": "Herb-garlic baked salmon fillet served over quinoa with steamed broccoli and wilted spinach — a complete omega-3 dinner.",
+    "cuisine": "continental",
+    "goals": ["muscle_gain", "weight_training", "endurance", "body_recomp", "general_health"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 8,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Preheat oven to 200°C. Rub salmon with olive_oil, garlic, lemon_juice and black_pepper.",
+      "Bake salmon on a lined tray 15-18 minutes until cooked through.",
+      "Meanwhile, cook quinoa with 1.5× water 15 minutes until fluffy.",
+      "Steam broccoli 5 minutes until tender-crisp.",
+      "Wilt spinach in a dry hot pan 1 minute.",
+      "Plate quinoa, top with broccoli, spinach and salmon. Serve with extra lemon_juice."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon",        "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "broccoli",      "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "spinach",       "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "olive_oil",     "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "lemon_juice",   "quantity_grams": 15,  "is_optional": false},
+      {"canonical_name": "garlic",        "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "black_pepper",  "quantity_grams": 1,   "is_optional": true}
+    ]
+  },
+  {
+    "title": "Chicken Breast Stir Fry with Brown Rice",
+    "description": "Strips of chicken breast wok-tossed with broccoli and bell pepper in a garlic-ginger soy sauce over brown rice.",
+    "cuisine": "asian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 8,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook brown_rice until tender.",
+      "Slice chicken_breast into thin strips.",
+      "Heat olive_oil in a wok over high heat. Stir-fry garlic and ginger 30 seconds.",
+      "Add chicken strips and cook 5-6 minutes until cooked through.",
+      "Add onion, broccoli and bell_pepper. Stir-fry 4 minutes until vegetables are tender-crisp.",
+      "Add soy_sauce, toss to coat everything. Serve immediately over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",     "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "broccoli",       "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper",    "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "onion",          "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "soy_sauce",      "quantity_grams": 15,  "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "garlic",         "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",         "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Masala with Brown Rice",
+    "description": "Plump shrimp in a spiced tomato-onion masala gravy served over brown rice — a quick and flavourful non-veg dinner.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner"],
+    "servings": 1,
+    "prep_time_min": 8,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook brown_rice until tender.",
+      "Heat olive_oil in a pan. Add cumin_seeds, garlic and ginger. Sauté 1 minute.",
+      "Add onion and cook until golden, 5 minutes.",
+      "Add tomato, chili_powder, turmeric and coriander_powder. Cook until oil separates, 5 minutes.",
+      "Add shrimp and stir. Cook 3-4 minutes until pink and cooked through.",
+      "Serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp",            "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "tomato",            "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "onion",             "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",         "quantity_grams": 10,  "is_optional": false},
+      {"canonical_name": "garlic",            "quantity_grams": 8,   "is_optional": false},
+      {"canonical_name": "ginger",            "quantity_grams": 5,   "is_optional": false},
+      {"canonical_name": "cumin_seeds",       "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "chili_powder",      "quantity_grams": 2,   "is_optional": false},
+      {"canonical_name": "turmeric",          "quantity_grams": 1,   "is_optional": false},
+      {"canonical_name": "coriander_powder",  "quantity_grams": 2,   "is_optional": false}
+    ]
+  }
+]

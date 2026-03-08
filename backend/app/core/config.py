@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     # Auth/email verification
     frontend_url: str = "http://localhost:3000"
     email_verification_expire_hours: int = 24
+    skip_email_verification: bool = False  # Set to True to auto-verify all emails (testing only)
     email_verification_provider: str = "sendgrid"  # sendgrid | gmail
     gmail_smtp_host: str = "smtp.gmail.com"
     gmail_smtp_port: int = 587

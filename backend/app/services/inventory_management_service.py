@@ -59,211 +59,10 @@ class InventoryManagementService:
         self.db = db
         self.llm_orchestrator = llm_orchestrator
 
-    async def calculate_inventory_status(self, user_id: int) -> Dict[str, Any]:
-        """
-        Calculate comprehensive inventory status with optimization.
-
-        This method:
-        1. Analyzes last 14 days of consumption patterns
-        2. Calculates weekly requirements with 20% buffer
-        3. Compares current stock vs requirements
-        4. Categorizes items (critical, well-stocked)
-        5. Generates actionable recommendations
-
-        Source: backend/app/agents/tracking_agent.py:917-1098
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Dict: {
-                "success": True,
-                "overall_percentage": 65.5,
-                "category_breakdown": {
-                    "protein": {"average_percentage": 45.0, "total_items": 5, ...},
-                    "vegetables": {"average_percentage": 80.0, "total_items": 8, ...}
-                },
-                "critical_items": [{"id": 123, "name": "Chicken", "percentage": 15.0, ...}],
-                "well_stocked": [{"id": 456, "name": "Rice", "percentage": 95.0, ...}],
-                "recommendations": ["Critical: Immediate grocery shopping required", ...],
-                "total_items_tracked": 25,
-                "items_in_stock": 18
-            }
-        """
-        try:
-            # Get user's consumption patterns (last 14 days for better average)
-            two_weeks_ago = datetime.utcnow() - timedelta(days=14)
-
-            recent_logs = self.db.query(MealLog).options(
-                joinedload(MealLog.recipe)
-            ).filter(
-                and_(
-                    MealLog.user_id == user_id,
-                    MealLog.consumed_datetime >= two_weeks_ago,
-                    MealLog.recipe_id.isnot(None)
-                )
-            ).all()
-
-            # Calculate required items for next 7 days based on consumption
-            required_items = {}
-            consumption_frequency = {}
-
-            for log in recent_logs:
-                try:
-                    if not log.recipe:
-                        continue
-
-                    # Get recipe ingredients
-                    ingredients = self.db.query(RecipeIngredient).options(
-                        joinedload(RecipeIngredient.item)
-                    ).filter(
-                        RecipeIngredient.recipe_id == log.recipe_id
-                    ).all()
-
-                    portion_multiplier = log.portion_multiplier or 1.0
-
-                    for ingredient in ingredients:
-                        if not ingredient.item:
-                            continue
-
-                        item_id = ingredient.item_id
-                        quantity = ingredient.quantity_grams * portion_multiplier
-
-                        required_items[item_id] = required_items.get(item_id, 0) + quantity
-                        consumption_frequency[item_id] = consumption_frequency.get(item_id, 0) + 1
-
-                except Exception as e:
-                    logger.warning(f"Error processing meal log {log.id} for inventory status: {str(e)}")
-                    continue
-
-            # Calculate weekly requirement with buffer
-            days_of_data = min(14, len(set(log.consumed_datetime.date() for log in recent_logs if log.consumed_datetime)))
-            if days_of_data == 0:
-                days_of_data = 1  # Prevent division by zero
-
-            weekly_multiplier = 7 / days_of_data
-
-            for item_id in required_items:
-                required_items[item_id] = required_items[item_id] * weekly_multiplier * 1.2  # 20% buffer
-
-            # Get current inventory
-            inventory_items = await self.inventory_repo.get_all_for_user(user_id, include_zero_quantity=False)
-
-            current_inventory = {}
-            for inv_item in inventory_items:
-                if hasattr(inv_item, 'item') and inv_item.item:
-                    current_inventory[inv_item.item_id] = inv_item.quantity_grams
-
-            # Calculate status
-            inventory_status = {
-                "overall_percentage": 0,
-                "category_breakdown": {},
-                "critical_items": [],
-                "low_stock_items": [],  # Added for v1 compatibility
-                "well_stocked": [],
-                "recommendations": [],
-                "total_items_tracked": len(required_items),
-                "items_in_stock": len(current_inventory)
-            }
-
-            if not required_items:
-                inventory_status["recommendations"].append("No consumption data available for analysis")
-                return {"success": True, **inventory_status}
-
-            total_score = 0
-            item_count = 0
-            category_stats = {}
-
-            for item_id, required_qty in required_items.items():
-                try:
-                    item = self.db.query(Item).filter(Item.id == item_id).first()
-                    if not item:
-                        continue
-
-                    current_qty = current_inventory.get(item_id, 0)
-                    percentage = min((current_qty / required_qty) * 100, 100) if required_qty > 0 else 100
-
-                    item_info = {
-                        "id": item_id,
-                        "name": item.canonical_name,
-                        "category": item.category or "other",
-                        "required_weekly": round(required_qty, 1),
-                        "available": round(current_qty, 1),
-                        "percentage": round(percentage, 1),
-                        "usage_frequency": consumption_frequency.get(item_id, 0),
-                        "days_supply": round((current_qty / (required_qty / 7)), 1) if required_qty > 0 else 999
-                    }
-
-                    # Categorize items
-                    if percentage < 20:
-                        inventory_status["critical_items"].append(item_info)
-                    elif 20 <= percentage < 50:
-                        inventory_status["low_stock_items"].append(item_info)
-                    elif percentage >= 80:
-                        inventory_status["well_stocked"].append(item_info)
-
-                    # Category breakdown
-                    category = item.category or "other"
-                    if category not in category_stats:
-                        category_stats[category] = {"scores": [], "items": 0, "critical": 0}
-
-                    category_stats[category]["scores"].append(percentage)
-                    category_stats[category]["items"] += 1
-                    if percentage < 20:
-                        category_stats[category]["critical"] += 1
-
-                    total_score += percentage
-                    item_count += 1
-
-                except Exception as e:
-                    logger.warning(f"Error processing item {item_id} for status calculation: {str(e)}")
-                    continue
-
-            # Calculate overall percentage
-            if item_count > 0:
-                inventory_status["overall_percentage"] = round(total_score / item_count, 1)
-
-            # Calculate category averages
-            for category, stats in category_stats.items():
-                if stats["scores"]:
-                    avg_pct = sum(stats["scores"]) / len(stats["scores"])
-                    inventory_status["category_breakdown"][category] = {
-                        "average_percentage": round(avg_pct, 1),
-                        "total_items": stats["items"],
-                        "critical_items": stats["critical"],
-                        "status": "critical" if stats["critical"] > stats["items"] * 0.5 else "low" if avg_pct < 50 else "good"
-                    }
-
-            # Generate recommendations
-            overall_pct = inventory_status["overall_percentage"]
-            if overall_pct < 30:
-                inventory_status["recommendations"].append("Critical: Immediate grocery shopping required")
-                inventory_status["recommendations"].append("Focus on protein and staple ingredients first")
-            elif overall_pct < 50:
-                inventory_status["recommendations"].append("Low inventory: Plan grocery shopping within 2 days")
-            elif overall_pct < 70:
-                inventory_status["recommendations"].append("Moderate inventory: Consider restocking staples")
-            else:
-                inventory_status["recommendations"].append("Good inventory levels maintained")
-
-            # Add category-specific recommendations
-            for category, data in inventory_status["category_breakdown"].items():
-                if data["critical_items"] > 0:
-                    inventory_status["recommendations"].append(
-                        f"Urgent: Restock {category} items ({data['critical_items']} critical)"
-                    )
-
-            logger.info(f"Inventory status calculated for user {user_id}: {overall_pct}% overall")
-            return {"success": True, **inventory_status}
-
-        except Exception as e:
-            logger.error(f"Error calculating inventory status: {str(e)}")
-            return {"success": False, "error": f"Failed to calculate inventory status: {str(e)}"}
-
     async def check_expiring_items(
         self,
         user_id: int,
-        filter_mode: str = "both",
+        filter_mode: str = "date_only",
         days_threshold: int = 3
     ) -> Dict[str, Any]:
         """
@@ -519,6 +318,10 @@ class InventoryManagementService:
 
             for inv_item in inventory_items:
                 if hasattr(inv_item, 'item') and inv_item.item:
+                    if inv_item.expiry_date:
+                        expiry_date = to_ist_naive(inv_item.expiry_date) if inv_item.expiry_date.tzinfo else inv_item.expiry_date
+                        if expiry_date < now_ist_naive():
+                            continue
                     current_inventory[inv_item.item_id] = {
                         "quantity": inv_item.quantity_grams,
                         "expiry": inv_item.expiry_date
@@ -601,6 +404,10 @@ class InventoryManagementService:
                                 restock_info["expiry_urgency"] = "soon"
                         except Exception as e:
                             logger.warning(f"Error processing expiry for item {item_id}: {str(e)}")
+
+                    # Only show items depleting within 3 days (or needed for upcoming meals)
+                    if days_supply > 3 and upcoming_requirement == 0:
+                        continue
 
                     # PRIORITY LOGIC: Prioritize upcoming meal needs
                     if current_stock < upcoming_requirement:

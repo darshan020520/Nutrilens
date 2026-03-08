@@ -1,6 +1,13 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api";
+function resolveApiBaseUrl(): string {
+  const envBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+  const fallbackBase = "http://localhost:8000";
+  const normalizedBase = (envBase || fallbackBase).replace(/\/+$/, "");
+  return normalizedBase.endsWith("/api") ? normalizedBase : `${normalizedBase}/api`;
+}
+
+const API_URL = resolveApiBaseUrl();
 
 export const httpClient = axios.create({
   baseURL: API_URL,

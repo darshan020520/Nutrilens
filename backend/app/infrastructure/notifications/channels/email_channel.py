@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 class EmailChannel:
     def __init__(self, api_key: str = None):
 
-        self.api_key = api_key or getattr(settings, "SENDGRID_API_KEY", None)
-        self.from_email = getattr(settings, "SENDGRID_FROM_EMAIL", "noreply@nutrilens.com")
-        self.from_name = getattr(settings, "SENDGRID_FROM_NAME", "NutriLens")
+        self.api_key = api_key or settings.sendgrid_api_key or None
+        self.from_email = settings.from_email
+        self.from_name = "NutriLens"
 
         if self.api_key:
             self.client = SendGridAPIClient(self.api_key)

@@ -57,7 +57,10 @@ export default function InventoryList() {
     }
   };
 
-  const handleFilterChange = (key: keyof FilterOptions, value: any) => {
+  const handleFilterChange = <K extends keyof FilterOptions>(
+    key: K,
+    value: FilterOptions[K]
+  ) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 

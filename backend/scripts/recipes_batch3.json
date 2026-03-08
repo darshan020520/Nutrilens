@@ -1,0 +1,675 @@
+[
+  {
+    "title": "Almond Butter Apple Slices",
+    "description": "A simple vegan snack with apple slices and almond butter. Great source of fiber, healthy fats, and natural sugar.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Core and slice the apple into wedges.",
+      "Arrange on a plate.",
+      "Spoon almond butter into a dipping bowl.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "apple", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 20, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Greek Yogurt Honey Walnuts",
+    "description": "A creamy vegetarian snack of Greek yogurt topped with walnuts and honey. High protein and satisfying.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Spoon Greek yogurt into a bowl.",
+      "Top with crushed walnuts.",
+      "Drizzle with a small amount of honey.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "greek_yogurt", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "walnuts", "quantity_grams": 25, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Hard Boiled Egg Veggie Plate",
+    "description": "A simple protein-packed snack with hard-boiled eggs and fresh vegetables. Ideal for fat loss and satiety.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Boil eggs for 9-10 minutes for hard boiled.",
+      "Cool in ice water and peel.",
+      "Halve eggs and arrange with sliced cucumber and carrot.",
+      "Season with salt and pepper."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "carrot", "quantity_grams": 60, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Crackers Snack Plate",
+    "description": "A quick and easy tuna snack on whole wheat crackers. Lean protein for between-meal energy.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Drain canned tuna and mix with lemon juice and pepper.",
+      "Spread tuna onto whole wheat crackers.",
+      "Add sliced cucumber or tomato on top.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 40, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Beef Jerky Mixed Nuts",
+    "description": "A portable high-protein snack of beef jerky and mixed nuts. Great for on-the-go muscle recovery.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 2,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Portion beef jerky onto a small plate.",
+      "Add a handful of mixed nuts alongside.",
+      "Optionally add some dried berries for flavor.",
+      "Serve as is."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "walnuts", "quantity_grams": 20, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Hummus Veggie Sticks",
+    "description": "A classic vegan snack of homemade hummus with fresh veggie sticks. Rich in plant protein and fiber.",
+    "cuisine": "middle_eastern",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Blend chickpeas with lemon juice, garlic, and olive oil until smooth.",
+      "Season with salt and cumin.",
+      "Cut carrot, cucumber, and bell pepper into sticks.",
+      "Serve hummus with veggie sticks."
+    ],
+    "ingredients": [
+      {"canonical_name": "chickpeas", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "carrot", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Cumin Snack Skewers",
+    "description": "Grilled paneer skewers with cumin and herbs. A vegetarian high-protein snack great between meals.",
+    "cuisine": "indian",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cut paneer into cubes and thread onto skewers.",
+      "Brush with olive oil and season with cumin, salt, and chili.",
+      "Grill or pan-cook until lightly charred.",
+      "Serve with mint chutney."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 50, "is_optional": true}
+    ]
+  },
+  {
+    "title": "Chicken Breast Lettuce Bites",
+    "description": "Bite-sized chicken breast pieces in lettuce cups. Ultra-lean and high-protein snack for fat loss.",
+    "cuisine": "asian",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Dice chicken breast and pan-cook with garlic and soy sauce.",
+      "Season with ginger and a touch of sesame oil.",
+      "Spoon into large lettuce leaves.",
+      "Garnish with diced carrot and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "cabbage", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "carrot", "quantity_grams": 40, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Avocado Snack Cup",
+    "description": "Chilled shrimp and avocado in a small cup. A refreshing seafood snack rich in protein and healthy fats.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Boil shrimp for 3-4 minutes and chill in cold water.",
+      "Dice avocado and toss with lemon juice.",
+      "Combine shrimp and avocado in a cup.",
+      "Season with salt, chili, and serve chilled."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chia Seed Pudding with Berries",
+    "description": "A creamy vegan chia pudding with fresh berries. High in omega-3s, fiber, and antioxidants.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Mix chia seeds with coconut milk and stir well.",
+      "Refrigerate for at least 2 hours or overnight.",
+      "Top with fresh berries before serving.",
+      "Serve chilled."
+    ],
+    "ingredients": [
+      {"canonical_name": "chia_seeds", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "low_fat_milk", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "berries", "quantity_grams": 80, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Flaxseed Banana Energy Balls",
+    "description": "Vegan no-bake energy balls with flaxseeds and banana. A nutrient-dense portable snack for active days.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Mash banana with oats, flaxseeds, and peanut butter.",
+      "Mix until a thick dough forms.",
+      "Roll into small balls and refrigerate for 30 minutes.",
+      "Serve chilled."
+    ],
+    "ingredients": [
+      {"canonical_name": "banana", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "oats", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "flaxseeds", "quantity_grams": 20, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 25, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Cottage Cheese Pineapple Bowl",
+    "description": "A refreshing vegetarian snack with cottage cheese and pineapple. High protein, low fat combination.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Scoop cottage cheese into a bowl.",
+      "Top with diced mango or pineapple.",
+      "Sprinkle with a pinch of cinnamon if desired.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "cottage_cheese", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "mango", "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Turkey Roll Ups",
+    "description": "Simple turkey breast roll-ups with spinach and tomato. A lean, high-protein grab-and-go snack.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Lay turkey breast slices flat.",
+      "Place spinach leaves and sliced tomato on each slice.",
+      "Roll up tightly and secure with a toothpick.",
+      "Serve immediately or refrigerate."
+    ],
+    "ingredients": [
+      {"canonical_name": "turkey_breast", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 40, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Cucumber Rounds",
+    "description": "Smoked salmon on cucumber rounds for a light, omega-3-rich snack. Perfect for any time of day.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Slice cucumber into thick rounds.",
+      "Place a piece of smoked salmon on each round.",
+      "Add a squeeze of lemon juice.",
+      "Garnish with fresh dill and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Peanut Butter Oat Energy Bites",
+    "description": "Dense vegan no-bake bites with peanut butter, oats, and chia. A calorie-dense snack for athletes.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "weight_training"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Mix oats, peanut butter, chia seeds, and banana in a bowl.",
+      "Stir until combined and roll into balls.",
+      "Refrigerate for 20 minutes to set.",
+      "Serve as a portable snack."
+    ],
+    "ingredients": [
+      {"canonical_name": "oats", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 40, "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 15, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 60, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Spinach Snack Patties",
+    "description": "Mini paneer and spinach patties for a high-protein vegetarian snack. Easy to make and satisfying.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Grate paneer and mix with finely chopped spinach.",
+      "Add spices and form into small patties.",
+      "Pan-cook with a small amount of oil until golden on both sides.",
+      "Serve with yogurt dip."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Almond Snack Box",
+    "description": "A meal-prep friendly snack box with chicken bites, almonds, and apple. Balanced macros for sustained energy.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Dice and season chicken breast and pan-cook until done.",
+      "Portion chicken into a container.",
+      "Add a portion of almonds and sliced apple alongside.",
+      "Seal and refrigerate or serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 25, "is_optional": false},
+      {"canonical_name": "apple", "quantity_grams": 80, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Stuffed Mini Peppers",
+    "description": "Mini bell peppers stuffed with herbed tuna. A low-carb, high-protein snack bursting with flavor.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Halve mini bell peppers and remove seeds.",
+      "Drain tuna and mix with lemon juice and herbs.",
+      "Fill pepper halves with tuna mixture.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Sunflower Seed Trail Mix",
+    "description": "A vegan calorie-dense trail mix with sunflower seeds, nuts, and dried fruit. Great for endurance snacking.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "general_health"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Combine sunflower seeds, almonds, walnuts, and dried berries.",
+      "Mix well in a small bag or bowl.",
+      "Optionally add dark chocolate chips.",
+      "Serve as a portable trail mix."
+    ],
+    "ingredients": [
+      {"canonical_name": "sunflower_seeds", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 25, "is_optional": false},
+      {"canonical_name": "walnuts", "quantity_grams": 20, "is_optional": false},
+      {"canonical_name": "berries", "quantity_grams": 30, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Oat Protein Mug Cake",
+    "description": "A vegan microwave oat mug cake with banana and peanut butter. High-calorie snack for bulking phases.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "weight_training"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 3,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Mash banana in a mug and mix in oats, peanut butter, and a pinch of baking powder.",
+      "Add a splash of almond milk and stir until combined.",
+      "Microwave for 90 seconds until set.",
+      "Let cool briefly and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "oats", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "low_fat_milk", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Yogurt Granola Power Snack",
+    "description": "A filling vegetarian snack bowl with yogurt and granola. Balances protein and carbs for sustained energy.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegetarian"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 3,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Spoon Greek yogurt into a bowl.",
+      "Add oats or granola on top.",
+      "Top with sliced banana and berries.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "greek_yogurt", "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "oats", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "berries", "quantity_grams": 40, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Breast Mini Skewers",
+    "description": "Grilled chicken mini skewers seasoned with herbs. A portable, high-protein non-vegetarian snack.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cube chicken breast and thread onto skewers.",
+      "Season with olive oil, lemon, garlic, and oregano.",
+      "Grill or pan-cook for 6 minutes per side.",
+      "Serve with tzatziki or hot sauce."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Boiled Egg Spinach Snack Wrap",
+    "description": "A protein-forward snack wrap with boiled egg and spinach. Easy to prepare and great for meal prep.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Boil eggs and slice.",
+      "Place spinach and sliced eggs on a small whole wheat wrap.",
+      "Season with salt, pepper, and a small drizzle of olive oil.",
+      "Roll up and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 40, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Cocktail Snack Bowl",
+    "description": "Classic chilled shrimp cocktail with tomato sauce. Low calorie and high protein seafood snack.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook shrimp in salted water for 3 minutes and chill.",
+      "Mix tomato with lemon juice and horseradish for dipping sauce.",
+      "Arrange chilled shrimp around the sauce bowl.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tempeh Satay Skewers",
+    "description": "Vegan tempeh satay skewers with peanut dipping sauce. High in plant protein and deeply savory.",
+    "cuisine": "asian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Slice tempeh and marinate in soy sauce and garlic.",
+      "Thread onto skewers and grill for 4 minutes per side.",
+      "Make peanut dipping sauce with peanut butter and lime juice.",
+      "Serve skewers with dipping sauce."
+    ],
+    "ingredients": [
+      {"canonical_name": "tempeh", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 25, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Mango Lassi Protein Smoothie",
+    "description": "A thick vegetarian mango lassi with Greek yogurt. Refreshing, high-protein, and full of vitamins.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Add mango chunks, Greek yogurt, and low-fat milk to a blender.",
+      "Blend until smooth and creamy.",
+      "Add a pinch of cardamom for flavor.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "mango", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "greek_yogurt", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "low_fat_milk", "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Oat Protein Bar",
+    "description": "An unconventional but protein-dense non-veg snack combining canned salmon and oats baked into a bar.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Mix drained salmon with oats, egg, and herbs.",
+      "Press into a greased baking tray.",
+      "Bake at 180C for 18 minutes until firm.",
+      "Cool and slice into bars."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "oats", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Almond Date Energy Bar",
+    "description": "A calorie-dense vegan energy bar with almonds, dates, and oats. Perfect pre-workout snack.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "weight_training"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Blend almonds, oats, and peanut butter in a food processor.",
+      "Add banana and blend until sticky.",
+      "Press into a lined tray and refrigerate for 1 hour.",
+      "Cut into bars and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "almonds", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "oats", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 60, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Beef Boiled Egg Snack Plate",
+    "description": "A protein-maximized snack plate with boiled eggs and seasoned ground beef. Ideal for weight training recovery.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook ground beef with garlic, salt, and pepper until browned.",
+      "Hard boil eggs and halve them.",
+      "Arrange beef and eggs on a plate.",
+      "Add fresh tomato slices and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false}
+    ]
+  }
+]

@@ -3,12 +3,13 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from app.core.datetime_utils import DateTimeHelper
-from app.models.database import UserInventory, Item, User, MealLog, UserProfile
+from app.models.database import UserInventory, Item, User, MealLog, UserProfile, Recipe, RecipeIngredient, SessionLocal
 from app.repositories.interfaces.inventory_repository import IInventoryRepository
 from app.repositories.interfaces.recipe_repository import IRecipeRepository
 from app.repositories.interfaces import IUserProfileRepository
 from app.infrastructure.normalization.batch.batch_normalizer import BatchNormalizer
 from app.core.exceptions import TokenBudgetExceeded
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -58,6 +59,7 @@ class IntelligentInventoryServiceV2:
         item_repo: ItemRepository,
         db: Session,
         llm_orchestrator=None,
+        embedding_adapter=None,
         user_profile_repo: IUserProfileRepository = None,
         meal_plan_repo: IMealPlanRepository = None,
         grocery_service: GroceryService = None
@@ -68,6 +70,7 @@ class IntelligentInventoryServiceV2:
         self.item_repo = item_repo
         self.db = db
         self.llm_orchestrator = llm_orchestrator
+        self.embedding_adapter = embedding_adapter
         self.user_profile_repo = user_profile_repo
         self.meal_plan_repo = meal_plan_repo
         self.grocery_service = grocery_service or GroceryService(recipe_repo, inventory_repo)
@@ -1060,6 +1063,12 @@ class IntelligentInventoryServiceV2:
                 response_model=AIRecipeResponse
             )
 
+            # Fire-and-forget: seed valid AI recipes to DB in background
+            if result.recipes:
+                asyncio.create_task(
+                    self._seed_ai_recipes_to_db(result.recipes)
+                )
+
             return {
                 "recipes": [r.model_dump() for r in result.recipes],
                 "mode": mode,
@@ -1069,6 +1078,123 @@ class IntelligentInventoryServiceV2:
         except (TokenBudgetExceeded, Exception) as e:
             logger.warning(f"AI recipe generation failed ({type(e).__name__}): {e}")
             return {"recipes": [], "message": "AI recipe generation unavailable"}
+
+    async def _seed_ai_recipes_to_db(self, recipes) -> None:
+        """
+        Background task: persist AI-generated recipes to the recipes table.
+        Uses embedding cosine-similarity (threshold 0.92) to block near-duplicates.
+        Generates and stores embeddings for every newly seeded recipe.
+        """
+        if not self.embedding_adapter:
+            logger.warning("[AIRecipeSeed] No embedding adapter — skipping seeding.")
+            return
+
+        import numpy as np
+        from app.repositories.recipe_repository import RecipeRepository
+
+        SIMILARITY_THRESHOLD = 0.92
+
+        db: Session = SessionLocal()
+        try:
+            repo = RecipeRepository(db)
+
+            # Load existing titles + embeddings via repo
+            existing = await repo.get_titles_and_embeddings()
+            existing_titles = {title for title, _ in existing}
+            existing_vecs = []
+            for _, emb_str in existing:
+                if emb_str:
+                    try:
+                        existing_vecs.append(np.array(json.loads(emb_str), dtype=np.float32))
+                    except Exception:
+                        pass
+
+            def _is_near_duplicate(vec: "np.ndarray") -> bool:
+                if not existing_vecs:
+                    return False
+                matrix = np.stack(existing_vecs)
+                norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(vec) + 1e-9
+                return float((matrix @ vec / norms).max()) >= SIMILARITY_THRESHOLD
+
+            def _embedding_text(s) -> str:
+                parts = [s.name]
+                if s.cuisine:
+                    parts.append(s.cuisine)
+                parts.extend(ing.name for ing in s.ingredients[:5])
+                return " ".join(parts).lower().strip()
+
+            # Filter exact-title duplicates before calling the embedding API
+            candidates = [s for s in recipes if s.name not in existing_titles]
+            if not candidates:
+                logger.info("[AIRecipeSeed] All recipes already exist (exact title match).")
+                return
+
+            # Batch-generate embeddings for all candidates via the shared adapter
+            texts = [_embedding_text(s) for s in candidates]
+            raw_embeddings = await self.embedding_adapter.get_embeddings_batch(texts)
+            candidate_vecs = [np.array(e, dtype=np.float32) for e in raw_embeddings]
+
+            # Load item lookup via repo (single query)
+            all_ingredient_names = {ing.name for s in candidates for ing in s.ingredients}
+            items_by_name = await repo.get_items_by_canonical_names(list(all_ingredient_names))
+
+            seeded = 0
+            for suggestion, cand_vec in zip(candidates, candidate_vecs):
+                if _is_near_duplicate(cand_vec):
+                    logger.info(f"[AIRecipeSeed] Skipping near-duplicate: {suggestion.name!r}")
+                    continue
+
+                macros = {
+                    "calories":  float(suggestion.estimated_calories),
+                    "protein_g": float(suggestion.estimated_protein_g),
+                    "carbs_g":   float(suggestion.estimated_carbs_g),
+                    "fat_g":     float(suggestion.estimated_fat_g),
+                    "fiber_g":   0.0,
+                }
+                embedding_str = await self.embedding_adapter.embedding_to_db_string(cand_vec.tolist())
+
+                recipe = Recipe(
+                    title=suggestion.name,
+                    description=suggestion.description,
+                    source="ai_generated",
+                    cuisine=suggestion.cuisine,
+                    goals=suggestion.goals,
+                    dietary_tags=suggestion.dietary_tags,
+                    suitable_meal_times=suggestion.suitable_meal_times,
+                    prep_time_min=suggestion.estimated_prep_time_min,
+                    cook_time_min=0,
+                    difficulty_level=suggestion.difficulty,
+                    servings=1,
+                    macros_per_serving=macros,
+                    instructions=suggestion.instructions,
+                    embedding=embedding_str,
+                )
+                await repo.create_recipe(recipe)
+
+                for ing in suggestion.ingredients:
+                    item = items_by_name.get(ing.name)
+                    if item:
+                        await repo.add_recipe_ingredient(RecipeIngredient(
+                            recipe_id=recipe.id,
+                            item_id=item.id,
+                            quantity_grams=float(ing.quantity_grams),
+                            is_optional=False,
+                        ))
+
+                # Include in pool so subsequent candidates in this batch are checked
+                existing_vecs.append(cand_vec)
+                seeded += 1
+
+            db.commit()
+            if seeded:
+                logger.info(f"[AIRecipeSeed] Seeded {seeded} AI-generated recipe(s) to DB.")
+            else:
+                logger.info("[AIRecipeSeed] No new recipes to seed (all near-duplicates).")
+        except Exception as exc:
+            db.rollback()
+            logger.warning(f"[AIRecipeSeed] Background seeding failed: {exc}", exc_info=True)
+        finally:
+            db.close()
 
     async def delete_inventory_item(self, user_id: int, inventory_id: int) -> bool:
 

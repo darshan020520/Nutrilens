@@ -1,0 +1,477 @@
+[
+  {
+    "title": "Egg Almond Banana Snack Bowl",
+    "description": "Boiled eggs with crushed almonds and sliced banana — a quick, protein-rich vegetarian snack for between-meal refuelling.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp", "general_health"],
+    "dietary_tags": ["vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Boil eggs for 10 minutes, cool under running water, peel and halve.",
+      "Slice banana into rounds.",
+      "Arrange eggs, banana and almonds in a bowl and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs",    "quantity_grams": 180, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 30,  "is_optional": false},
+      {"canonical_name": "banana",  "quantity_grams": 50,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Greek Yogurt Oat Almond Snack Bowl",
+    "description": "Thick Greek yogurt stirred through rolled oats and topped with crushed almonds and banana — a filling mid-calorie snack delivering 35g+ protein.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "general_health", "body_recomp", "endurance"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Spoon Greek yogurt into a bowl.",
+      "Stir in rolled oats until fully combined.",
+      "Scatter crushed almonds on top.",
+      "Add sliced banana and serve chilled."
+    ],
+    "ingredients": [
+      {"canonical_name": "greek_yogurt", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "oats",         "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "almonds",      "quantity_grams": 40,  "is_optional": false},
+      {"canonical_name": "banana",       "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Oat Chia Power Snack",
+    "description": "Crumbled paneer mixed with cooked oats, chia seeds and banana — a calorie-dense vegetarian snack for larger athletes and hard gainers.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "endurance"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook oats in water until thick, about 5-7 minutes.",
+      "Stir in crumbled paneer and chia seeds while oats are warm.",
+      "Top with sliced banana and serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer",     "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "oats",       "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 20,  "is_optional": false},
+      {"canonical_name": "banana",     "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Avocado Quinoa Snack Bowl",
+    "description": "Flaked tuna over fluffy quinoa with creamy avocado — a high-calorie non-vegetarian snack ideal for large muscle-gain users on 3-meal plans.",
+    "cuisine": "mediterranean",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "fat_loss"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook quinoa in water (1:2 ratio) for 15 minutes until water is absorbed. Fluff with a fork and cool slightly.",
+      "Drain and flake tuna over quinoa.",
+      "Slice avocado and arrange alongside.",
+      "Season with salt and pepper and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna",    "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa",  "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 120, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Almond Yogurt Power Bowl",
+    "description": "Grilled chicken breast with Greek yogurt, almonds and banana — an ultra-high-calorie protein snack (970 kcal, 99g protein) designed for 100+ kg bodybuilders on 3-meal plans.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["snack"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Season chicken breast with salt and pepper. Pan-fry in a non-stick pan for 6-7 minutes each side until cooked through.",
+      "Slice chicken and place in a bowl alongside Greek yogurt.",
+      "Add almonds and sliced banana.",
+      "Mix and serve warm or at room temperature."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 250, "is_optional": false},
+      {"canonical_name": "almonds",        "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "greek_yogurt",   "quantity_grams": 250, "is_optional": false},
+      {"canonical_name": "banana",         "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Oat Egg Spinach Scramble",
+    "description": "Rolled oats folded into scrambled eggs with wilted spinach — a lighter, protein-balanced breakfast for smaller users or fat-loss goals.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook oats in water until half-done, about 3 minutes, then set aside.",
+      "Heat olive oil in a pan. Add spinach and wilt for 2 minutes.",
+      "Whisk eggs and pour over spinach. Add the partially-cooked oats and scramble together until set.",
+      "Season with salt and pepper and serve warm."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs",      "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "oats",      "quantity_grams": 60,  "is_optional": false},
+      {"canonical_name": "spinach",   "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Oat Honey Breakfast Bowl",
+    "description": "Crumbled paneer stirred through warm oats and topped with banana and a honey drizzle — a mid-calorie vegetarian breakfast for average users.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "weight_training", "body_recomp", "endurance"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook oats in water for 5-7 minutes until creamy.",
+      "Crumble paneer into the warm oats and stir well.",
+      "Transfer to a bowl, top with sliced banana and a drizzle of honey.",
+      "Serve warm."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "oats",   "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "honey",  "quantity_grams": 10,  "is_optional": true}
+    ]
+  },
+  {
+    "title": "Salmon Avocado Egg Breakfast Bowl",
+    "description": "Baked salmon served with soft-scrambled eggs and creamy avocado — a high-fat, high-protein non-vegetarian breakfast for medium-large users.",
+    "cuisine": "mediterranean",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "endurance"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Preheat oven to 200°C. Season salmon with salt, drizzle with olive oil and bake for 12-15 minutes until flaky.",
+      "Whisk eggs and scramble in the remaining olive oil in a pan for 3-4 minutes.",
+      "Slice avocado. Plate salmon, scrambled eggs and avocado together and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon",    "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "eggs",      "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "avocado",   "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 15,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Soy Chunk Oat Smoothie Breakfast Bowl",
+    "description": "Rehydrated soy chunks blended through warm oats with banana and honey — a vegan, calorie-dense breakfast delivering 70g protein for large athletes.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "endurance", "general_health"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Soak soy chunks in boiling water for 10 minutes. Drain and squeeze out excess water.",
+      "Cook oats in water for 5-7 minutes until thick.",
+      "Stir rehydrated soy chunks into the oats and mix well.",
+      "Top with sliced banana and a drizzle of honey. Serve warm."
+    ],
+    "ingredients": [
+      {"canonical_name": "soy_chunks", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "oats",       "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "banana",     "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "honey",      "quantity_grams": 10,  "is_optional": true}
+    ]
+  },
+  {
+    "title": "Chicken Egg Oat Power Breakfast",
+    "description": "Ground chicken mixed with eggs and oats into a protein-packed savoury bowl — an ultra-high-calorie breakfast for 100+ kg bodybuilders needing 1000+ kcal per meal.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook oats in water for 5 minutes until thick. Set aside.",
+      "Mince or chop chicken breast finely. Cook in olive oil over medium heat for 8-10 minutes until cooked through.",
+      "Whisk eggs and pour over chicken in the pan. Scramble together for 3-4 minutes.",
+      "Stir in cooked oats, top with sliced banana and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "eggs",           "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "oats",           "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "banana",         "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 15,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Lentil Spinach Power Soup",
+    "description": "Green lentils simmered with spinach and tomato — a filling, high-fibre vegan lunch option for fat-loss or smaller users.",
+    "cuisine": "indian",
+    "goals": ["fat_loss", "general_health", "endurance", "body_recomp", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 30,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Rinse lentils and place in a pot with 400ml water. Bring to a boil and simmer for 20 minutes.",
+      "Add chopped tomato and spinach and cook for another 5 minutes.",
+      "Drizzle olive oil, season with salt and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "lentils",   "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach",   "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato",    "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chickpea Quinoa Buddha Bowl",
+    "description": "Spiced chickpeas over fluffy quinoa with baby spinach — a balanced, calorie-moderate vegan lunch.",
+    "cuisine": "mediterranean",
+    "goals": ["general_health", "fat_loss", "endurance", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook quinoa in water (1:2 ratio) for 15 minutes until fluffy.",
+      "Drain and rinse chickpeas. Heat olive oil in a pan and cook chickpeas with salt and pepper for 5 minutes.",
+      "Wilt spinach in the pan for 1 minute.",
+      "Serve chickpeas and spinach over quinoa."
+    ],
+    "ingredients": [
+      {"canonical_name": "chickpeas", "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "quinoa",    "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach",   "quantity_grams": 50,  "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Breast Quinoa and Greens Bowl",
+    "description": "Grilled chicken breast over a bed of quinoa with wilted spinach — a lean, high-protein non-vegetarian lunch for medium-large users.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "fat_loss", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook quinoa in water (1:2 ratio) for 15 minutes. Set aside.",
+      "Season chicken breast with salt and pepper. Grill or pan-fry in olive oil for 6-7 minutes per side until cooked through. Slice.",
+      "Wilt spinach in the same pan for 1-2 minutes.",
+      "Plate quinoa, top with chicken slices and spinach. Serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "quinoa",         "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach",        "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 15,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Brown Rice Power Bowl",
+    "description": "Baked salmon over brown rice with wilted spinach — a calorie-rich non-vegetarian lunch for large users with high energy demands.",
+    "cuisine": "japanese",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "endurance"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 25,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook brown rice in water (1:2 ratio) for 20 minutes. Set aside.",
+      "Season salmon with salt, pepper and olive oil. Bake at 200°C for 15 minutes until flaky.",
+      "Wilt spinach in a pan for 2 minutes.",
+      "Plate rice, top with salmon and spinach. Serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon",     "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach",    "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",  "quantity_grams": 10,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Soy Chunk Kidney Bean Rice Bowl",
+    "description": "Rehydrated soy chunks and kidney beans over brown rice — a plant-based powerhouse delivering 95g protein and 1375 kcal, designed for vegan bodybuilders and hard gainers.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "body_recomp"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["lunch", "dinner"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Soak soy chunks in boiling water for 10 minutes, drain and squeeze dry.",
+      "Cook brown rice in water (1:2) for 20 minutes.",
+      "Heat olive oil in a pan. Add soy chunks and kidney beans, season and cook for 10 minutes.",
+      "Serve over brown rice."
+    ],
+    "ingredients": [
+      {"canonical_name": "soy_chunks",   "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "kidney_beans", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "brown_rice",   "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "olive_oil",    "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Red Lentil Tomato Spinach Soup",
+    "description": "Red lentils simmered with tomato and spinach — a light, high-fibre vegan dinner for fat-loss or smaller users needing 500 kcal meals.",
+    "cuisine": "indian",
+    "goals": ["fat_loss", "general_health", "endurance", "body_recomp", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner", "lunch"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 25,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Rinse red lentils and place in a pot with 400ml water. Bring to boil and simmer for 15 minutes until soft.",
+      "Add chopped tomato and spinach, cook 5 more minutes.",
+      "Drizzle olive oil, season with salt and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "red_lentils", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato",      "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach",     "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil",   "quantity_grams": 10,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Quinoa Masala",
+    "description": "Pan-fried paneer cubes in a light masala sauce served over quinoa — a protein-rich vegetarian dinner for average users.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "general_health"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["dinner", "lunch"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook quinoa in water (1:2) for 15 minutes. Fluff and set aside.",
+      "Cut paneer into cubes and pan-fry in olive oil for 3-4 minutes until golden.",
+      "Add chopped spinach and tomato to the pan, cook 4 minutes.",
+      "Serve paneer masala over quinoa."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer",    "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa",    "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "spinach",   "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "tomato",    "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5,   "is_optional": false}
+    ]
+  },
+  {
+    "title": "Grilled Chicken Sweet Potato Quinoa Bowl",
+    "description": "Grilled chicken breast with baked sweet potato and quinoa — a balanced, calorie-rich non-vegetarian dinner for medium-large users.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "endurance", "general_health"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner", "lunch"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Preheat oven to 200°C. Cube sweet potato, toss with half the olive oil, and roast for 25 minutes.",
+      "Season chicken with salt and pepper. Pan-fry in remaining olive oil for 6-7 minutes per side. Slice.",
+      "Cook quinoa in water (1:2) for 15 minutes.",
+      "Bowl up quinoa, top with chicken slices and roasted sweet potato."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "sweet_potato",   "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "quinoa",         "quantity_grams": 80,  "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 15,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Quinoa Spinach Power Bowl",
+    "description": "Pan-seared shrimp over quinoa with spinach — a very high-protein non-vegetarian dinner for large users (81g protein, 966 kcal).",
+    "cuisine": "mediterranean",
+    "goals": ["muscle_gain", "weight_training", "body_recomp", "fat_loss"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner", "lunch"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook quinoa in water (1:2) for 15 minutes. Fluff and set aside.",
+      "Heat olive oil in a pan over high heat. Add shrimp and cook 2-3 minutes per side until pink and cooked through.",
+      "Add spinach to the pan and wilt for 1 minute.",
+      "Serve shrimp and spinach over quinoa."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp",    "quantity_grams": 300, "is_optional": false},
+      {"canonical_name": "quinoa",    "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach",   "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 15,  "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Soy Chunk Brown Rice Dinner Bowl",
+    "description": "Chicken breast and soy chunks over brown rice — an extreme-calorie non-vegetarian dinner (1460 kcal, 123g protein) engineered for 100+ kg bodybuilders on 3-meal plans.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "weight_training", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["dinner", "lunch"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 30,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Soak soy chunks in boiling water for 10 minutes, drain and squeeze dry.",
+      "Cook brown rice in water (1:2) for 20 minutes.",
+      "Season chicken breast, pan-fry in olive oil for 6-7 minutes per side. Slice.",
+      "In the same pan add soy chunks and cook for 5 minutes. Combine chicken, soy chunks and rice in a bowl and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 250, "is_optional": false},
+      {"canonical_name": "soy_chunks",     "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "brown_rice",     "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "olive_oil",      "quantity_grams": 10,  "is_optional": false}
+    ]
+  }
+]

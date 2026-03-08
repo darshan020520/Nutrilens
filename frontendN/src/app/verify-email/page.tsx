@@ -1,13 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
 import { authAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
-export default function VerifyEmailPage() {
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+};
+
+function VerifyEmailPageContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Verifying your email...');
@@ -25,8 +33,8 @@ export default function VerifyEmailPage() {
         const response = await authAPI.verifyEmail(token);
         setStatus('success');
         setMessage(response.message || 'Email verified successfully. You can now log in.');
-      } catch (error: any) {
-        const detail = error?.response?.data?.detail;
+      } catch (error: unknown) {
+        const detail = (error as ApiErrorLike)?.response?.data?.detail;
         setStatus('error');
         setMessage(typeof detail === 'string' ? detail : 'Email verification failed.');
       }
@@ -59,3 +67,20 @@ export default function VerifyEmailPage() {
   );
 }
 
+function VerifyEmailPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
+        <p className="text-gray-600">Loading verification status...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailPageFallback />}>
+      <VerifyEmailPageContent />
+    </Suspense>
+  );
+}

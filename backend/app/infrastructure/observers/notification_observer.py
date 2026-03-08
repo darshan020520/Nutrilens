@@ -1,5 +1,6 @@
 import logging
 import json
+from datetime import datetime
 from typing import Dict, Any, Callable, Optional
 from app.infrastructure.events.observer import IObserver
 from app.infrastructure.notifications.factories.notification_factory import NotificationFactory
@@ -85,16 +86,21 @@ class NotificationObserver(IObserver):
                 db.close()
 
         if self._is_progress_milestone(daily_totals):
-            await self._create_and_queue_notification(
-                notification_type="progress_update",
-                user_id=user_id,
-                metadata={
-                    "milestone_type": "daily_goal",
-                    "milestone_name": "Daily Progress",
-                    "progress_percentage": daily_totals.get("compliance_rate", 0),
-                    "message": f"You've reached {daily_totals.get('compliance_rate', 0)}% of your daily goal!",
-                }
-            )
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            dedup_key = f"progress_sent:{user_id}:daily_goal:{today}"
+            if not await self.redis_client.exists(dedup_key):
+                await self.redis_client.setex(dedup_key, 86400, "1")
+                progress_pct = round(daily_totals.get("compliance_rate", 0) * 100)
+                await self._create_and_queue_notification(
+                    notification_type="progress_update",
+                    user_id=user_id,
+                    metadata={
+                        "milestone_type": "daily_goal",
+                        "milestone_name": "Daily Progress",
+                        "progress_percentage": progress_pct,
+                        "message": f"You've reached {progress_pct}% of your daily goal!",
+                    }
+                )
 
     async def _handle_meal_skipped(self, event_data: Dict) -> None:
         user_id = event_data.get("user_id")
@@ -241,9 +247,9 @@ class NotificationObserver(IObserver):
 
 
     def _is_progress_milestone(self, daily_totals: Dict) -> bool:
-        """Check if daily totals represent a milestone."""
+        """Check if daily totals represent a milestone. compliance_rate is a 0-1 fraction."""
         compliance_rate = daily_totals.get("compliance_rate", 0)
-        return compliance_rate >= 80  # 80% or more is a milestone
+        return compliance_rate >= 0.8  # 80% or more is a milestone
 
     async def _create_and_queue_notification(
         self,

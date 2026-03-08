@@ -50,15 +50,17 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
 
   body {
-    @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at 10% 0%, rgba(14, 135, 113, 0.07), transparent 32%),
-      radial-gradient(circle at 90% 10%, rgba(201, 117, 31, 0.07), transparent 30%);
+    @apply text-foreground;
+    background: #f7f5f1;
     min-height: 100vh;
   }
 
@@ -69,4 +71,83 @@
     font-family: var(--font-sora);
     letter-spacing: -0.01em;
   }
+}
+
+@keyframes steam-rise {
+  0% {
+    opacity: 0.25;
+    transform: translateY(3px);
+  }
+  45% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes progress-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+@keyframes first-cta-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.28);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes ring-goal-pulse {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(16, 185, 129, 0));
+  }
+  35% {
+    filter: drop-shadow(0 0 7px rgba(16, 185, 129, 0.5));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 rgba(16, 185, 129, 0));
+  }
+}
+
+.ring-goal-pulse {
+  animation: ring-goal-pulse 1.2s ease-out 1;
+}
+
+.recipe-modal-scroll,
+.recipe-modal-scroll * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.34) rgba(148, 163, 184, 0.08);
+}
+
+.recipe-modal-scroll::-webkit-scrollbar,
+.recipe-modal-scroll *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.recipe-modal-scroll::-webkit-scrollbar-track,
+.recipe-modal-scroll *::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.08);
+  border-radius: 999px;
+}
+
+.recipe-modal-scroll::-webkit-scrollbar-thumb,
+.recipe-modal-scroll *::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.34);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.recipe-modal-scroll::-webkit-scrollbar-thumb:hover,
+.recipe-modal-scroll *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.45);
 }

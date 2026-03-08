@@ -1,0 +1,723 @@
+[
+  {
+    "title": "Spiced Chickpea Avocado Bowl",
+    "description": "A protein-rich vegan bowl with spiced chickpeas and creamy avocado. Great for fat loss and general health.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Drain and rinse chickpeas, then dry-roast in a pan with cumin and paprika for 5 minutes.",
+      "Slice avocado and arrange in a bowl.",
+      "Add roasted chickpeas on top and drizzle with lemon juice.",
+      "Season with salt and pepper and serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "chickpeas", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 15, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Greek Yogurt Berry Parfait",
+    "description": "A creamy vegetarian breakfast parfait layered with Greek yogurt and fresh berries. Packed with protein and antioxidants.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Spoon Greek yogurt into a bowl or glass.",
+      "Add a layer of fresh berries on top.",
+      "Sprinkle chia seeds and a drizzle of honey.",
+      "Serve immediately or refrigerate overnight."
+    ],
+    "ingredients": [
+      {"canonical_name": "greek_yogurt", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "berries", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 15, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Scrambled Eggs Whole Wheat Toast",
+    "description": "Classic scrambled eggs on whole wheat toast providing quality protein and complex carbs. Ideal for busy mornings.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 8,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Whisk eggs with a pinch of salt and pepper.",
+      "Heat a non-stick pan with a small amount of butter and add eggs.",
+      "Stir gently over medium-low heat until just set.",
+      "Toast whole wheat bread and serve eggs on top."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "butter", "quantity_grams": 10, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 30, "is_optional": true}
+    ]
+  },
+  {
+    "title": "Turkey Spinach Breakfast Wrap",
+    "description": "A lean turkey and spinach wrap delivering high protein and essential vitamins. Perfect for active mornings.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook sliced turkey breast in a pan with olive oil until cooked through.",
+      "Warm the whole wheat wrap briefly in the pan.",
+      "Layer spinach and turkey on the wrap.",
+      "Roll tightly and serve with salsa or hot sauce."
+    ],
+    "ingredients": [
+      {"canonical_name": "turkey_breast", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Smoked Salmon Cucumber Bites",
+    "description": "Light and elegant smoked salmon on cucumber slices with cream cheese. Rich in omega-3 fatty acids.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Slice cucumber into thick rounds.",
+      "Top each round with a small amount of cottage cheese.",
+      "Lay a piece of smoked salmon on top.",
+      "Garnish with lemon juice and fresh dill."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "cottage_cheese", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "lemon", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Mango Chia Overnight Oats",
+    "description": "A vibrant vegan overnight oat bowl with mango and chia seeds. High in fiber and natural sugars for morning energy.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Combine oats, chia seeds, and plant-based milk in a jar.",
+      "Stir well and refrigerate overnight.",
+      "In the morning, top with diced mango.",
+      "Add a drizzle of maple syrup if desired and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "oats", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 20, "is_optional": false},
+      {"canonical_name": "mango", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "low_fat_milk", "quantity_grams": 150, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Bhurji Roti",
+    "description": "A hearty Indian vegetarian breakfast of scrambled paneer with spices served with roti. Protein-dense and filling.",
+    "cuisine": "indian",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Crumble paneer and set aside.",
+      "Saute onion, tomato, and green chili in olive oil.",
+      "Add crumbled paneer with turmeric, cumin, and salt.",
+      "Cook for 5 minutes and serve with warm roti."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "roti", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 40, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Omelette with Veggies",
+    "description": "A protein-packed chicken and vegetable omelette ideal for muscle building. Quick and satisfying breakfast.",
+    "cuisine": "american",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 12,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Dice cooked chicken breast and set aside.",
+      "Whisk eggs with salt and pepper.",
+      "Pour eggs into a hot oiled pan and add chicken, bell pepper, and mushrooms.",
+      "Fold omelette in half and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "chicken_breast", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "mushrooms", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Shrimp Avocado Egg Scramble",
+    "description": "A luxurious breakfast combining shrimp, eggs, and creamy avocado. Rich in protein and healthy fats.",
+    "cuisine": "american",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Saute shrimp in olive oil until pink and set aside.",
+      "Scramble eggs in the same pan.",
+      "Combine shrimp and eggs, season with salt and chili flakes.",
+      "Top with sliced avocado and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Banana Oat Smoothie Bowl",
+    "description": "A creamy vegan smoothie bowl with banana and oats for sustained energy. Rich in potassium and complex carbs.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Blend banana with oats and almond milk until smooth.",
+      "Pour into a bowl.",
+      "Top with sliced banana, almonds, and chia seeds.",
+      "Serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "banana", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "oats", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 15, "is_optional": false},
+      {"canonical_name": "low_fat_milk", "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Cottage Cheese Veggie Breakfast Bowl",
+    "description": "A protein-rich vegetarian bowl with cottage cheese and fresh vegetables. Low calorie and high satiety.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Scoop cottage cheese into a bowl.",
+      "Add diced cucumber, tomato, and bell pepper.",
+      "Season with salt, pepper, and fresh herbs.",
+      "Drizzle lemon juice and serve immediately."
+    ],
+    "ingredients": [
+      {"canonical_name": "cottage_cheese", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 50, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tuna Egg White Breakfast Skillet",
+    "description": "A high-protein tuna and egg white skillet for lean muscle building. Low fat and packed with amino acids.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Drain canned tuna and flake it into a pan.",
+      "Add egg whites and cook over medium heat, stirring.",
+      "Season with garlic, chili flakes, and salt.",
+      "Add spinach and cook until wilted, then serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "tuna", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 5, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Ground Beef Sweet Potato Hash",
+    "description": "A hearty breakfast hash with lean ground beef and sweet potato. Loaded with protein and complex carbs for sustained energy.",
+    "cuisine": "american",
+    "goals": ["general_health", "muscle_gain", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Dice sweet potato and pan-fry in olive oil for 10 minutes until tender.",
+      "Add ground beef and cook through, breaking it apart.",
+      "Season with paprika, garlic powder, salt, and pepper.",
+      "Top with a fried egg if desired and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "sweet_potato", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 40, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Quinoa Almond Breakfast Bowl",
+    "description": "A nutrient-dense vegan breakfast bowl with quinoa, almonds, and banana. High in complete protein and healthy fats.",
+    "cuisine": "general",
+    "goals": ["general_health", "muscle_gain", "endurance"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook quinoa according to package instructions.",
+      "Let cool slightly and transfer to a bowl.",
+      "Top with sliced banana, almonds, and chia seeds.",
+      "Drizzle with maple syrup and serve warm."
+    ],
+    "ingredients": [
+      {"canonical_name": "quinoa", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "almonds", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 15, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Spinach Feta Egg Muffins",
+    "description": "Baked egg muffins with spinach and feta cheese. A portable, protein-rich vegetarian breakfast.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Preheat oven to 180C and grease a muffin tin.",
+      "Whisk eggs with salt, pepper, and chopped spinach.",
+      "Pour into muffin cups and top with crumbled feta.",
+      "Bake for 18-20 minutes until set and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "cottage_cheese", "quantity_grams": 60, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Cream Cheese Bagel",
+    "description": "A classic high-protein breakfast with salmon and cream cheese on a whole wheat base. Rich in omega-3s.",
+    "cuisine": "american",
+    "goals": ["general_health", "muscle_gain", "body_recomp"],
+    "dietary_tags": ["non_vegetarian"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 0,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Toast whole wheat bread until golden.",
+      "Spread cottage cheese or cream cheese on toast.",
+      "Layer smoked salmon on top.",
+      "Garnish with cucumber slices and lemon juice."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "cottage_cheese", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "cucumber", "quantity_grams": 50, "is_optional": true}
+    ]
+  },
+  {
+    "title": "Beef Egg Fried Rice Breakfast",
+    "description": "A filling Asian-inspired breakfast with ground beef, eggs, and brown rice. Great for weight training days.",
+    "cuisine": "asian",
+    "goals": ["general_health", "muscle_gain", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Heat oil in a wok and cook ground beef until browned.",
+      "Push beef to side, add eggs and scramble.",
+      "Add cooked brown rice and stir-fry everything together.",
+      "Season with soy sauce, garlic, and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "ground_beef", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "brown_rice", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tempeh Veggie Breakfast Hash",
+    "description": "A smoky vegan hash with tempeh and colorful vegetables. High in plant protein and fiber.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Dice tempeh into small cubes and pan-fry in olive oil until golden.",
+      "Add diced bell pepper, onion, and mushrooms.",
+      "Season with smoked paprika, cumin, and salt.",
+      "Cook until vegetables are tender and serve hot."
+    ],
+    "ingredients": [
+      {"canonical_name": "tempeh", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "mushrooms", "quantity_grams": 60, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 40, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Oat Banana Peanut Butter Bowl",
+    "description": "A hearty vegan breakfast bowl with oats, banana, and peanut butter. Calorie-dense and great for endurance athletes.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "weight_training"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook oats with water or plant milk until creamy.",
+      "Stir in peanut butter until melted and combined.",
+      "Top with sliced banana and walnuts.",
+      "Serve warm with a drizzle of maple syrup."
+    ],
+    "ingredients": [
+      {"canonical_name": "oats", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 32, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "walnuts", "quantity_grams": 20, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Paneer Paratha Breakfast",
+    "description": "A classic Indian breakfast with stuffed paneer paratha. Rich in protein and complex carbs for sustained energy.",
+    "cuisine": "indian",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["vegetarian"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 15,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Mix flour with water to make roti dough and rest for 10 minutes.",
+      "Crumble paneer with spices for the filling.",
+      "Roll out dough, stuff with paneer, seal, and roll again.",
+      "Cook on a hot griddle with butter until golden on both sides."
+    ],
+    "ingredients": [
+      {"canonical_name": "paneer", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "roti", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "butter", "quantity_grams": 10, "is_optional": false},
+      {"canonical_name": "onion", "quantity_grams": 30, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Avocado Breakfast Bowl",
+    "description": "A power breakfast bowl with grilled chicken, avocado, and eggs. High protein and healthy fats for muscle gain.",
+    "cuisine": "american",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Grill or pan-cook chicken breast with olive oil and seasoning.",
+      "Slice chicken and arrange in a bowl.",
+      "Add sliced avocado and a poached or fried egg.",
+      "Season with salt, pepper, and hot sauce."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "eggs", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Salmon Sweet Potato Breakfast Bowl",
+    "description": "A nutritious bowl combining omega-3-rich salmon with sweet potato. Great for endurance and recovery.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "general_health", "endurance"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Roast diced sweet potato in olive oil at 200C for 15 minutes.",
+      "Pan-sear salmon fillet for 4 minutes per side.",
+      "Flake salmon and serve over sweet potato.",
+      "Add spinach and drizzle with lemon."
+    ],
+    "ingredients": [
+      {"canonical_name": "salmon", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "sweet_potato", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Black Bean Avocado Toast",
+    "description": "A filling vegan toast with spiced black beans and avocado. Packed with fiber and plant protein.",
+    "cuisine": "mexican",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Toast whole wheat bread until golden.",
+      "Mash avocado with lime juice and salt.",
+      "Warm black beans with cumin and chili powder.",
+      "Spread avocado on toast and top with black beans."
+    ],
+    "ingredients": [
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "avocado", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "black_beans", "quantity_grams": 100, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Tofu Spinach Scramble",
+    "description": "A vegan alternative to scrambled eggs using crumbled tofu and spinach. High in plant protein and iron.",
+    "cuisine": "general",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Crumble firm tofu into a pan and cook on medium heat.",
+      "Add turmeric, black pepper, and salt for color and flavor.",
+      "Fold in spinach and cook until wilted.",
+      "Serve hot on its own or with toast."
+    ],
+    "ingredients": [
+      {"canonical_name": "tofu", "quantity_grams": 200, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 60, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Moong Dal Cheela",
+    "description": "A traditional Indian vegan pancake made from moong dal batter. Light, high-protein, and easily digestible.",
+    "cuisine": "indian",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["vegan", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 10,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Blend soaked moong dal with ginger, green chili, and water to a smooth batter.",
+      "Heat a non-stick pan and pour a ladle of batter.",
+      "Spread in a circle and cook on medium heat for 3 minutes each side.",
+      "Serve with mint chutney or yogurt."
+    ],
+    "ingredients": [
+      {"canonical_name": "moong_dal", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 50, "is_optional": true},
+      {"canonical_name": "onion", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 8, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Egg Muffin Cup with Bacon",
+    "description": "Protein-rich baked egg cups with turkey bacon. A quick grab-and-go high-protein breakfast.",
+    "cuisine": "american",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Preheat oven to 180C.",
+      "Line muffin tins with turkey bacon slices.",
+      "Crack an egg into each cup and season with salt and pepper.",
+      "Bake for 15-18 minutes until egg is set."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "turkey_breast", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "bell_pepper", "quantity_grams": 40, "is_optional": true}
+    ]
+  },
+  {
+    "title": "Prawn Tomato Breakfast Sauté",
+    "description": "A Mediterranean-style prawn and tomato sauté for a light, protein-rich morning meal. Low calorie and full of flavor.",
+    "cuisine": "mediterranean",
+    "goals": ["fat_loss", "general_health", "muscle_gain"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 10,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Heat olive oil in a pan over medium heat.",
+      "Add shrimp and garlic and cook for 3-4 minutes until pink.",
+      "Add diced tomatoes and cook for another 3 minutes.",
+      "Season with herbs, salt, and pepper and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "shrimp", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "tomato", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false},
+      {"canonical_name": "garlic", "quantity_grams": 10, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Walnut Date Oat Bowl",
+    "description": "A calorie-dense vegan breakfast with oats, walnuts, and dates. Excellent for energy loading before workouts.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "weight_training"],
+    "dietary_tags": ["vegan", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 5,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Cook oats with water or almond milk until creamy.",
+      "Stir in walnuts and chopped dates.",
+      "Add chia seeds and a pinch of cinnamon.",
+      "Drizzle with almond butter and serve warm."
+    ],
+    "ingredients": [
+      {"canonical_name": "oats", "quantity_grams": 120, "is_optional": false},
+      {"canonical_name": "walnuts", "quantity_grams": 30, "is_optional": false},
+      {"canonical_name": "banana", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "chia_seeds", "quantity_grams": 20, "is_optional": false},
+      {"canonical_name": "peanut_butter", "quantity_grams": 20, "is_optional": false}
+    ]
+  },
+  {
+    "title": "High Protein Vegetarian Breakfast Burrito",
+    "description": "A filling vegetarian burrito with eggs, beans, and cheese. Complete protein and complex carbs in one wrap.",
+    "cuisine": "mexican",
+    "goals": ["muscle_gain", "general_health", "weight_training"],
+    "dietary_tags": ["vegetarian"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 15,
+    "difficulty_level": "easy",
+    "instructions": [
+      "Scramble eggs in a pan with olive oil.",
+      "Warm black beans with cumin and salt.",
+      "Place eggs, beans, and shredded cheese on a warm tortilla.",
+      "Roll tightly and serve with salsa."
+    ],
+    "ingredients": [
+      {"canonical_name": "eggs", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "black_beans", "quantity_grams": 80, "is_optional": false},
+      {"canonical_name": "whole_wheat_bread", "quantity_grams": 70, "is_optional": false},
+      {"canonical_name": "cheddar_cheese", "quantity_grams": 30, "is_optional": false}
+    ]
+  },
+  {
+    "title": "Chicken Quinoa Power Breakfast",
+    "description": "A calorie-dense power breakfast with grilled chicken and quinoa. Ideal for athletes needing sustained energy and muscle support.",
+    "cuisine": "general",
+    "goals": ["muscle_gain", "endurance", "weight_training"],
+    "dietary_tags": ["non_vegetarian", "gluten_free", "dairy_free"],
+    "suitable_meal_times": ["breakfast"],
+    "servings": 1,
+    "prep_time_min": 5,
+    "cook_time_min": 20,
+    "difficulty_level": "medium",
+    "instructions": [
+      "Cook quinoa according to package instructions.",
+      "Grill chicken breast with olive oil, salt, and herbs.",
+      "Slice chicken and serve over quinoa with spinach.",
+      "Drizzle with lemon juice and serve."
+    ],
+    "ingredients": [
+      {"canonical_name": "chicken_breast", "quantity_grams": 150, "is_optional": false},
+      {"canonical_name": "quinoa", "quantity_grams": 100, "is_optional": false},
+      {"canonical_name": "spinach", "quantity_grams": 50, "is_optional": false},
+      {"canonical_name": "olive_oil", "quantity_grams": 10, "is_optional": false}
+    ]
+  }
+]

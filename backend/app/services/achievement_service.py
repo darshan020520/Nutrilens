@@ -33,7 +33,7 @@ class AchievementService:
             if streak_achievement:
                 achievements.append(streak_achievement)
 
-            daily_achievement = await self._check_daily_completion(user_id, today)
+            daily_achievement = await self._check_daily_completion(user_id, today, daily_totals)
             if daily_achievement:
                 achievements.append(daily_achievement)
 
@@ -49,47 +49,75 @@ class AchievementService:
         return achievements
 
     async def _check_streak(self, user_id: int, today: str) -> Dict | None:
+        """
+        Count consecutive days from today going backwards where at least one
+        meal was consumed. Always fires (even streak=1) to encourage the user.
+        Dedup prevents more than one notification per day.
+        """
+        today_date = date.today()
+        # Look back up to 60 days — enough for any realistic streak
+        start_date = today_date - timedelta(days=60)
 
-        end_date = date.today()
-        start_date = end_date - timedelta(days=7)
-
-        recent_logs = await self.tracking_repo.count_consumed_meals_in_range(
+        consumed_meals = await self.tracking_repo.get_consumed_meals(
             user_id=user_id,
             start_date=start_date,
-            end_date=end_date
+            end_date=today_date
         )
 
-        if recent_logs >= 21:
-            streak_days = recent_logs // 3
+        # Distinct dates that had at least one consumed meal
+        dates_with_meals = {
+            m.consumed_datetime.date()
+            for m in consumed_meals
+            if m.consumed_datetime
+        }
 
-            if streak_days >= 30:
-                achievement_type = "streak_30day"
-                message = "Incredible! 30-day meal streak - habit mastery achieved!"
-            elif streak_days >= 14:
-                achievement_type = "streak_14day"
-                message = "Amazing! 14-day meal streak - you're on fire!"
-            elif streak_days >= 7:
-                achievement_type = "streak_7day"
-                message = "7-day meal logging streak! Building lasting habits!"
-            else:
-                return None
+        # Count consecutive days backwards from today
+        streak = 0
+        current = today_date
+        while current in dates_with_meals:
+            streak += 1
+            current -= timedelta(days=1)
 
-            dedup_key = f"achievement_sent:{user_id}:{achievement_type}:{today}"
-            if await self.redis.exists(dedup_key):
-                return None
+        # Don't fire before the first meal of the day is logged
+        if streak == 0:
+            return None
 
-            await self.redis.setex(dedup_key, 86400, "1")
+        dedup_key = f"achievement_sent:{user_id}:streak:{today}"
+        if await self.redis.exists(dedup_key):
+            return None
 
-            return {"type": achievement_type, "message": message}
+        await self.redis.setex(dedup_key, 86400, "1")
 
-        return None
+        if streak == 1:
+            message = "Day 1! Every great streak starts here — keep it going!"
+        elif streak < 7:
+            message = f"{streak}-day streak! You're building a solid habit!"
+        elif streak < 14:
+            message = f"One week down! {streak}-day streak — you're on fire!"
+        elif streak < 30:
+            message = f"Incredible dedication! {streak}-day streak and still going strong!"
+        else:
+            message = f"Unstoppable! {streak}-day streak — you're a nutrition champion!"
 
-    async def _check_daily_completion(self, user_id: int, today: str) -> Dict | None:
-        """Check if user logged 3+ meals today"""
+        return {
+            "type": "current_streak",
+            "name": f"{streak}-Day Streak",
+            "description": f"{streak} consecutive days of meal logging",
+            "message": message,
+        }
 
-        consumed_count = await self.tracking_repo.count_consumed_meals_today(user_id)
+    async def _check_daily_completion(
+        self, user_id: int, today: str, daily_totals: Dict
+    ) -> Dict | None:
+        """
+        Fire when the user has consumed all meals scheduled for today.
+        Uses meals_planned / meals_consumed from daily_totals (sourced from
+        ConsumptionAnalyticsRepository.get_today_summary via consumption service).
+        """
+        meals_planned = daily_totals.get("meals_planned", 0)
+        meals_consumed = daily_totals.get("meals_consumed", 0)
 
-        if consumed_count >= 3:
+        if meals_planned > 0 and meals_consumed >= meals_planned:
             achievement_type = "daily_completion"
 
             dedup_key = f"achievement_sent:{user_id}:{achievement_type}:{today}"
@@ -100,7 +128,9 @@ class AchievementService:
 
             return {
                 "type": achievement_type,
-                "message": "Perfect day! All meals logged - crushing your goals!"
+                "name": "All Meals Logged!",
+                "description": f"Completed all {meals_planned} scheduled meals today",
+                "message": f"Perfect day! All {meals_planned} meals logged — crushing your goals!",
             }
 
         return None
@@ -108,17 +138,26 @@ class AchievementService:
     async def _check_nutrition_target(
         self, user_id: int, daily_totals: Dict, today: str
     ) -> Dict | None:
-        """Check if user hit protein target"""
+        """
+        Fire when the user has consumed at least 80% of their daily calorie target.
+        Target is taken from daily_totals (sourced from UserGoal.macro_targets /
+        UserProfile.goal_calories via consumption service) with a DB fallback.
+        """
+        calories_consumed = daily_totals.get("total_calories", 0)
 
-        protein_consumed = daily_totals.get("protein_g", 0)
+        # Primary: target passed through from consumption service (already from DB)
+        target_calories = daily_totals.get("target_calories", 0)
 
-        goal = await self.user_profile_repo.get_active_goal(user_id)
-        # UserGoal stores macros in macro_targets JSON, not as direct attributes
-        protein_target = 50  # default
-        if goal and goal.macro_targets:
-            protein_target = goal.macro_targets.get("protein_g", 50)
+        # DB fallback if not present in daily_totals
+        if not target_calories:
+            goal = await self.user_profile_repo.get_active_goal(user_id)
+            profile = await self.user_profile_repo.get_profile(user_id)
+            if goal and goal.macro_targets and profile and profile.goal_calories:
+                target_calories = profile.goal_calories
+            else:
+                target_calories = 2000  # safe fallback
 
-        if protein_consumed >= protein_target:
+        if target_calories > 0 and calories_consumed >= target_calories * 0.8:
             achievement_type = "nutrition_target"
 
             dedup_key = f"achievement_sent:{user_id}:{achievement_type}:{today}"
@@ -127,9 +166,15 @@ class AchievementService:
 
             await self.redis.setex(dedup_key, 86400, "1")
 
+            percentage = round(calories_consumed / target_calories * 100)
             return {
                 "type": achievement_type,
-                "message": f"Protein goal achieved! Hit {int(protein_consumed)}g target!"
+                "name": "Nutrition Target Hit!",
+                "description": f"Reached {percentage}% of daily calorie goal",
+                "message": (
+                    f"Great work! You've hit {percentage}% of your "
+                    f"{int(target_calories)} kcal daily target!"
+                ),
             }
 
         return None

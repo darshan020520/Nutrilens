@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Search, LogOut, User, Settings } from "lucide-react";
+import { Bell, Search, LogOut, User, Settings, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,12 +23,13 @@ import { clearSession, getUserEmail } from "@/core/auth/sessionStore";
 
 export function TopBar() {
   const router = useRouter();
-  useTrackingSocket(true);
+  // useTrackingSocket(true);  // WebSocket disabled temporarily
 
   const items = useNotificationStore((state) => state.items);
   const unread = useNotificationStore((state) => state.unreadCount);
   const markRead = useNotificationStore((state) => state.markRead);
   const clearAll = useNotificationStore((state) => state.clearAll);
+  const dismissAt = useNotificationStore((state) => state.dismissAt);
 
   const email = getUserEmail() || "user@example.com";
   const initials = email.split("@")[0].slice(0, 2).toUpperCase();
@@ -42,13 +43,13 @@ export function TopBar() {
     <header className="sticky top-0 z-20 h-16 border-b bg-background/95 backdrop-blur px-4 md:px-6 flex items-center gap-4">
       <div className="relative w-full max-w-lg">
         <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-        <Input aria-label="Global command search" placeholder="Search meals, recipes, inventory..." className="pl-9" />
+        <Input aria-label="Global command search" placeholder="Search meals, recipes, pantry..." className="pl-9" />
       </div>
 
       <div className="ml-auto flex items-center gap-2">
         <DropdownMenu onOpenChange={(open) => !open && markRead()}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative" aria-label="Open notifications">
               <Bell className="h-5 w-5" />
               {unread > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] text-white leading-4 text-center">
@@ -70,13 +71,24 @@ export function TopBar() {
                 )}
                 {items.map((item, idx) => (
                   <div key={`${item.event_type}-${idx}`} className="rounded-md border p-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-[10px]">{item.event_type}</Badge>
-                      {item.timestamp && (
-                        <span className="text-[11px] text-muted-foreground">
-                          {formatRelativeTime(item.timestamp)}
-                        </span>
-                      )}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Badge variant="outline" className="text-[10px]">{item.event_type}</Badge>
+                        {item.timestamp && (
+                          <span className="text-[11px] text-muted-foreground truncate">
+                            {formatRelativeTime(item.timestamp)}
+                          </span>
+                        )}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 shrink-0"
+                        onClick={() => dismissAt(idx)}
+                        aria-label="Dismiss notification"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                     <p className="text-sm">{item.message}</p>
                   </div>

@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Search, Clock, Utensils, ChevronLeft, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import { api, getEndpoint } from "@/lib/api";
 
 interface Recipe {
@@ -45,6 +46,7 @@ interface Recipe {
   };
   servings: number;
   instructions?: string[];
+  image_url?: string | null;
   ingredients?: Array<{
     item_name: string;
     quantity_grams: number;
@@ -61,6 +63,17 @@ interface RecipeFilters {
   max_prep_time: string;
 }
 
+type RecipeQueryParams = {
+  limit: number;
+  offset: number;
+  search?: string;
+  goal?: string;
+  cuisine?: string;
+  dietary_type?: string;
+  meal_time?: string;
+  max_prep_time?: number;
+};
+
 export function RecipeBrowser() {
   const [filters, setFilters] = useState<RecipeFilters>({
     search: "",
@@ -75,10 +88,10 @@ export function RecipeBrowser() {
   const pageSize = 20;
 
   // Fetch recipes
-  const { data: recipes, isLoading, error } = useQuery({
+  const { data: recipes, isLoading, error } = useQuery<Recipe[]>({
     queryKey: ["recipes", filters, page],
     queryFn: async () => {
-      const params: any = {
+      const params: RecipeQueryParams = {
         limit: pageSize,
         offset: page * pageSize,
       };
@@ -97,7 +110,7 @@ export function RecipeBrowser() {
   });
 
   // Fetch recipe details
-  const { data: recipeDetails } = useQuery({
+  const { data: recipeDetails } = useQuery<Recipe | null>({
     queryKey: ["recipe", selectedRecipe?.id],
     queryFn: async () => {
       if (!selectedRecipe?.id) return null;
@@ -273,9 +286,21 @@ export function RecipeBrowser() {
             className="cursor-pointer hover:shadow-lg transition-shadow"
             onClick={() => setSelectedRecipe(recipe)}
           >
-            {/* Placeholder Image */}
-            <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <Utensils className="h-12 w-12 text-primary/40" />
+            {/* Recipe Image */}
+            <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
+              {recipe.image_url ? (
+                <Image
+                  src={recipe.image_url}
+                  alt={recipe.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <Utensils className="h-12 w-12 text-primary/40" />
+                </div>
+              )}
             </div>
 
             <CardHeader className="pb-3">
@@ -381,6 +406,19 @@ export function RecipeBrowser() {
 
           {recipeDetails && (
             <div className="space-y-6">
+              {/* Hero Image */}
+              {recipeDetails.image_url && (
+                <div className="relative h-56 w-full overflow-hidden rounded-lg">
+                  <Image
+                    src={recipeDetails.image_url}
+                    alt={recipeDetails.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 768px"
+                  />
+                </div>
+              )}
+
               {/* Macros */}
               <div>
                 <h4 className="font-semibold mb-3">Nutrition (per serving)</h4>
@@ -417,7 +455,7 @@ export function RecipeBrowser() {
                 <div>
                   <h4 className="font-semibold mb-3">Ingredients</h4>
                   <ul className="space-y-2">
-                    {recipeDetails.ingredients.map((ing: any, idx: number) => (
+                    {recipeDetails.ingredients.map((ing, idx: number) => (
                       <li key={idx} className="text-sm flex justify-between">
                         <span>{ing.item_name}</span>
                         <span className="text-muted-foreground">

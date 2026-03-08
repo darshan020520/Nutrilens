@@ -13,6 +13,7 @@ const endpointMap: Record<string, string> = {
   "/onboarding/path-selection": "/onboarding/v2/path-selection",
   "/onboarding/preferences": "/onboarding/v2/preferences",
   "/onboarding/calculated-targets": "/onboarding/v2/calculated-targets",
+  "/onboarding/lock-targets": "/onboarding/v2/lock-targets",
 
   "/inventory/add-items": "/inventory/v2/add-items",
   "/inventory/confirm-item": "/inventory/v2/confirm-item",

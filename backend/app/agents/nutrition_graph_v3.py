@@ -330,9 +330,12 @@ def create_read_tools() -> List:
         try:
             user_context = runtime.context.user_context
             logger.info(f"[Tool:get_makeable_recipes] Called for user {user_context.user_id}")
+            print(f"\n[DEBUG Tool:get_makeable_recipes] >>> TOOL CALLED for user {user_context.user_id}")
 
             # Use UserContext method
             recipes = await user_context.get_makeable_recipes(limit=10)
+
+            print(f"[DEBUG Tool:get_makeable_recipes] raw recipes from UserContext: {recipes}")
 
             # Apply additional filters if specified
             if min_protein is not None or max_calories is not None:
@@ -358,10 +361,13 @@ def create_read_tools() -> List:
                 }
             }
 
-            return json.dumps(result, indent=2)
+            json_output = json.dumps(result, indent=2)
+            print(f"[DEBUG Tool:get_makeable_recipes] JSON returned to LLM:\n{json_output}")
+            return json_output
 
         except Exception as e:
             logger.error(f"[Tool:get_makeable_recipes] Error: {e}", exc_info=True)
+            print(f"[DEBUG Tool:get_makeable_recipes] EXCEPTION: {e}")
             return json.dumps({"error": str(e)})
 
     @tool
@@ -748,6 +754,8 @@ async def generate_response_node(
         logger.info(f"[Node:generate_response] Reserved {reservation} tokens, calling LLM with {len(messages)} messages")
 
         # GOVERNANCE STEP 2: Make LLM call
+        print(f"\n[DEBUG generate_response] Sending {len(messages)} messages to LLM")
+        print(f"[DEBUG generate_response] User query: {messages[-1].content if messages else 'N/A'}")
         response = await llm.ainvoke(messages)
 
         # GOVERNANCE STEP 3: Get actual usage and refund
@@ -760,8 +768,17 @@ async def generate_response_node(
                 await governor.refund(user_id, refund_amount)
                 logger.debug(f"[Node:generate_response] Actual={actual_tokens}, refunded={refund_amount}")
 
-        tool_calls_count = len(response.tool_calls) if hasattr(response, 'tool_calls') and response.tool_calls else 0
+        tool_calls = response.tool_calls if hasattr(response, 'tool_calls') and response.tool_calls else []
+        tool_calls_count = len(tool_calls)
         logger.info(f"[Node:generate_response] Response generated, tool_calls={tool_calls_count}, tokens={actual_tokens}")
+
+        if tool_calls:
+            print(f"[DEBUG generate_response] LLM decided to call tools: {[tc['name'] for tc in tool_calls]}")
+            for tc in tool_calls:
+                print(f"  tool={tc['name']}, args={tc.get('args', {})}")
+        else:
+            print(f"[DEBUG generate_response] LLM did NOT call any tools — responding directly")
+            print(f"[DEBUG generate_response] LLM response content: {response.content[:300] if response.content else '(empty)'}")
 
         return {"messages": [response]}
 
