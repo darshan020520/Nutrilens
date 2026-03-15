@@ -11,7 +11,7 @@ from typing import Optional
 import secrets
 import smtplib
 import ssl
-from urllib.parse import quote_plus
+from urllib.parse import quote
 from email.message import EmailMessage
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -125,15 +125,38 @@ class AuthService:
 
         return user
 
-    async def send_verification_email(self, user: User) -> None:
+    def _is_localhost_url(self, url: str) -> bool:
+        lowered = url.strip().lower()
+        return "localhost" in lowered or "127.0.0.1" in lowered
+
+    def _build_verification_url(self, token: str, request_base_url: Optional[str] = None) -> str:
+        encoded_token = quote(token, safe="")
+        environment = settings.environment.lower().strip()
+
+        frontend_url = settings.frontend_url.strip()
+        if frontend_url:
+            # In production, ignore localhost defaults to avoid sending unusable links.
+            if not (environment == "production" and self._is_localhost_url(frontend_url)):
+                return f"{frontend_url.rstrip('/')}/verify-email?token={encoded_token}"
+
+        backend_url = settings.backend_public_url.strip()
+        if not backend_url and request_base_url:
+            backend_url = request_base_url.strip()
+        if backend_url:
+            return f"{backend_url.rstrip('/')}/auth/v2/verify-email?token={encoded_token}"
+
+        if frontend_url:
+            return f"{frontend_url.rstrip('/')}/verify-email?token={encoded_token}"
+
+        raise ValueError("Set FRONTEND_URL or BACKEND_PUBLIC_URL to generate verification links")
+
+    async def send_verification_email(self, user: User, request_base_url: Optional[str] = None) -> None:
         token = secrets.token_urlsafe(48)
         updated_user = self.auth_repo.set_email_verification_token(user.id, token)
         if not updated_user:
             raise ValueError("Unable to generate verification token")
 
-        verification_url = (
-            f"{settings.frontend_url.rstrip('/')}/verify-email?token={quote_plus(token)}"
-        )
+        verification_url = self._build_verification_url(token, request_base_url=request_base_url)
 
         html_content = (
             "<div style='font-family: Arial, sans-serif; line-height: 1.6;'>"
@@ -196,12 +219,17 @@ class AuthService:
         subject: str,
         html_content: str,
     ) -> None:
-        if not settings.gmail_smtp_user or not settings.gmail_smtp_app_password:
+        smtp_user = settings.gmail_smtp_user.strip()
+        # Google shows app passwords grouped with spaces; SMTP login needs contiguous characters.
+        smtp_password = settings.gmail_smtp_app_password.replace(" ", "").strip()
+        from_email = settings.from_email.strip() if settings.from_email else smtp_user
+
+        if not smtp_user or not smtp_password:
             raise ValueError("Gmail SMTP credentials are not configured")
 
         msg = EmailMessage()
         msg["Subject"] = subject
-        msg["From"] = settings.from_email
+        msg["From"] = from_email
         msg["To"] = to_email
         msg.set_content("Please open this message in an HTML-capable email client.")
         msg.add_alternative(html_content, subtype="html")
@@ -209,7 +237,7 @@ class AuthService:
         context = ssl.create_default_context()
         with smtplib.SMTP(settings.gmail_smtp_host, settings.gmail_smtp_port) as server:
             server.starttls(context=context)
-            server.login(settings.gmail_smtp_user, settings.gmail_smtp_app_password)
+            server.login(smtp_user, smtp_password)
             server.send_message(msg)
 
     def verify_email_token(self, token: str) -> User:
@@ -235,13 +263,13 @@ class AuthService:
 
         return verified_user
 
-    async def resend_verification_email(self, email: str) -> None:
+    async def resend_verification_email(self, email: str, request_base_url: Optional[str] = None) -> None:
         user = self.auth_repo.get_by_email(email)
         if not user:
             return
         if user.email_verified:
             return
-        await self.send_verification_email(user)
+        await self.send_verification_email(user, request_base_url=request_base_url)
 
     def get_user_from_token(self, token: str) -> Optional[User]:
         payload = verify_token(token)

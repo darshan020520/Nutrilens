@@ -73,7 +73,6 @@ class MealLoggingOrchestrator:
         self.external_meal = external_meal_service
         self.inventory = inventory_service
         self.consumption = consumption_service
-        self.notification = notification_service
         self.event_publisher = event_publisher
         self.db = db
 

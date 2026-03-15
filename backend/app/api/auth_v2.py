@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 from pydantic import BaseModel, EmailStr, TypeAdapter, ValidationError
@@ -57,6 +57,7 @@ class MessageResponse(BaseModel):
 @router.post("/register", response_model=UserResponse)
 async def register(
     user_create: UserCreate,
+    request: Request,
     auth_service: AuthService = Depends(get_auth_service)
 ):
 
@@ -65,7 +66,7 @@ async def register(
         if settings.skip_email_verification:
             auth_service.auth_repo.mark_email_verified(user.id)
         else:
-            await auth_service.send_verification_email(user)
+            await auth_service.send_verification_email(user, request_base_url=str(request.base_url))
         return UserResponse.from_orm(user)
     except ValueError as e:
         status_code = (
@@ -173,12 +174,31 @@ async def verify_email(
         )
 
 
+@router.get("/verify-email", response_model=VerifyEmailResponse)
+async def verify_email_get(
+    token: str = Query(..., min_length=1),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    try:
+        auth_service.verify_email_token(token)
+        return VerifyEmailResponse(message="Email verified successfully. You can now log in.")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
 @router.post("/resend-verification", response_model=MessageResponse)
 async def resend_verification(
     payload: ResendVerificationRequest,
+    request: Request,
     auth_service: AuthService = Depends(get_auth_service)
 ):
-    await auth_service.resend_verification_email(str(payload.email))
+    await auth_service.resend_verification_email(
+        str(payload.email),
+        request_base_url=str(request.base_url)
+    )
     return MessageResponse(
         message="If an unverified account exists for this email, a verification link has been sent."
     )

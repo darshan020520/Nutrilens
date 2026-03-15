@@ -61,6 +61,7 @@ class Settings(BaseSettings):
 
     # Auth/email verification
     frontend_url: str = "http://localhost:3000"
+    backend_public_url: str = ""
     email_verification_expire_hours: int = 24
     skip_email_verification: bool = False  # Set to True to auto-verify all emails (testing only)
     email_verification_provider: str = "sendgrid"  # sendgrid | gmail

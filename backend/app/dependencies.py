@@ -404,8 +404,7 @@ def get_meal_tracking_service(
     return MealTrackingService(
         tracking_repo=tracking_repo,
         inventory_repo=inventory_repo,
-        analytics_repo=analytics_repo,
-        notification_service=notification_service
+        analytics_repo=analytics_repo
     )
 
 
@@ -753,12 +752,6 @@ async def get_openai_embedding_adapter():
         cache_adapter=cache_adapter
     )
 
-async def get_openai_transport(
-) -> 'LLMTransport':
-
-    openai_client = await get_openai_client()  # Singleton client
-
-    return OpenAITransport(client=openai_client)
 
 
 # ============================================================================
@@ -793,7 +786,6 @@ def get_meal_logging_orchestrator(
         external_meal_service=external_meal_service,
         inventory_service=inventory_service,
         consumption_service=consumption_service,
-        notification_service=notification_service,
         event_publisher=event_publisher,
         db=db
     )
@@ -872,7 +864,6 @@ async def build_whatsapp_context(user_id: int, db: Session):
         external_meal_service=external_meal_service,
         inventory_service=inventory_management_service,
         consumption_service=consumption_service,
-        notification_service=notification_service,
         event_publisher=event_publisher,
         db=db
     )
