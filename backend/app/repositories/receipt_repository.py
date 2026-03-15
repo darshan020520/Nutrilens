@@ -61,7 +61,8 @@ class ReceiptRepository(IReceiptRepository):
         items_count: Optional[int] = None,
         auto_added_count: Optional[int] = None,
         needs_confirmation_count: Optional[int] = None,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        result: Optional[dict] = None
     ) -> Optional[ReceiptScan]:
         try:
             receipt_scan = self.db.query(ReceiptScan).filter(
@@ -85,6 +86,9 @@ class ReceiptRepository(IReceiptRepository):
 
             if error_message is not None:
                 receipt_scan.error_message = error_message
+
+            if result is not None:
+                receipt_scan.result = result
 
             if status == "completed":
                 receipt_scan.processed_at = datetime.utcnow()
@@ -116,6 +120,18 @@ class ReceiptRepository(IReceiptRepository):
             logger.error(f"Error getting receipt history for user {user_id}: {e}")
             raise
 
+
+    def get_uploaded_receipts(self, limit: int) -> List[ReceiptScan]:
+        try:
+            receipts = self.db.query(ReceiptScan).filter(
+                ReceiptScan.status == 'uploaded'
+            ).with_for_update(skip_locked=True).limit(limit).all()
+
+            return receipts
+
+        except Exception as e:
+            logger.error(f"Error fetching uploaded receipts: {e}")
+            raise
 
     def create_pending_item(
         self,

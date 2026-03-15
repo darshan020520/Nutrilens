@@ -2,7 +2,7 @@
 Receipt Processing Service
 
 Orchestrates the complete receipt processing workflow:
-- Validation
+- Validation and queuing
 - Scanner microservice integration
 - Item normalization
 - Pending items storage
@@ -12,7 +12,6 @@ Orchestrates the complete receipt processing workflow:
 import logging
 import httpx
 from typing import Dict, List
-from fastapi import HTTPException
 
 from app.repositories.receipt_repository import ReceiptRepository
 from app.services.s3_service import S3Service
@@ -40,94 +39,92 @@ class ReceiptProcessingService:
         self.inventory_service = inventory_service
         self.scanner_url = scanner_url
 
-    async def process_receipt(
+    def validate_and_queue(
         self,
         receipt_id: int,
         s3_key: str,
-        user_id: int,
-        auto_add_threshold: float = 0.75
-    ) -> Dict:
+        user_id: int
+    ) -> int:
         """
-        Process uploaded receipt through complete workflow.
+        Validate uploaded receipt and mark as ready for processing.
 
         Steps:
-        1. Validate receipt (exists, belongs to user, correct status, s3_key matches)
-        2. Update status to 'processing'
-        3. Generate presigned URL and call scanner microservice
-        4. Normalize items via inventory service
-        5. Store unknown items in pending items table
-        6. Update receipt status to 'completed'
-        7. Return results
+        1. Validate receipt exists and belongs to user
+        2. Validate status is 'uploading' (idempotency guard)
+        3. Validate s3_key matches stored value (security check)
+        4. Update status to 'uploaded' for worker to pick up
 
         Args:
             receipt_id: Receipt scan ID
-            s3_key: S3 key for uploaded image
+            s3_key: S3 key provided by client
             user_id: User ID for ownership validation
-            auto_add_threshold: Confidence threshold for auto-adding items
 
         Returns:
-            Dict with processing results:
-            {
-                "receipt_id": int,
-                "status": "success",
-                "image_url": str,
-                "total_items": int,
-                "auto_added_count": int,
-                "auto_added": [...],
-                "needs_confirmation_count": int,
-                "needs_confirmation": [...]
-            }
+            receipt_id
 
         Raises:
-            HTTPException: On validation errors or processing failures
+            ValueError: On validation failures
         """
-        # Step 1: Validate receipt exists and belongs to user
         receipt_scan = self.receipt_repo.get_receipt_scan(
             receipt_id=receipt_id,
             user_id=user_id
         )
 
         if not receipt_scan:
-            raise HTTPException(
-                status_code=404,
-                detail="Receipt not found"
-            )
+            raise ValueError("Receipt not found")
 
-        # Step 2: Verify receipt is in correct status
         if receipt_scan.status != 'uploading':
-            raise HTTPException(
-                status_code=400,
-                detail=f"Receipt cannot be processed. Current status: {receipt_scan.status}"
-            )
+            raise ValueError(f"Receipt cannot be processed. Current status: {receipt_scan.status}")
 
-        # Step 3: Validate s3_key matches what we gave them (security check)
         stored_s3_key = receipt_scan.s3_url.split('.amazonaws.com/')[-1]
         if stored_s3_key != s3_key:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid s3_key"
-            )
+            raise ValueError("Invalid s3_key")
 
-        logger.info(f"Validated receipt {receipt_id} for processing")
+        self.receipt_repo.update_receipt_scan_status(
+            receipt_id=receipt_id,
+            status='uploaded'
+        )
 
-        # Step 4: Update status to 'processing'
-        receipt_scan = self.receipt_repo.update_receipt_scan_status(
+        logger.info(f"Receipt {receipt_id} validated and queued for processing")
+        return receipt_id
+
+    async def execute_processing(
+        self,
+        receipt_id: int,
+        user_id: int,
+        s3_key: str,
+        auto_add_threshold: float = 0.75
+    ) -> None:
+        """
+        Execute full receipt processing. Called by worker task.
+
+        Steps:
+        1. Update status to 'processing'
+        2. Generate presigned URL and call scanner microservice
+        3. Normalize items via inventory service
+        4. Store unknown items in pending items table
+        5. Update receipt status to 'completed' with full result
+        6. On any failure update status to 'failed' with error details
+
+        Args:
+            receipt_id: Receipt scan ID
+            user_id: User ID
+            s3_key: S3 key of uploaded image
+            auto_add_threshold: Confidence threshold for auto-adding items
+        """
+        self.receipt_repo.update_receipt_scan_status(
             receipt_id=receipt_id,
             status='processing'
         )
 
-        logger.info(f"Updated receipt {receipt_id} to status 'processing'")
+        logger.info(f"Receipt {receipt_id} processing started")
 
         try:
-            # Step 5: Generate presigned READ URL for scanner microservice
             presigned_url = self.s3_service.generate_presigned_url(
                 s3_key=s3_key,
                 expiration=3600
             )
 
-            logger.info(f"Generated presigned READ URL for scanner")
-
-            # Step 6: Call receipt scanner microservice
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
                     f"{self.scanner_url}/scan",
@@ -137,10 +134,27 @@ class ReceiptProcessingService:
                 scanner_result = response.json()
 
             receipt_items = scanner_result.get("items", [])
-            logger.info(f"Receipt scanner found {len(receipt_items)} items")
+            logger.info(f"Receipt scanner found {len(receipt_items)} items for receipt {receipt_id}")
 
-            # Step 7: Normalize and process receipt items
-            logger.info(f"Normalizing {len(receipt_items)} items...")
+        except httpx.HTTPError as e:
+            self.receipt_repo.update_receipt_scan_status(
+                receipt_id=receipt_id,
+                status='failed',
+                error_message=f"SCAN_FAILED: {str(e)}"
+            )
+            logger.error(f"Receipt {receipt_id} scan failed: {e}")
+            return
+
+        except Exception as e:
+            self.receipt_repo.update_receipt_scan_status(
+                receipt_id=receipt_id,
+                status='failed',
+                error_message=f"SCAN_FAILED: {str(e)}"
+            )
+            logger.error(f"Receipt {receipt_id} scan error: {e}")
+            return
+
+        try:
             processing_result = await self.inventory_service.process_receipt_items(
                 user_id=user_id,
                 receipt_items=receipt_items,
@@ -150,49 +164,37 @@ class ReceiptProcessingService:
             auto_added = processing_result["auto_added"]
             needs_confirmation = processing_result["needs_confirmation"]
 
-            logger.info(f"Processing complete: {len(auto_added)} auto-added, {len(needs_confirmation)} need confirmation")
+            logger.info(f"Receipt {receipt_id}: {len(auto_added)} auto-added, {len(needs_confirmation)} need confirmation")
 
-            # Step 8: Store unknown items (no item_id) in pending items table
             unknown_items_count = 0
             for item in needs_confirmation:
-                # Check if this is an unknown item (no item_id means not in database)
                 if not item.get('item_id'):
-                    # Extract data from failed normalization result
                     extracted = item.get('extracted', {})
                     item_name = extracted.get('item_text', '') or item.get('input', 'Unknown')
                     quantity = extracted.get('quantity', 0)
                     unit = extracted.get('unit', '')
 
-                    # Create pending item for admin enrichment
                     self.receipt_repo.create_pending_item(
                         receipt_scan_id=receipt_id,
                         item_name=item_name,
                         quantity=quantity,
                         unit=unit,
-                        suggested_item_id=None,  # Unknown item - no suggestion
+                        suggested_item_id=None,
                         confidence=item.get('confidence', 0.0)
                     )
                     unknown_items_count += 1
-                    logger.info(f"Created pending item for unknown: {item_name}")
 
             if unknown_items_count > 0:
-                logger.info(f"Stored {unknown_items_count} unknown items in pending items table")
+                logger.info(f"Receipt {receipt_id}: stored {unknown_items_count} unknown items")
 
-            # Step 9: Update receipt status to completed
-            receipt_scan = self.receipt_repo.update_receipt_scan_status(
+            receipt_scan = self.receipt_repo.get_receipt_scan(
                 receipt_id=receipt_id,
-                status='completed',
-                items_count=len(receipt_items),
-                auto_added_count=len(auto_added),
-                needs_confirmation_count=len(needs_confirmation)
+                user_id=user_id
             )
 
-            logger.info(f"Receipt {receipt_id} processing completed successfully")
-
-            # Step 10: Return results
-            return {
-                "receipt_id": receipt_scan.id,
-                "status": "success",
+            full_result = {
+                "receipt_id": receipt_id,
+                "status": "completed",
                 "image_url": receipt_scan.s3_url,
                 "total_items": len(receipt_items),
                 "auto_added_count": len(auto_added),
@@ -201,30 +203,21 @@ class ReceiptProcessingService:
                 "needs_confirmation": needs_confirmation
             }
 
-        except httpx.HTTPError as e:
-            # Mark as failed
             self.receipt_repo.update_receipt_scan_status(
                 receipt_id=receipt_id,
-                status='failed',
-                error_message=f"Receipt scanner error: {str(e)}"
+                status='completed',
+                items_count=len(receipt_items),
+                auto_added_count=len(auto_added),
+                needs_confirmation_count=len(needs_confirmation),
+                result=full_result
             )
 
-            logger.error(f"Receipt scanner HTTP error: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Receipt scanner failed: {str(e)}"
-            )
+            logger.info(f"Receipt {receipt_id} processing completed successfully")
 
         except Exception as e:
-            # Mark as failed
             self.receipt_repo.update_receipt_scan_status(
                 receipt_id=receipt_id,
                 status='failed',
-                error_message=str(e)
+                error_message=f"PROCESSING_FAILED: {str(e)}"
             )
-
-            logger.error(f"Receipt processing error: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Receipt processing failed: {str(e)}"
-            )
+            logger.error(f"Receipt {receipt_id} post-processing error: {e}")

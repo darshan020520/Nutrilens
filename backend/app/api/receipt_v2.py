@@ -1,5 +1,6 @@
 from app.infrastructure.normalization.adapters.embedding_adapter import EmbeddingAdapter
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import uuid
 from typing import List, Dict
@@ -46,15 +47,17 @@ class ProcessReceiptRequest(BaseModel):
 
 
 class ProcessReceiptResponse(BaseModel):
-    """Response for process receipt"""
+    """Response for process receipt — receipt queued for async processing"""
     receipt_id: int
     status: str
-    image_url: str
-    total_items: int
-    auto_added_count: int
-    auto_added: List[Dict]
-    needs_confirmation_count: int
-    needs_confirmation: List[Dict]
+
+
+class ReceiptStatusResponse(BaseModel):
+    """Response for receipt status polling"""
+    receipt_id: int
+    status: str
+    result: Optional[Dict] = None
+    error_message: Optional[str] = None
 
 
 class ConfirmItemsRequest(BaseModel):
@@ -108,14 +111,41 @@ async def process_receipt(
     current_user: User = Depends(get_current_user),
     receipt_service: ReceiptProcessingService = Depends(get_receipt_processing_service)
 ):
+    try:
+        receipt_id = receipt_service.validate_and_queue(
+            receipt_id=request.receipt_id,
+            s3_key=request.s3_key,
+            user_id=current_user.id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    result = await receipt_service.process_receipt(
-        receipt_id=request.receipt_id,
-        s3_key=request.s3_key,
+    return JSONResponse(
+        status_code=202,
+        content={"receipt_id": receipt_id, "status": "uploaded"}
+    )
+
+
+@router.get("/{receipt_id}/status", response_model=ReceiptStatusResponse)
+async def get_receipt_status(
+    receipt_id: int,
+    current_user: User = Depends(get_current_user),
+    receipt_repo: ReceiptRepository = Depends(get_receipt_repository)
+):
+    receipt_scan = receipt_repo.get_receipt_scan(
+        receipt_id=receipt_id,
         user_id=current_user.id
     )
 
-    return ProcessReceiptResponse(**result)
+    if not receipt_scan:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+
+    return ReceiptStatusResponse(
+        receipt_id=receipt_scan.id,
+        status=receipt_scan.status,
+        result=receipt_scan.result,
+        error_message=receipt_scan.error_message
+    )
 
 
 @router.get("/{receipt_id}/pending")

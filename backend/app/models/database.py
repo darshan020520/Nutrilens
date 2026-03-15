@@ -414,13 +414,14 @@ class ReceiptScan(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     s3_url = Column(Text, nullable=False)
-    status = Column(String(20), default="processing")  # processing, completed, failed
+    status = Column(String(20), default="uploading")  # uploading, uploaded, processing, completed, failed
     items_count = Column(Integer, nullable=True)
     auto_added_count = Column(Integer, nullable=True)
     needs_confirmation_count = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     processed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
+    result = Column(JSON, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="receipt_scans")

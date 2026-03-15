@@ -73,7 +73,8 @@ class IReceiptRepository(ABC):
         items_count: Optional[int] = None,
         auto_added_count: Optional[int] = None,
         needs_confirmation_count: Optional[int] = None,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        result: Optional[dict] = None
     ) -> Optional[ReceiptScan]:
         """
         Update receipt scan status and counts.
@@ -82,14 +83,30 @@ class IReceiptRepository(ABC):
 
         Args:
             receipt_id: Receipt scan ID
-            status: New status ("processing", "completed", "failed")
+            status: New status ("uploading", "uploaded", "processing", "completed", "failed")
             items_count: Total items found
             auto_added_count: Items auto-added to inventory
             needs_confirmation_count: Items needing confirmation
             error_message: Error message if failed
+            result: Full processing result JSON stored on completion
 
         Returns:
             Updated ReceiptScan with fresh data from DB, None if not found
+        """
+        pass
+
+    @abstractmethod
+    def get_uploaded_receipts(self, limit: int) -> List[ReceiptScan]:
+        """
+        Get receipts in uploaded state for worker processing.
+
+        Uses FOR UPDATE SKIP LOCKED to safely handle multiple worker instances.
+
+        Args:
+            limit: Maximum number of receipts to fetch
+
+        Returns:
+            List of ReceiptScan in uploaded state
         """
         pass
 
