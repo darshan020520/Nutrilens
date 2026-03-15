@@ -13,7 +13,6 @@ from typing import Optional, Dict, List, Tuple
 from app.repositories.interfaces.tracking_repository import ITrackingRepository
 from app.repositories.interfaces.inventory_repository import IInventoryRepository
 from app.repositories.interfaces.consumption_analytics_repository import IConsumptionAnalyticsRepository
-from app.services.notification_service import NotificationService, NotificationPriority
 from app.models.database import MealLog, User
 from app.core.ist_datetime import now_ist_naive
 
@@ -38,8 +37,7 @@ class MealTrackingService:
         self,
         tracking_repo: ITrackingRepository,
         inventory_repo: IInventoryRepository,
-        analytics_repo: IConsumptionAnalyticsRepository,
-        notification_service: NotificationService
+        analytics_repo: IConsumptionAnalyticsRepository
     ):
         """
         Initialize meal tracking service.
@@ -53,7 +51,6 @@ class MealTrackingService:
         self.tracking_repo = tracking_repo
         self.inventory_repo = inventory_repo
         self.analytics_repo = analytics_repo
-        self.notification_service = notification_service
 
     # =========================================================================
     # CORE MEAL TRACKING

@@ -30,7 +30,6 @@ from app.services.meal_tracking_service import MealTrackingService
 from app.services.external_meal_service import ExternalMealService
 from app.services.inventory_management_service import InventoryManagementService
 from app.services.consumption_service_v2 import ConsumptionServiceV2
-from app.services.notification_service import NotificationService
 from app.infrastructure.events.event_publisher import EventPublisher
 from app.core.ist_datetime import today_ist
 
@@ -55,7 +54,6 @@ class MealLoggingOrchestrator:
         external_meal_service: ExternalMealService,
         inventory_service: InventoryManagementService,
         consumption_service: ConsumptionServiceV2,
-        notification_service: NotificationService,
         event_publisher: EventPublisher,
         db: Session
     ):
@@ -461,68 +459,6 @@ class MealLoggingOrchestrator:
         except Exception as e:
             logger.warning(f"Failed to publish meal skipped events: {e}")
 
-    # ===== Private Helper Methods - Notifications =====
-
-    async def _send_meal_logged_notifications(
-        self,
-        user_id: int,
-        meal_result: Dict,
-        inventory_status: Dict
-    ) -> None:
-        """Send notifications after meal logging."""
-        try:
-            # Send notification if inventory critical
-            critical_items = inventory_status.get("critical_items", [])
-            if critical_items:
-                # Fixed: Match NotificationService.send_inventory_alert signature
-                item_names = [item.get("item_name", "") for item in critical_items if isinstance(item, dict)]
-                await self.notification.send_inventory_alert(
-                    user_id=user_id,
-                    alert_type="low_stock",
-                    items=item_names
-                )
-        except Exception as e:
-            logger.warning(f"Failed to send meal logged notifications: {e}")
-
-    async def _send_external_meal_notifications(
-        self,
-        user_id: int,
-        external_result: Dict,
-        daily_summary: Dict
-    ) -> None:
-        """Send notifications after external meal logging."""
-        try:
-            # Send notification if over calorie target
-            total_calories = daily_summary.get("total_calories", 0)
-            target_calories = daily_summary.get("target_calories", 2000)
-
-            if total_calories > target_calories * 1.2:
-                await self.notification.send_calorie_alert(
-                    user_id=user_id,
-                    message=f"You're {int(total_calories - target_calories)} calories over your target",
-                    daily_summary=daily_summary
-                )
-        except Exception as e:
-            logger.warning(f"Failed to send external meal notifications: {e}")
-
-    async def _send_skip_pattern_notifications(
-        self,
-        user_id: int,
-        skip_patterns: Dict
-    ) -> None:
-        """Send notifications if skip patterns detected."""
-        try:
-            skip_rate = skip_patterns.get("skip_rate", 0)
-            if skip_rate > 0.3:  # More than 30% skip rate
-                await self.notification.send_pattern_alert(
-                    user_id=user_id,
-                    message=f"You've been skipping {int(skip_rate * 100)}% of meals recently",
-                    pattern_data=skip_patterns
-                )
-        except Exception as e:
-            logger.warning(f"Failed to send skip pattern notifications: {e}")
-
-    # ===== Private Helper Methods - Recommendations =====
 
     def _generate_daily_recommendations(
         self,

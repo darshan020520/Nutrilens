@@ -47,7 +47,6 @@ from app.services.meal_tracking_service import MealTrackingService
 from app.services.external_meal_service import ExternalMealService
 from app.services.inventory_management_service import InventoryManagementService
 from app.services.consumption_service_v2 import ConsumptionServiceV2
-from app.services.notification_service import NotificationService
 from app.orchestrators.meal_logging_orchestrator import MealLoggingOrchestrator
 from app.repositories.activity_repository import ActivityRepository
 from app.orchestrators.dashboard_orchestrator import DashboardOrchestrator
@@ -396,17 +395,10 @@ def get_user_context(
         onboarding_service=onboarding_service
     )
 
-
-def get_notification_service(db: Session = Depends(get_db)) -> NotificationService:
-
-    return NotificationService(db)
-
-
 def get_meal_tracking_service(
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
     inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
     analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
-    notification_service: NotificationService = Depends(get_notification_service)
 ) -> MealTrackingService:
 
     return MealTrackingService(
@@ -792,7 +784,6 @@ def get_meal_logging_orchestrator(
     external_meal_service: ExternalMealService = Depends(get_external_meal_service),
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
     consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
-    notification_service: NotificationService = Depends(get_notification_service),
     event_publisher: EventPublisher = Depends(get_event_publisher),
     db: Session = Depends(get_db)
 ) -> MealLoggingOrchestrator:
@@ -849,12 +840,10 @@ async def build_whatsapp_context(user_id: int, db: Session):
 
     # Services
     onboarding_service = OnboardingService(onboarding_repo=onboarding_repo)
-    notification_service = NotificationService(db)
     meal_tracking_service = MealTrackingService(
         tracking_repo=tracking_repo,
         inventory_repo=inventory_repo,
-        analytics_repo=analytics_repo,
-        notification_service=notification_service
+        analytics_repo=analytics_repo
     )
     inventory_management_service = InventoryManagementService(
         inventory_repo=inventory_repo,

@@ -1,25 +1,31 @@
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
+# Install only runtime system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
-    curl \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements from context (backend/)
-COPY requirements.txt /tmp/requirements.txt
+# Install Python dependencies first (better layer caching)
+COPY requirements.txt .
 RUN pip install --upgrade pip
-RUN pip install -r /tmp/requirements.txt
+RUN pip install -r requirements.txt
 
-# Copy the backend app into container
-COPY . /app
+# Copy only required runtime directories
+COPY app/ ./app
+COPY templates/ ./templates
+
+# Create non-root user
+RUN useradd -m appuser
+USER appuser
 
 EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

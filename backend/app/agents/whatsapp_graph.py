@@ -1,15 +1,3 @@
-"""
-WhatsApp Nutrition Bot - LangGraph Implementation
-
-Independent graph for WhatsApp interactions with:
-- 4 read-only tools (meal plan, nutrition stats, inventory, expiring items)
-- 2 write tools with HITL via interrupt() (log planned meal, log external meal)
-- Same architecture as nutrition_graph_v3.py (context_schema, ToolRuntime, single ToolNode)
-- DI via WhatsAppContextSchema
-
-Author: NutriLens AI Team
-"""
-
 from typing import TypedDict, Annotated, Sequence, Optional, Dict, Any, List, Literal
 from dataclasses import dataclass
 import operator

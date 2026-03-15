@@ -17,17 +17,11 @@ class Settings(BaseSettings):
     redis_db: int = 0
 
     # MongoDB (for agent state & conversation history)
-    mongodb_host: str = "mongodb"
-    mongodb_port: int = 27017
-    mongodb_user: str = "nutri"
-    mongodb_password: str = "nutri"
-    mongodb_db: str = "nutrilens_agent"
-
-    # MinIO
-    minio_endpoint: str
-    minio_access_key: str
-    minio_secret_key: str
-    minio_bucket: str
+    mongodb_host: str
+    mongodb_port: int
+    mongodb_user: str
+    mongodb_password: str
+    mongodb_db: str
 
     # Secret
     secret_key: str
@@ -46,8 +40,6 @@ class Settings(BaseSettings):
 
     #JWT
     access_token_expire_minutes: int = 30
-
-    base_dir: str
 
     # AWS S3 (for receipt images)
     s3_access_key: str
