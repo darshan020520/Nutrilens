@@ -152,7 +152,9 @@ class NotificationWorker:
             # Find meals that need reminders (30 minutes from now).
             # Window is ±3min (6min total) so consecutive 5-min cron runs have 1-min
             # overlap — dedup below ensures each meal only fires once.
-            reminder_time = datetime.utcnow() + timedelta(minutes=30)
+            from pytz import timezone as pytz_timezone
+            IST = pytz_timezone("Asia/Kolkata")
+            reminder_time = datetime.now(IST).replace(tzinfo=None) + timedelta(minutes=30)
             reminder_window_start = reminder_time - timedelta(minutes=3)
             reminder_window_end = reminder_time + timedelta(minutes=3)
 
@@ -173,7 +175,7 @@ class NotificationWorker:
                         continue
                     await self.redis.setex(dedup_key, 7200, "1")  # 2-hour TTL
 
-                    time_until = int((meal.planned_datetime - datetime.utcnow()).total_seconds() / 60)
+                    time_until = int((meal.planned_datetime - datetime.now(IST).replace(tzinfo=None)).total_seconds() / 60)
 
                     await self.event_publisher.publish(
                         event_type="scheduled_meal_reminder",

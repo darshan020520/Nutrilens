@@ -1,0 +1,6 @@
+🛒 *Inventory Alert*
+
+Hey {{ user_name }}! {{ message }}
+
+{{ item_count }} item(s) need attention. Check your inventory to restock! 🏪
+— NutriLens

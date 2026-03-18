@@ -133,6 +133,48 @@ class IAuthRepository(ABC):
         pass
 
     @abstractmethod
+    def get_notification_preferences(self, user_id: int) -> Optional[NotificationPreference]:
+        """
+        Get notification preferences for a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            NotificationPreference if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    def update_notification_preferences(self, user_id: int, updates: dict) -> Optional[NotificationPreference]:
+        """
+        Update notification preferences for a user.
+
+        Args:
+            user_id: User ID
+            updates: Dict of fields to update (enabled_providers, enabled_types,
+                     quiet_hours_start, quiet_hours_end, timezone)
+
+        Returns:
+            Updated NotificationPreference, None if not found
+        """
+        pass
+
+    @abstractmethod
+    def update_whatsapp_number(self, user_id: int, whatsapp_number: str) -> Optional[NotificationPreference]:
+        """
+        Update the WhatsApp number for a user's notification preferences.
+
+        Args:
+            user_id: User ID
+            whatsapp_number: WhatsApp number in E.164 format (e.g. +916264547414)
+
+        Returns:
+            Updated NotificationPreference, None if not found
+        """
+        pass
+
+    @abstractmethod
     def get_all_active(self) -> List[User]:
         """
         Get all active users.

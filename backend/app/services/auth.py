@@ -285,3 +285,21 @@ class AuthService:
 
     def update_last_login(self, user_id: int) -> Optional[User]:
         return self.auth_repo.update_last_login(user_id)
+
+    def get_notification_preferences(self, user_id: int):
+        pref = self.auth_repo.get_notification_preferences(user_id)
+        if not pref:
+            raise ValueError("Notification preferences not found for user")
+        return pref
+
+    def update_notification_preferences(self, user_id: int, updates: dict):
+        pref = self.auth_repo.update_notification_preferences(user_id, updates)
+        if not pref:
+            raise ValueError("Notification preferences not found for user")
+        return pref
+
+    def update_whatsapp_number(self, user_id: int, whatsapp_number: str):
+        pref = self.auth_repo.update_whatsapp_number(user_id, whatsapp_number)
+        if not pref:
+            raise ValueError("Notification preferences not found for user")
+        return pref

@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-worker
+  namespace: nutrilens
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-worker
+  template:
+    metadata:
+      labels:
+        app: notification-worker
+    spec:
+      containers:
+      - name: notification-worker
+        image: darshan0220/nutrilens-api:latest1
+        imagePullPolicy: Always
+        command: ["python", "-m", "app.workers.notification_worker", "producer"]
+        envFrom:
+        - secretRef:
+            name: nutrilens-secrets
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-processor
+  namespace: nutrilens
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-processor
+  template:
+    metadata:
+      labels:
+        app: notification-processor
+    spec:
+      containers:
+      - name: notification-processor
+        image: darshan0220/nutrilens-api:latest1
+        imagePullPolicy: Always
+        command: ["python", "-m", "app.workers.notification_worker", "consumer"]
+        envFrom:
+        - secretRef:
+            name: nutrilens-secrets
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: receipt-worker
+  namespace: nutrilens
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: receipt-worker
+  template:
+    metadata:
+      labels:
+        app: receipt-worker
+    spec:
+      containers:
+      - name: receipt-worker
+        image: darshan0220/nutrilens-api:latest1
+        imagePullPolicy: Always
+        command: ["python", "-m", "app.workers.receipt_worker"]
+        envFrom:
+        - secretRef:
+            name: nutrilens-secrets

@@ -1,0 +1,8 @@
+⚠️ *Low Stock Alert*
+
+Hey {{ user_name }}! The following items are running low:
+
+{% for item in low_stock_items %}- {{ item.name }}: {{ item.quantity }} {{ item.unit }} remaining
+{% endfor %}
+Time to restock! 🛒
+— NutriLens

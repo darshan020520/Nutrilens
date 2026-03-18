@@ -941,7 +941,7 @@ class IntelligentInventoryServiceV2:
     ) -> Dict:
 
         try:
-            normalized_results = await self.normalizer.process_extracted_items(receipt_items)
+            normalized_results = await self.normalizer.process_extracted_items(receipt_items, user_id=user_id)
 
             auto_added = []
             needs_confirmation = []

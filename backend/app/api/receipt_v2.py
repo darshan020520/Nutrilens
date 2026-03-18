@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import uuid
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 from pydantic import BaseModel
 import logging

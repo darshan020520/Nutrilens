@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: nutrilens-api
-        image: darshan0220/nutrilens-api:latest
+        image: darshan0220/nutrilens-api:latest1
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
         envFrom:

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     redis_host: str
     redis_port: int
     redis_db: int = 0
+    redis_password: str = ""
 
     # MongoDB (for agent state & conversation history)
     mongodb_host: str

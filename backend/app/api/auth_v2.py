@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 from pydantic import BaseModel, EmailStr, TypeAdapter, ValidationError
+from typing import List, Optional
 import logging
 from app.models.database import User
 from app.schemas.user import UserCreate, UserResponse
@@ -16,6 +17,31 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth/v2", tags=["auth-v2"])
+
+
+class WhatsAppNumberRequest(BaseModel):
+    whatsapp_number: str
+
+
+class NotificationPreferencesResponse(BaseModel):
+    enabled_providers: List[str]
+    enabled_types: List[str]
+    quiet_hours_start: int
+    quiet_hours_end: int
+    timezone: str
+    whatsapp_number: Optional[str]
+    phone_number: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class NotificationPreferencesUpdateRequest(BaseModel):
+    enabled_providers: Optional[List[str]] = None
+    enabled_types: Optional[List[str]] = None
+    quiet_hours_start: Optional[int] = None
+    quiet_hours_end: Optional[int] = None
+    timezone: Optional[str] = None
 
 
 class LoginResponse(BaseModel):
@@ -187,6 +213,61 @@ async def verify_email_get(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.get("/notification-preferences", response_model=NotificationPreferencesResponse)
+async def get_notification_preferences(
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    try:
+        pref = auth_service.get_notification_preferences(current_user.id)
+        return NotificationPreferencesResponse(
+            enabled_providers=pref.enabled_providers or [],
+            enabled_types=pref.enabled_types or [],
+            quiet_hours_start=pref.quiet_hours_start,
+            quiet_hours_end=pref.quiet_hours_end,
+            timezone=pref.timezone or "UTC",
+            whatsapp_number=pref.whatsapp_number,
+            phone_number=pref.phone_number,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.put("/notification-preferences", response_model=NotificationPreferencesResponse)
+async def update_notification_preferences(
+    payload: NotificationPreferencesUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    try:
+        updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+        pref = auth_service.update_notification_preferences(current_user.id, updates)
+        return NotificationPreferencesResponse(
+            enabled_providers=pref.enabled_providers or [],
+            enabled_types=pref.enabled_types or [],
+            quiet_hours_start=pref.quiet_hours_start,
+            quiet_hours_end=pref.quiet_hours_end,
+            timezone=pref.timezone or "UTC",
+            whatsapp_number=pref.whatsapp_number,
+            phone_number=pref.phone_number,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.put("/whatsapp-number")
+async def update_whatsapp_number(
+    payload: WhatsAppNumberRequest,
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    try:
+        auth_service.update_whatsapp_number(current_user.id, payload.whatsapp_number)
+        return {"success": True, "message": "WhatsApp number updated successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/resend-verification", response_model=MessageResponse)

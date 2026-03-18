@@ -1,9 +1,10 @@
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.repositories.interfaces.meal_log_repository import IMealLogRepository
+from sqlalchemy import and_
 from app.models.database import MealLog, MealPlan, UserPath
 
 logger = logging.getLogger(__name__)

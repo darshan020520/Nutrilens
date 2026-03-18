@@ -89,6 +89,32 @@ class AuthRepository(IAuthRepository):
             self.db.rollback()
             raise
 
+    def get_notification_preferences(self, user_id: int) -> Optional[NotificationPreference]:
+        return self.db.query(NotificationPreference).filter(
+            NotificationPreference.user_id == user_id
+        ).first()
+
+    def update_notification_preferences(self, user_id: int, updates: dict) -> Optional[NotificationPreference]:
+        pref = self.get_notification_preferences(user_id)
+        if not pref:
+            return None
+        for key, value in updates.items():
+            setattr(pref, key, value)
+        self.db.commit()
+        self.db.refresh(pref)
+        return pref
+
+    def update_whatsapp_number(self, user_id: int, whatsapp_number: str) -> Optional[NotificationPreference]:
+        pref = self.db.query(NotificationPreference).filter(
+            NotificationPreference.user_id == user_id
+        ).first()
+        if not pref:
+            return None
+        pref.whatsapp_number = whatsapp_number
+        self.db.commit()
+        self.db.refresh(pref)
+        return pref
+
     def get_all_active(self) -> List[User]:
 
         return self.db.query(User).filter(User.is_active == True).all()

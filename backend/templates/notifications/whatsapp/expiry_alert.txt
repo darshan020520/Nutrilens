@@ -1,0 +1,8 @@
+⏰ *Expiry Alert*
+
+Hey {{ user_name }}! The following items are expiring soon:
+
+{% for item in expiring_items %}- {{ item.name }} expires on {{ item.expiry_date }}
+{% endfor %}
+Use them before they go to waste! 🥗
+— NutriLens
