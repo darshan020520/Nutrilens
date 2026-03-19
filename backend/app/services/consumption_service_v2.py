@@ -16,7 +16,8 @@ Refactored from: backend/app/services/consumption_services.py
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, date
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import logging
 
 from app.models.database import MealLog, Recipe, User
@@ -44,7 +45,7 @@ class ConsumptionServiceV2:
         tracking_repo: ITrackingRepository,
         inventory_repo: IInventoryRepository,
         analytics_repo: IConsumptionAnalyticsRepository,
-        db: Session,  # Keep for backward compatibility with existing code
+        db: AsyncSession,  # Async session for direct DB access when needed
         llm_orchestrator=None
     ):
         """
@@ -54,13 +55,13 @@ class ConsumptionServiceV2:
             tracking_repo: Repository for meal log data access
             inventory_repo: Repository for inventory data access
             analytics_repo: Repository for analytics queries
-            db: Database session (for backward compatibility)
+            db: Async database session (for direct DB access when needed)
             llm_orchestrator: Optional LLMOrchestrator for AI recommendations
         """
         self.tracking_repo = tracking_repo
         self.inventory_repo = inventory_repo
         self.analytics_repo = analytics_repo
-        self.db = db  # Keep for methods not yet refactored
+        self.db = db
         self.llm_orchestrator = llm_orchestrator
 
     # ===== PUBLIC API METHODS (5 required functions) =====
@@ -204,9 +205,10 @@ class ConsumptionServiceV2:
             }
         """
         try:
-            # Get recipe (using db for now, can be moved to recipe repository later)
+            # Get recipe
             from app.models.database import Recipe
-            recipe = self.db.query(Recipe).filter(Recipe.id == recipe_id).first()
+            recipe_result = await self.db.execute(select(Recipe).where(Recipe.id == recipe_id))
+            recipe = recipe_result.scalars().first()
 
             if not recipe:
                 return {
@@ -278,10 +280,8 @@ class ConsumptionServiceV2:
                     old_portion = meal_log.portion_multiplier or 1.0
 
                     # Update portion using repository
-                    # Note: This would need a new repository method
-                    # For now, using direct DB access
                     meal_log.portion_multiplier = portion_multiplier
-                    self.db.commit()
+                    await self.db.commit()
 
                     # Learn from portion adjustment
                     self._learn_portion_preference(user_id, meal_log.recipe_id, portion_multiplier)
@@ -424,7 +424,7 @@ class ConsumptionServiceV2:
 
     # ===== ADDITIONAL PUBLIC METHODS =====
 
-    async def get_today_summary(self, user_id: int) -> Dict[str, Any]:
+    async def get_today_summary(self, user_id: int, include_recommendations: bool = True) -> Dict[str, Any]:
         """
         Get today's consumption summary.
 
@@ -432,6 +432,7 @@ class ConsumptionServiceV2:
 
         Args:
             user_id: User ID
+            include_recommendations: Whether to generate AI recommendations (skip for dashboard)
 
         Returns:
             Dict: Today's summary with macros, targets, meals, compliance
@@ -442,8 +443,8 @@ class ConsumptionServiceV2:
             if not summary:
                 return {"success": False, "error": "Failed to get today's summary"}
 
-            # Add recommendations (AI-powered with fallback)
-            summary["recommendations"] = await self._get_daily_recommendations(summary, user_id)
+            if include_recommendations:
+                summary["recommendations"] = await self._get_daily_recommendations(summary, user_id)
 
             return {"success": True, **summary}
 
@@ -556,12 +557,12 @@ class ConsumptionServiceV2:
             "fiber_g": round(macros.get("fiber_g", 0) * multiplier, 1)
         }
 
-    def _calculate_remaining_targets(self, user_id: int, daily_totals: Dict) -> Dict[str, float]:
+    async def _calculate_remaining_targets(self, user_id: int, daily_totals: Dict) -> Dict[str, float]:
         """Calculate remaining macro targets for the day."""
-        # Get user targets (using db for now, could be moved to user repository)
-        user = self.db.query(User).filter(User.id == user_id).first()
+        user_result = await self.db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalars().first()
 
-        if not user or not user.nutrition_targets:
+        if not user or not hasattr(user, 'nutrition_targets') or not user.nutrition_targets:
             return {}
 
         targets = user.nutrition_targets
@@ -697,27 +698,29 @@ class ConsumptionServiceV2:
         """
         try:
             today = date.today()
+            since = today - timedelta(days=29)
+
+            # Single query: fetch all consumed meals in the last 30 days
+            meals = await self.tracking_repo.get_by_date_range(
+                user_id=user_id,
+                start_date=since,
+                end_date=today
+            )
+
+            # Build a set of dates that have at least one consumed meal
+            days_with_consumption = set()
+            for meal in meals:
+                if meal.consumed_datetime is not None and not meal.was_skipped:
+                    days_with_consumption.add(meal.consumed_datetime.date())
+
+            # Count consecutive days backwards from today
             streak = 0
-
-            for days_ago in range(30):  # Check last 30 days max
+            for days_ago in range(30):
                 check_date = today - timedelta(days=days_ago)
-
-                # Get all meal logs for this specific date using repository
-                meals_on_date = await self.tracking_repo.get_by_date(
-                    user_id=user_id,
-                    target_date=check_date
-                )
-
-                # Count consumed meals (not skipped, has consumed_datetime)
-                consumed_count = sum(
-                    1 for meal in meals_on_date
-                    if meal.consumed_datetime is not None and not meal.was_skipped
-                )
-
-                if consumed_count > 0:
+                if check_date in days_with_consumption:
                     streak += 1
                 else:
-                    break  # Streak broken
+                    break
 
             return streak
 

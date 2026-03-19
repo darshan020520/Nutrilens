@@ -1,11 +1,13 @@
 import logging
 import json
 import asyncio
+import time
 from typing import Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.core.redis_client import get_redis_client
-from app.models.database import User, get_db
+from app.models.database import User, AsyncSessionLocal
 from ..templates.template_renderer import TemplateRenderer
 from ..factories.channel_strategy_factory import ChannelStrategyFactory
 from .retry_config import RetryConfig
@@ -31,7 +33,7 @@ class NotificationConsumer:
         self.redis_client = get_redis_client()
         self.template_renderer = TemplateRenderer()
         self.channel_factory = ChannelStrategyFactory()
-        self.db_session_factory = db_session_factory or get_db
+        self.db_session_factory = db_session_factory or AsyncSessionLocal
         self.running = False
         self.current_task = None
         self.retry_count = 0
@@ -131,9 +133,9 @@ class NotificationConsumer:
             )
 
             # Get user from database
-            db = next(self.db_session_factory())
-            try:
-                user = db.query(User).filter(User.id == user_id).first()
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(User).where(User.id == user_id))
+                user = result.scalars().first()
 
                 if not user:
                     logger.error(f"User {user_id} not found, dropping notification")
@@ -141,9 +143,6 @@ class NotificationConsumer:
 
                 # Process and send
                 await self._send_notification(notification_data, user, db)
-
-            finally:
-                db.close()
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to deserialize notification: {e}")
@@ -154,10 +153,11 @@ class NotificationConsumer:
         self,
         notification_data: Dict[str, Any],
         user: User,
-        db: Session
+        db: AsyncSession
     ):
 
         try:
+            t_start = time.perf_counter()
             user_id = notification_data.get("user_id")
             notification_type = notification_data.get("type")
             available_channels = notification_data.get("channels", [])
@@ -201,7 +201,8 @@ class NotificationConsumer:
 
             if result["success"]:
                 logger.info(
-                    f"Successfully sent {notification_type} to user {user_id} via {preferred_channel}"
+                    "notification.sent type=%s user_id=%s channel=%s duration_ms=%.1f",
+                    notification_type, user_id, preferred_channel, (time.perf_counter() - t_start) * 1000
                 )
             else:
                 await self._handle_failure(

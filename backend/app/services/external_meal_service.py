@@ -12,7 +12,7 @@ Extracted from: backend/app/api/tracking.py:854-1095
 
 from typing import Dict, List, Optional
 from datetime import datetime, date
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 from sqlalchemy import and_, func
 
 from app.models.database import MealLog, Recipe, User

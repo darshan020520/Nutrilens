@@ -88,9 +88,9 @@ async def register(
 ):
 
     try:
-        user = auth_service.register_user(user_create)
+        user = await auth_service.register_user(user_create)
         if settings.skip_email_verification:
-            auth_service.auth_repo.mark_email_verified(user.id)
+            await auth_service.auth_repo.mark_email_verified(user.id)
         else:
             await auth_service.send_verification_email(user, request_base_url=str(request.base_url))
         return UserResponse.from_orm(user)
@@ -120,7 +120,7 @@ async def login(
         )
 
     try:
-        user = auth_service.authenticate_user(str(email), form_data.password)
+        user = await auth_service.authenticate_user(str(email), form_data.password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -133,7 +133,7 @@ async def login(
             detail=str(e),
         )
 
-    user = auth_service.update_last_login(user.id)
+    user = await auth_service.update_last_login(user.id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -221,7 +221,7 @@ async def get_notification_preferences(
     auth_service: AuthService = Depends(get_auth_service)
 ):
     try:
-        pref = auth_service.get_notification_preferences(current_user.id)
+        pref = await auth_service.get_notification_preferences(current_user.id)
         return NotificationPreferencesResponse(
             enabled_providers=pref.enabled_providers or [],
             enabled_types=pref.enabled_types or [],
@@ -243,7 +243,7 @@ async def update_notification_preferences(
 ):
     try:
         updates = {k: v for k, v in payload.model_dump().items() if v is not None}
-        pref = auth_service.update_notification_preferences(current_user.id, updates)
+        pref = await auth_service.update_notification_preferences(current_user.id, updates)
         return NotificationPreferencesResponse(
             enabled_providers=pref.enabled_providers or [],
             enabled_types=pref.enabled_types or [],

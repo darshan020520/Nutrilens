@@ -11,10 +11,10 @@ Run as:
 import asyncio
 import logging
 import signal
+from app.core.logger import configure_logging
+configure_logging()
 
-from sqlalchemy.orm import sessionmaker
-
-from app.models.database import engine
+from app.models.database import AsyncSessionLocal
 from app.repositories.receipt_repository import ReceiptRepository
 from app.repositories import InventoryRepository, UserProfileRepository, MealPlanRepository
 from app.repositories.recipe_repository import RecipeRepository
@@ -39,7 +39,6 @@ class ReceiptWorker:
     def __init__(self):
         self.should_stop = False
         self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
-        self.session_factory = sessionmaker(bind=engine)
 
         # Stateless singletons — initialized once in initialize()
         self.s3_service = None
@@ -63,49 +62,47 @@ class ReceiptWorker:
 
     async def _process_job(self, receipt_id: int, user_id: int, s3_key: str) -> None:
         async with self.semaphore:
-            db = self.session_factory()
-            try:
-                # DB-dependent objects created per job — cannot be shared across concurrent sessions
-                cache_adapter = RedisCacheAdapter(redis_client=self.redis_client)
-                item_repo = ItemRepository(db=db, cache_adapter=cache_adapter)
+            async with AsyncSessionLocal() as db:
+                try:
+                    # DB-dependent objects created per job — cannot be shared across concurrent sessions
+                    cache_adapter = RedisCacheAdapter(redis_client=self.redis_client)
+                    item_repo = ItemRepository(db=db, cache_adapter=cache_adapter)
 
-                normalizer = await create_normalizer(
-                    db=db,
-                    redis_client=self.redis_client,
-                    llm_orchestrator=self.llm_orchestrator,
-                    embedding_adapter=self.embedding_adapter,
-                    item_repo=item_repo
-                )
+                    normalizer = await create_normalizer(
+                        db=db,
+                        redis_client=self.redis_client,
+                        llm_orchestrator=self.llm_orchestrator,
+                        embedding_adapter=self.embedding_adapter,
+                        item_repo=item_repo
+                    )
 
-                inventory_service = IntelligentInventoryServiceV2(
-                    inventory_repo=InventoryRepository(db),
-                    recipe_repo=RecipeRepository(db),
-                    normalizer=normalizer,
-                    item_repo=item_repo,
-                    db=db,
-                    llm_orchestrator=self.llm_orchestrator,
-                    embedding_adapter=self.embedding_adapter,
-                    user_profile_repo=UserProfileRepository(db),
-                    meal_plan_repo=MealPlanRepository(db)
-                )
+                    inventory_service = IntelligentInventoryServiceV2(
+                        inventory_repo=InventoryRepository(db),
+                        recipe_repo=RecipeRepository(db),
+                        normalizer=normalizer,
+                        item_repo=item_repo,
+                        db=db,
+                        llm_orchestrator=self.llm_orchestrator,
+                        embedding_adapter=self.embedding_adapter,
+                        user_profile_repo=UserProfileRepository(db),
+                        meal_plan_repo=MealPlanRepository(db)
+                    )
 
-                receipt_service = ReceiptProcessingService(
-                    receipt_repo=ReceiptRepository(db),
-                    s3_service=self.s3_service,
-                    inventory_service=inventory_service,
-                    scanner_url=settings.receipt_scanner_url
-                )
+                    receipt_service = ReceiptProcessingService(
+                        receipt_repo=ReceiptRepository(db),
+                        s3_service=self.s3_service,
+                        inventory_service=inventory_service,
+                        scanner_url=settings.receipt_scanner_url
+                    )
 
-                await receipt_service.execute_processing(
-                    receipt_id=receipt_id,
-                    user_id=user_id,
-                    s3_key=s3_key
-                )
+                    await receipt_service.execute_processing(
+                        receipt_id=receipt_id,
+                        user_id=user_id,
+                        s3_key=s3_key
+                    )
 
-            except Exception as e:
-                logger.error(f"Unhandled error processing receipt {receipt_id}: {e}")
-            finally:
-                db.close()
+                except Exception as e:
+                    logger.error(f"Unhandled error processing receipt {receipt_id}: {e}")
 
     async def run(self):
         await self.initialize()
@@ -113,15 +110,14 @@ class ReceiptWorker:
 
         while not self.should_stop:
             try:
-                db = self.session_factory()
-                try:
+                async with AsyncSessionLocal() as db:
                     receipt_repo = ReceiptRepository(db)
-                    uploaded_receipts = receipt_repo.get_uploaded_receipts(limit=BATCH_SIZE)
+                    uploaded_receipts = await receipt_repo.get_uploaded_receipts(limit=BATCH_SIZE)
 
                     if uploaded_receipts:
                         for receipt in uploaded_receipts:
                             s3_key = receipt.s3_url.split('.amazonaws.com/')[-1]
-                            receipt_repo.update_receipt_scan_status(
+                            await receipt_repo.update_receipt_scan_status(
                                 receipt_id=receipt.id,
                                 status='processing'
                             )
@@ -133,9 +129,6 @@ class ReceiptWorker:
                                 )
                             )
                             logger.info(f"Queued receipt {receipt.id} for processing")
-
-                finally:
-                    db.close()
 
             except Exception as e:
                 logger.error(f"Receipt worker poll error: {e}")

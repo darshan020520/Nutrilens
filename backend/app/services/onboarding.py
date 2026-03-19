@@ -23,7 +23,7 @@ class OnboardingService:
     def __init__(self, onboarding_repo: IOnboardingRepository, llm_orchestrator=None):
         self.onboarding_repo = onboarding_repo
         self.llm_orchestrator = llm_orchestrator
-    
+
     ACTIVITY_MULTIPLIERS = {
         ActivityLevel.SEDENTARY: 1.2,
         ActivityLevel.LIGHTLY_ACTIVE: 1.375,
@@ -31,7 +31,7 @@ class OnboardingService:
         ActivityLevel.VERY_ACTIVE: 1.725,
         ActivityLevel.EXTRA_ACTIVE: 1.9
     }
-    
+
     GOAL_ADJUSTMENTS = {
         GoalType.MUSCLE_GAIN: 500,
         GoalType.FAT_LOSS: -500,
@@ -41,27 +41,23 @@ class OnboardingService:
         GoalType.GENERAL_HEALTH: 0
     }
 
-    # Science-based protein targets (g per kg body weight)
-    # Sources: ISSN position stand, WHO/FAO, sports nutrition guidelines
     PROTEIN_G_PER_KG = {
-        GoalType.MUSCLE_GAIN:    1.8,  # optimal for hypertrophy (1.6–2.2 range)
-        GoalType.WEIGHT_TRAINING: 1.6,  # maintain + grow
-        GoalType.FAT_LOSS:       2.0,  # high protein preserves lean mass while cutting
-        GoalType.BODY_RECOMP:    2.0,  # simultaneous goals need maximum protein sparing
-        GoalType.ENDURANCE:      1.4,  # recovery and adaptation
-        GoalType.GENERAL_HEALTH: 1.2,  # above WHO minimum (0.8), WHO+sports baseline
+        GoalType.MUSCLE_GAIN:    1.8,
+        GoalType.WEIGHT_TRAINING: 1.6,
+        GoalType.FAT_LOSS:       2.0,
+        GoalType.BODY_RECOMP:    2.0,
+        GoalType.ENDURANCE:      1.4,
+        GoalType.GENERAL_HEALTH: 1.2,
     }
 
-    # Fat as fraction of goal_calories
     FAT_RATIO = {
         GoalType.MUSCLE_GAIN:    0.25,
         GoalType.WEIGHT_TRAINING: 0.20,
-        GoalType.FAT_LOSS:       0.30,  # higher fat for hormonal health while cutting
+        GoalType.FAT_LOSS:       0.30,
         GoalType.BODY_RECOMP:    0.25,
         GoalType.ENDURANCE:      0.25,
         GoalType.GENERAL_HEALTH: 0.30,
     }
-   
 
     MEAL_WINDOWS = {
        PathType.IF_16_8: [
@@ -91,7 +87,7 @@ class OnboardingService:
            {"meal": "meal6", "start_time": "21:00", "end_time": "22:00"}
        ]
    }
-   
+
     @staticmethod
     def calculate_bmr(weight_kg: float, height_cm: float, age: int, sex: str) -> float:
        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age
@@ -100,81 +96,57 @@ class OnboardingService:
        else:
            bmr -= 161
        return round(bmr, 2)
-   
+
     @staticmethod
     def calculate_tdee(bmr: float, activity_level: ActivityLevel) -> float:
-       """Calculate Total Daily Energy Expenditure"""
        multiplier = OnboardingService.ACTIVITY_MULTIPLIERS[activity_level]
        return round(bmr * multiplier, 2)
-   
+
     @staticmethod
     def calculate_goal_calories(tdee: float, goal_type: GoalType) -> float:
-       """Calculate daily calorie target based on goal"""
        adjustment = OnboardingService.GOAL_ADJUSTMENTS[goal_type]
        return round(tdee + adjustment, 2)
-   
+
     @staticmethod
     def calculate_macro_targets_grams(
         goal_type: GoalType,
         weight_kg: float,
         goal_calories: float
     ) -> Dict[str, float]:
-        """
-        Calculate macro targets as absolute grams using science-based g/kg protein.
-
-        protein_g = weight_kg × PROTEIN_G_PER_KG[goal_type]
-        fat_g     = goal_calories × FAT_RATIO[goal_type] / 9   (fat = 9 kcal/g)
-        carbs_g   = remaining calories / 4                      (carbs = 4 kcal/g)
-        """
         protein_g = round(weight_kg * OnboardingService.PROTEIN_G_PER_KG[goal_type], 1)
         fat_g = round((goal_calories * OnboardingService.FAT_RATIO[goal_type]) / 9, 1)
         remaining = goal_calories - (protein_g * 4) - (fat_g * 9)
         carbs_g = round(max(remaining / 4, 0), 1)
         return {"protein_g": protein_g, "carbs_g": carbs_g, "fat_g": fat_g}
-   
+
     @staticmethod
     def get_meal_windows(path_type: PathType) -> List[Dict]:
-       """Get meal timing windows based on path"""
        return OnboardingService.MEAL_WINDOWS[path_type]
-   
+
     @staticmethod
     def get_meals_per_day(path_type: PathType) -> int:
-       """Get number of meals per day based on path"""
        return len(OnboardingService.MEAL_WINDOWS[path_type])
-   
-    def complete_profile(self, user_id: int, profile_data: dict) -> UserProfile:
 
+    async def complete_profile(self, user_id: int, profile_data: dict) -> UserProfile:
        bmr = self.calculate_bmr(
            profile_data['weight_kg'],
            profile_data['height_cm'],
            profile_data['age'],
            profile_data['sex']
        )
-
-       # Calculate TDEE (business logic - stays in service)
        tdee = self.calculate_tdee(bmr, profile_data['activity_level'])
-
-       # Add calculated values to profile data
        profile_data['bmr'] = bmr
        profile_data['tdee'] = tdee
-
-       # Create or update profile using injected repository
-       profile = self.onboarding_repo.create_or_update_profile(user_id, profile_data)
-
+       profile = await self.onboarding_repo.create_or_update_profile(user_id, profile_data)
        return profile
-   
+
     async def _calculate_macro_targets_ai(
         self,
         user_id: int,
         profile,
         goal_type: GoalType
     ) -> MacroTargetsAI:
-        """
-        Ask the LLM to compute personalised goal_calories + macro targets.
-        Raises on any failure so the caller can fall back to static logic.
-        """
         bmi = round(profile.weight_kg / ((profile.height_cm / 100) ** 2), 1)
-
         result: MacroTargetsAI = await self.llm_orchestrator.run(
             user_id=user_id,
             slug="calculate_macro_targets",
@@ -190,8 +162,6 @@ class OnboardingService:
             },
             response_model=MacroTargetsAI,
         )
-
-        # Validate sanity of AI response
         if result.goal_calories < 800 or result.goal_calories > 8000:
             raise ValueError(f"AI goal_calories={result.goal_calories} out of range")
         if result.protein_g < 30 or result.protein_g > profile.weight_kg * 4:
@@ -206,16 +176,13 @@ class OnboardingService:
                 f"AI macro calories {macro_cal:.0f} don't balance with "
                 f"goal_calories {result.goal_calories:.0f}"
             )
-
         return result
 
     async def set_user_goal(self, user_id: int, goal_data: dict) -> UserGoal:
-
-       profile = self.onboarding_repo.get_profile(user_id)
+       profile = await self.onboarding_repo.get_profile(user_id)
        if not profile:
            raise ValueError("Profile must be completed first")
 
-       # --- Primary: AI-personalised goal_calories + macro targets ---
        ai_result: Optional[MacroTargetsAI] = None
        if self.llm_orchestrator:
            try:
@@ -232,7 +199,6 @@ class OnboardingService:
                    f"[MacroAI] user={user_id} AI failed — falling back to static. Reason: {exc}"
                )
 
-       # --- Fallback: TDEE-based goal_calories + science-based g/kg macros ---
        if ai_result is not None:
            goal_calories = ai_result.goal_calories
            goal_data['macro_targets'] = {
@@ -250,18 +216,12 @@ class OnboardingService:
                goal_calories=goal_calories,
            )
 
-       self.onboarding_repo.update_profile_goal_calories(user_id, goal_calories)
-       goal = self.onboarding_repo.create_or_update_goal(user_id, goal_data)
+       await self.onboarding_repo.update_profile_goal_calories(user_id, goal_calories)
+       goal = await self.onboarding_repo.create_or_update_goal(user_id, goal_data)
        return goal
 
-    def lock_macro_targets(self, user_id: int, target_data: dict) -> UserGoal:
-       """
-       Lock user-approved macro/calorie targets after onboarding review.
-
-       This allows frontend to present AI/fallback targets, let user fine-tune,
-       and then persist the final lock-in values before onboarding completion.
-       """
-       goal = self.onboarding_repo.get_goal(user_id)
+    async def lock_macro_targets(self, user_id: int, target_data: dict) -> UserGoal:
+       goal = await self.onboarding_repo.get_goal(user_id)
        if not goal:
            raise ValueError("Goal must be completed before locking targets")
 
@@ -282,8 +242,8 @@ class OnboardingService:
        if abs(total_macro_cal - goal_calories) / goal_calories > 0.25:
            raise ValueError("Macro calories do not align with goal calories")
 
-       self.onboarding_repo.update_profile_goal_calories(user_id, goal_calories)
-       updated_goal = self.onboarding_repo.create_or_update_goal(
+       await self.onboarding_repo.update_profile_goal_calories(user_id, goal_calories)
+       updated_goal = await self.onboarding_repo.create_or_update_goal(
            user_id,
            {
                "goal_type": goal.goal_type,
@@ -294,33 +254,26 @@ class OnboardingService:
            },
        )
        return updated_goal
-   
-    def set_user_path(self, user_id: int, path_data: dict) -> UserPath:
 
+    async def set_user_path(self, user_id: int, path_data: dict) -> UserPath:
        meal_windows = path_data.get('custom_windows') or self.get_meal_windows(path_data['path_type'])
        meals_per_day = len(meal_windows)
-
-       # Create or update path using injected repository
-       path = self.onboarding_repo.create_or_update_path(user_id, path_data['path_type'], meal_windows, meals_per_day)
-
+       path = await self.onboarding_repo.create_or_update_path(user_id, path_data['path_type'], meal_windows, meals_per_day)
        return path
-   
-    def set_user_preferences(self, user_id: int, pref_data: dict) -> UserPreference:
 
-       preferences = self.onboarding_repo.create_or_update_preferences(user_id, pref_data)
-
+    async def set_user_preferences(self, user_id: int, pref_data: dict) -> UserPreference:
+       preferences = await self.onboarding_repo.create_or_update_preferences(user_id, pref_data)
        return preferences
-   
-    async def get_calculated_targets(self, user_id: int) -> dict:
 
-       profile = self.onboarding_repo.get_profile(user_id)
-       goal = self.onboarding_repo.get_goal(user_id)
-       path = self.onboarding_repo.get_path(user_id)
+    async def get_calculated_targets(self, user_id: int) -> dict:
+       profile = await self.onboarding_repo.get_profile(user_id)
+       goal = await self.onboarding_repo.get_goal(user_id)
+       path = await self.onboarding_repo.get_path(user_id)
 
        if not all([profile, goal, path]):
            raise ValueError("Onboarding incomplete")
 
-       mt = goal.macro_targets  # {"protein_g": ..., "carbs_g": ..., "fat_g": ...}
+       mt = goal.macro_targets
        total_macro_cal = (mt["protein_g"] * 4) + (mt["carbs_g"] * 4) + (mt["fat_g"] * 9)
        macro_ratios = {
            "protein": round(mt["protein_g"] * 4 / total_macro_cal, 3),
@@ -338,77 +291,57 @@ class OnboardingService:
            "meals_per_day": path.meals_per_day
        }
 
-
-    def complete_basic_info(self, user_id: int, profile_data: dict, onboarding_started_at: Optional[datetime]) -> UserProfile:
-
-        profile = self.complete_profile(user_id, profile_data)
-
+    async def complete_basic_info(self, user_id: int, profile_data: dict, onboarding_started_at: Optional[datetime]) -> UserProfile:
+        profile = await self.complete_profile(user_id, profile_data)
         step_updates = {
             "onboarding_started_at": onboarding_started_at or datetime.utcnow(),
             "basic_info_completed": True,
             "onboarding_current_step": 2
         }
-        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
-
+        await self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
         return profile
 
     async def complete_goal_selection(self, user_id: int, goal_data: dict) -> UserGoal:
-
         goal = await self.set_user_goal(user_id, goal_data)
-
-        # Update onboarding tracking
         step_updates = {
             "goal_selection_completed": True,
             "onboarding_current_step": 3
         }
-        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
-
+        await self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
         return goal
 
-    def complete_path_selection(self, user_id: int, path_data: dict) -> UserPath:
-
-        path = self.set_user_path(user_id, path_data)
-
-        # Update onboarding tracking
+    async def complete_path_selection(self, user_id: int, path_data: dict) -> UserPath:
+        path = await self.set_user_path(user_id, path_data)
         step_updates = {
             "path_selection_completed": True,
             "onboarding_current_step": 4
         }
-        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
-
+        await self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
         return path
 
-    def complete_preferences(self, user_id: int, pref_data: dict) -> UserPreference:
-
-        preferences = self.set_user_preferences(user_id, pref_data)
-
+    async def complete_preferences(self, user_id: int, pref_data: dict) -> UserPreference:
+        preferences = await self.set_user_preferences(user_id, pref_data)
         step_updates = {
             "preferences_completed": True,
             "onboarding_completed": True,
             "onboarding_completed_at": datetime.utcnow()
         }
-        self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
-
+        await self.onboarding_repo.update_user_onboarding_step(user_id, step_updates)
         return preferences
 
     async def get_goal_progress(self, user_id: int, current_streak: int) -> Dict[str, Any]:
-
         try:
-            # Get user profile and goal from repository
-            user_profile = self.onboarding_repo.get_profile(user_id)
-            user_goal = self.onboarding_repo.get_goal(user_id)
+            user_profile = await self.onboarding_repo.get_profile(user_id)
+            user_goal = await self.onboarding_repo.get_goal(user_id)
 
-            # Extract data with defaults
             current_weight = user_profile.weight_kg if user_profile else 70.0
             target_weight = getattr(user_goal, 'target_weight', None) if user_goal else None
             if target_weight is None:
                 target_weight = current_weight
             goal_type = user_goal.goal_type if user_goal else "maintain_weight"
 
-            # Calculate weight change
             weight_change = target_weight - current_weight
 
-            # Calculate progress percentage based on goal type
             if goal_type in ["lose_weight", "LOSE_WEIGHT", "fat_loss", "FAT_LOSS"]:
                 starting_weight = getattr(user_goal, 'starting_weight', current_weight) if user_goal else current_weight
                 total_to_lose = starting_weight - target_weight
@@ -420,7 +353,6 @@ class OnboardingService:
                 already_gained = current_weight - starting_weight
                 progress_pct = (already_gained / total_to_gain * 100) if total_to_gain > 0 else 0
             else:
-                # Maintain weight
                 progress_pct = 100.0 if abs(current_weight - target_weight) < 2 else 0
 
             return {
@@ -433,10 +365,7 @@ class OnboardingService:
             }
 
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Error getting goal progress: {str(e)}")
-            # Return defaults on error
             return {
                 "goal_type": "maintain_weight",
                 "current_weight": 70.0,

@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import asyncio
 import logging
 
 from app.services.consumption_service_v2 import ConsumptionServiceV2
@@ -33,10 +34,23 @@ class DashboardOrchestrator(BaseOrchestrator):
         self,
         user_id: int
     ) -> Dict[str, Any]:
+        import time
         try:
-            today_summary = await self.consumption.get_today_summary(user_id)
+            t0 = time.perf_counter()
+            today_summary, next_meal_info, inventory_status = await asyncio.gather(
+                self.consumption.get_today_summary(user_id, include_recommendations=False),
+                self.meal_plan.get_next_meal(user_id),
+                self.inventory.get_inventory_status(user_id, include_recommendations=False, include_low_stock=False),
+            )
+            logger.info("dashboard.gather_completed user_id=%s duration_ms=%.1f", user_id, (time.perf_counter() - t0) * 1000)
 
-            next_meal_info = await self.meal_plan.get_next_meal(user_id)
+            t1 = time.perf_counter()
+            current_streak = await self.consumption.calculate_streak(user_id)
+            logger.info("dashboard.streak_completed user_id=%s duration_ms=%.1f", user_id, (time.perf_counter() - t1) * 1000)
+
+            t2 = time.perf_counter()
+            goal_data = await self.onboarding.get_goal_progress(user_id, current_streak)
+            logger.info("dashboard.goal_progress_completed user_id=%s duration_ms=%.1f", user_id, (time.perf_counter() - t2) * 1000)
 
             meals_card = {
                 "meals_planned": today_summary.get("meals_planned", 0),
@@ -85,8 +99,6 @@ class DashboardOrchestrator(BaseOrchestrator):
                 )
             }
 
-            inventory_status = await self.inventory.get_inventory_status(user_id)
-
             inventory_card = {
                 "expiring_soon_count": len(inventory_status.get("expiring_soon", [])),
                 "low_stock_count": len(inventory_status.get("low_stock", [])),
@@ -94,10 +106,6 @@ class DashboardOrchestrator(BaseOrchestrator):
                 "total_items": inventory_status.get("total_items", 0)
             }
 
-
-            current_streak = await self.consumption.calculate_streak(user_id)
-
-            goal_data = await self.onboarding.get_goal_progress(user_id, current_streak)
 
             return {
                 "meals_card": meals_card,

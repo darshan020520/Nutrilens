@@ -13,8 +13,9 @@ Extracted from: backend/app/agents/tracking_agent.py:682-1311
 
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta, date
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+from sqlalchemy import select, and_, func
 from app.core.ist_datetime import now_ist_naive, to_ist_naive
 
 from app.models.database import MealLog, UserInventory, Item, Recipe, RecipeIngredient, User
@@ -42,7 +43,7 @@ class InventoryManagementService:
         self,
         inventory_repo: IInventoryRepository,
         tracking_repo: ITrackingRepository,
-        db: Session,
+        db: AsyncSession,
         llm_orchestrator=None
     ):
         """
@@ -51,7 +52,7 @@ class InventoryManagementService:
         Args:
             inventory_repo: Repository for inventory data access
             tracking_repo: Repository for meal log data access
-            db: Database session (for complex queries not in repositories)
+            db: Async database session (for complex queries not in repositories)
             llm_orchestrator: Optional LLMOrchestrator for AI recommendations
         """
         self.inventory_repo = inventory_repo
@@ -104,25 +105,29 @@ class InventoryManagementService:
         try:
             expiry_threshold = now_ist_naive() + timedelta(days=days_threshold)
 
-            # Base query for all inventory items with expiry dates
-            base_query = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams > 0,
-                    UserInventory.expiry_date.isnot(None)
+            # Base statement for all inventory items with expiry dates
+            base_stmt = (
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams > 0,
+                        UserInventory.expiry_date.isnot(None)
+                    )
                 )
             )
 
             # Apply date filter based on mode
             if filter_mode in ["date_only", "both"]:
-                inventory_items = base_query.filter(
-                    UserInventory.expiry_date <= expiry_threshold
-                ).all()
+                result = await self.db.execute(
+                    base_stmt.where(UserInventory.expiry_date <= expiry_threshold)
+                )
             else:
                 # For consumption_only, get all items to check consumption patterns
-                inventory_items = base_query.all()
+                result = await self.db.execute(base_stmt)
+
+            inventory_items = result.unique().scalars().all()
 
             # Get upcoming meal plans if consumption filtering is needed
             upcoming_meals_by_item = {}
@@ -260,15 +265,20 @@ class InventoryManagementService:
             # STEP 2: Get historical consumption data (last 30 days) - TREND DATA
             two_weeks_ago = datetime.utcnow() - timedelta(days=30)
 
-            recent_logs = self.db.query(MealLog).options(
-                joinedload(MealLog.recipe).joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
-            ).filter(
-                and_(
-                    MealLog.user_id == user_id,
-                    MealLog.consumed_datetime >= two_weeks_ago,
-                    MealLog.recipe_id.isnot(None)
+            logs_result = await self.db.execute(
+                select(MealLog)
+                .options(
+                    joinedload(MealLog.recipe).joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
                 )
-            ).all()
+                .where(
+                    and_(
+                        MealLog.user_id == user_id,
+                        MealLog.consumed_datetime >= two_weeks_ago,
+                        MealLog.recipe_id.isnot(None)
+                    )
+                )
+            )
+            recent_logs = logs_result.unique().scalars().all()
 
             # Calculate historical item usage patterns
             item_usage = {}
@@ -344,7 +354,8 @@ class InventoryManagementService:
 
             for item_id in all_items:
                 try:
-                    item = self.db.query(Item).filter(Item.id == item_id).first()
+                    item_result = await self.db.execute(select(Item).where(Item.id == item_id))
+                    item = item_result.scalars().first()
                     if not item:
                         continue
 
@@ -490,18 +501,23 @@ class InventoryManagementService:
         """
         try:
             # Query upcoming planned meals
-            upcoming_meals = self.db.query(MealLog).options(
-                joinedload(MealLog.recipe).joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
-            ).filter(
-                and_(
-                    MealLog.user_id == user_id,
-                    MealLog.planned_datetime <= until_date,
-                    MealLog.planned_datetime >= datetime.utcnow(),
-                    MealLog.consumed_datetime.is_(None),  # Not yet consumed
-                    MealLog.was_skipped == False,
-                    MealLog.recipe_id.isnot(None)
+            meals_result = await self.db.execute(
+                select(MealLog)
+                .options(
+                    joinedload(MealLog.recipe).joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
                 )
-            ).all()
+                .where(
+                    and_(
+                        MealLog.user_id == user_id,
+                        MealLog.planned_datetime <= until_date,
+                        MealLog.planned_datetime >= datetime.utcnow(),
+                        MealLog.consumed_datetime.is_(None),
+                        MealLog.was_skipped == False,
+                        MealLog.recipe_id.isnot(None)
+                    )
+                )
+            )
+            upcoming_meals = meals_result.unique().scalars().all()
 
             consumption_patterns = {}
 

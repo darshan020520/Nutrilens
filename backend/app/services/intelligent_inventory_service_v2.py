@@ -1,9 +1,9 @@
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, or_, select
 from app.core.datetime_utils import DateTimeHelper
-from app.models.database import UserInventory, Item, User, MealLog, UserProfile, Recipe, RecipeIngredient, SessionLocal
+from app.models.database import UserInventory, Item, User, MealLog, UserProfile, Recipe, RecipeIngredient, AsyncSessionLocal
 from app.repositories.interfaces.inventory_repository import IInventoryRepository
 from app.repositories.interfaces.recipe_repository import IRecipeRepository
 from app.repositories.interfaces import IUserProfileRepository
@@ -57,7 +57,7 @@ class IntelligentInventoryServiceV2:
         recipe_repo:  IRecipeRepository,
         normalizer: BatchNormalizer,
         item_repo: ItemRepository,
-        db: Session,
+        db: AsyncSession,
         llm_orchestrator=None,
         embedding_adapter=None,
         user_profile_repo: IUserProfileRepository = None,
@@ -109,7 +109,7 @@ class IntelligentInventoryServiceV2:
                 source=source
             )
 
-            self.db.commit()
+            await self.db.commit()
 
             batches = await self.inventory_repo.get_all_inventory_for_item(
                 user_id=user_id,
@@ -126,7 +126,7 @@ class IntelligentInventoryServiceV2:
 
         except Exception as e:
             logger.error(f"Error adding item: {str(e)}")
-            self.db.rollback()
+            await self.db.rollback()
             return {"success": False, "error": str(e)}
 
     async def bulk_add_from_restock(
@@ -170,7 +170,7 @@ class IntelligentInventoryServiceV2:
                         "error": str(e)
                     })
 
-            self.db.commit()
+            await self.db.commit()
             logger.info(f"Bulk add from restock: {len(added_items)} added, {len(failed_items)} failed for user {user_id}")
 
             return {
@@ -183,7 +183,7 @@ class IntelligentInventoryServiceV2:
             }
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Bulk add from restock failed: {str(e)}")
             raise
 
@@ -196,12 +196,15 @@ class IntelligentInventoryServiceV2:
 
         try:
 
-            inventory_item = self.db.query(UserInventory).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.item_id == item_id
+            result_q = await self.db.execute(
+                select(UserInventory).where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.item_id == item_id
+                    )
                 )
-            ).first()
+            )
+            inventory_item = result_q.scalars().first()
 
             if not inventory_item:
                 return {
@@ -210,7 +213,8 @@ class IntelligentInventoryServiceV2:
                     "remaining_quantity": 0
                 }
 
-            item = self.db.query(Item).filter(Item.id == item_id).first()
+            item_result = await self.db.execute(select(Item).where(Item.id == item_id))
+            item = item_result.scalars().first()
 
             if inventory_item.quantity_grams < quantity_grams:
                 deducted = inventory_item.quantity_grams
@@ -222,7 +226,7 @@ class IntelligentInventoryServiceV2:
                 warning = None
 
             inventory_item.last_updated = datetime.now(timezone.utc)
-            self.db.commit()
+            await self.db.commit()
 
             result = {
                 "success": True,
@@ -238,7 +242,7 @@ class IntelligentInventoryServiceV2:
 
         except Exception as e:
             logger.error(f"Error deducting item: {str(e)}")
-            self.db.rollback()
+            await self.db.rollback()
             return {
                 "success": False,
                 "error": str(e),
@@ -349,11 +353,11 @@ class IntelligentInventoryServiceV2:
                 'success_rate': len(results['successful']) / total_items if total_items else 0
             }
 
-            self.db.commit()
+            await self.db.commit()
 
         except Exception as e:
 
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
         return results
@@ -436,7 +440,7 @@ class IntelligentInventoryServiceV2:
         portion_multiplier: float = 1.0
     ) -> Dict:
 
-        ingredients = self.recipe_repo.get_ingredients_by_recipe_id(recipe_id)
+        ingredients = await self.recipe_repo.get_ingredients_by_recipe_id(recipe_id)
 
         deductions = []
         warnings = []
@@ -481,7 +485,7 @@ class IntelligentInventoryServiceV2:
             if inventory_item.quantity_grams < 50:
                 warnings.append(f"{ingredient.item.canonical_name} is running low")
 
-        self.db.commit()
+        await self.db.commit()
 
         return {
             'deductions': deductions,
@@ -489,12 +493,15 @@ class IntelligentInventoryServiceV2:
             'success': len(warnings) == 0
         }
 
-    async def get_inventory_status(self, user_id: int) -> Dict:
+    async def get_inventory_status(self, user_id: int, include_recommendations: bool = True, include_low_stock: bool = True) -> Dict:
+        import time
+        _t0 = time.perf_counter()
 
         inventory = await self.inventory_repo.get_all_for_user(
             user_id=user_id,
             include_zero_quantity=False
         )
+        logger.info("inventory_status.fetch_all user_id=%s items=%s duration_ms=%.1f", user_id, len(inventory) if inventory else 0, (time.perf_counter() - _t0) * 1000)
 
         if not inventory:
             return {
@@ -565,27 +572,35 @@ class IntelligentInventoryServiceV2:
                         nutritional_capacity[nutrient] += item.nutrition_per_100g[nutrient] * factor
 
         # Low stock: items where current inventory < meal plan requirement
-        low_stock = await self._calculate_low_stock(user_id)
+        if include_low_stock:
+            _t_low = time.perf_counter()
+            low_stock = await self._calculate_low_stock(user_id)
+            logger.info("inventory_status.low_stock user_id=%s duration_ms=%.1f", user_id, (time.perf_counter() - _t_low) * 1000)
+        else:
+            low_stock = []
 
         # Estimate days remaining based on user's calorie needs
-        # TODO: Create UserProfileRepository and replace this direct query
-        # For now, keeping this query as UserProfile repository doesn't exist yet
-        user_profile = self.db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        profile_result = await self.db.execute(
+            select(UserProfile).where(UserProfile.user_id == user_id)
+        )
+        user_profile = profile_result.scalars().first()
         if user_profile and user_profile.goal_calories:
             days_remaining = int(nutritional_capacity['calories'] / user_profile.goal_calories) if user_profile.goal_calories > 0 else 0
         else:
             days_remaining = int(nutritional_capacity['calories'] / 2000) if nutritional_capacity['calories'] > 0 else 0
 
-        # Generate AI recommendations
-        recommendations = await self._generate_recommendations(
-            inventory,
-            expiring_soon,
-            categories,
-            nutritional_capacity,
-            days_remaining,
-            user_id,
-            expired_items
-        )
+        if include_recommendations:
+            recommendations = await self._generate_recommendations(
+                inventory,
+                expiring_soon,
+                categories,
+                nutritional_capacity,
+                days_remaining,
+                user_id,
+                expired_items
+            )
+        else:
+            recommendations = []
 
         return {
             "total_items": total_items,
@@ -690,20 +705,24 @@ class IntelligentInventoryServiceV2:
 
     async def get_user_inventory(self, user_id: int, category: str = None, low_stock_only: bool = False, expiring_soon: bool = False):
 
-        query = self.db.query(UserInventory).filter(UserInventory.user_id == user_id)
+        stmt = select(UserInventory).where(UserInventory.user_id == user_id)
 
         if low_stock_only:
-            query = query.filter(UserInventory.quantity_grams < 100)
+            stmt = stmt.where(UserInventory.quantity_grams < 100)
 
         if expiring_soon:
             three_days_later = DateTimeHelper.now_utc() + timedelta(days=3)
-            query = query.filter(UserInventory.expiry_date <= three_days_later)
+            stmt = stmt.where(UserInventory.expiry_date <= three_days_later)
 
-        inventory_items = query.all()
+        result = await self.db.execute(stmt)
+        inventory_items = result.unique().scalars().all()
 
         items = []
         for inv in inventory_items:
-            item = self.db.query(Item).filter(Item.id == inv.item_id).first()
+            item_result = await self.db.execute(select(Item).where(Item.id == inv.item_id))
+            item = item_result.scalars().first()
+            if not item:
+                continue
             if category and item.category != category:
                 continue
 
@@ -798,7 +817,7 @@ class IntelligentInventoryServiceV2:
         if not recipe:
             return {'available': False, 'reason': 'Recipe not found'}
 
-        ingredients = self.recipe_repo.get_ingredients_by_recipe_id(recipe_id)
+        ingredients = await self.recipe_repo.get_ingredients_by_recipe_id(recipe_id)
 
         if not ingredients:
             return {
@@ -978,7 +997,7 @@ class IntelligentInventoryServiceV2:
                     logger.info(f"Needs confirmation: {item_name} (confidence: {confidence:.2f})")
 
 
-            self.db.commit()
+            await self.db.commit()
             logger.info(f"✅ Transaction committed - {len(auto_added)} items saved to inventory")
 
             return {
@@ -987,7 +1006,7 @@ class IntelligentInventoryServiceV2:
             }
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"❌ Transaction rolled back due to error: {str(e)}")
             logger.error(f"Error processing receipt items: {str(e)}")
             raise
@@ -1094,107 +1113,105 @@ class IntelligentInventoryServiceV2:
 
         SIMILARITY_THRESHOLD = 0.92
 
-        db: Session = SessionLocal()
-        try:
-            repo = RecipeRepository(db)
+        async with AsyncSessionLocal() as db:
+            try:
+                repo = RecipeRepository(db)
 
-            # Load existing titles + embeddings via repo
-            existing = await repo.get_titles_and_embeddings()
-            existing_titles = {title for title, _ in existing}
-            existing_vecs = []
-            for _, emb_str in existing:
-                if emb_str:
-                    try:
-                        existing_vecs.append(np.array(json.loads(emb_str), dtype=np.float32))
-                    except Exception:
-                        pass
+                # Load existing titles + embeddings via repo
+                existing = await repo.get_titles_and_embeddings()
+                existing_titles = {title for title, _ in existing}
+                existing_vecs = []
+                for _, emb_str in existing:
+                    if emb_str:
+                        try:
+                            existing_vecs.append(np.array(json.loads(emb_str), dtype=np.float32))
+                        except Exception:
+                            pass
 
-            def _is_near_duplicate(vec: "np.ndarray") -> bool:
-                if not existing_vecs:
-                    return False
-                matrix = np.stack(existing_vecs)
-                norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(vec) + 1e-9
-                return float((matrix @ vec / norms).max()) >= SIMILARITY_THRESHOLD
+                def _is_near_duplicate(vec: "np.ndarray") -> bool:
+                    if not existing_vecs:
+                        return False
+                    matrix = np.stack(existing_vecs)
+                    norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(vec) + 1e-9
+                    return float((matrix @ vec / norms).max()) >= SIMILARITY_THRESHOLD
 
-            def _embedding_text(s) -> str:
-                parts = [s.name]
-                if s.cuisine:
-                    parts.append(s.cuisine)
-                parts.extend(ing.name for ing in s.ingredients[:5])
-                return " ".join(parts).lower().strip()
+                def _embedding_text(s) -> str:
+                    parts = [s.name]
+                    if s.cuisine:
+                        parts.append(s.cuisine)
+                    parts.extend(ing.name for ing in s.ingredients[:5])
+                    return " ".join(parts).lower().strip()
 
-            # Filter exact-title duplicates before calling the embedding API
-            candidates = [s for s in recipes if s.name not in existing_titles]
-            if not candidates:
-                logger.info("[AIRecipeSeed] All recipes already exist (exact title match).")
-                return
+                # Filter exact-title duplicates before calling the embedding API
+                candidates = [s for s in recipes if s.name not in existing_titles]
+                if not candidates:
+                    logger.info("[AIRecipeSeed] All recipes already exist (exact title match).")
+                    return
 
-            # Batch-generate embeddings for all candidates via the shared adapter
-            texts = [_embedding_text(s) for s in candidates]
-            raw_embeddings = await self.embedding_adapter.get_embeddings_batch(texts)
-            candidate_vecs = [np.array(e, dtype=np.float32) for e in raw_embeddings]
+                # Batch-generate embeddings for all candidates via the shared adapter
+                texts = [_embedding_text(s) for s in candidates]
+                raw_embeddings = await self.embedding_adapter.get_embeddings_batch(texts)
+                candidate_vecs = [np.array(e, dtype=np.float32) for e in raw_embeddings]
 
-            # Load item lookup via repo (single query)
-            all_ingredient_names = {ing.name for s in candidates for ing in s.ingredients}
-            items_by_name = await repo.get_items_by_canonical_names(list(all_ingredient_names))
+                # Load item lookup via repo (single query)
+                all_ingredient_names = {ing.name for s in candidates for ing in s.ingredients}
+                items_by_name = await repo.get_items_by_canonical_names(list(all_ingredient_names))
 
-            seeded = 0
-            for suggestion, cand_vec in zip(candidates, candidate_vecs):
-                if _is_near_duplicate(cand_vec):
-                    logger.info(f"[AIRecipeSeed] Skipping near-duplicate: {suggestion.name!r}")
-                    continue
+                seeded = 0
+                for suggestion, cand_vec in zip(candidates, candidate_vecs):
+                    if _is_near_duplicate(cand_vec):
+                        logger.info(f"[AIRecipeSeed] Skipping near-duplicate: {suggestion.name!r}")
+                        continue
 
-                macros = {
-                    "calories":  float(suggestion.estimated_calories),
-                    "protein_g": float(suggestion.estimated_protein_g),
-                    "carbs_g":   float(suggestion.estimated_carbs_g),
-                    "fat_g":     float(suggestion.estimated_fat_g),
-                    "fiber_g":   0.0,
-                }
-                embedding_str = await self.embedding_adapter.embedding_to_db_string(cand_vec.tolist())
+                    macros = {
+                        "calories":  float(suggestion.estimated_calories),
+                        "protein_g": float(suggestion.estimated_protein_g),
+                        "carbs_g":   float(suggestion.estimated_carbs_g),
+                        "fat_g":     float(suggestion.estimated_fat_g),
+                        "fiber_g":   0.0,
+                    }
+                    embedding_str = await self.embedding_adapter.embedding_to_db_string(cand_vec.tolist())
 
-                recipe = Recipe(
-                    title=suggestion.name,
-                    description=suggestion.description,
-                    source="ai_generated",
-                    cuisine=suggestion.cuisine,
-                    goals=suggestion.goals,
-                    dietary_tags=suggestion.dietary_tags,
-                    suitable_meal_times=suggestion.suitable_meal_times,
-                    prep_time_min=suggestion.estimated_prep_time_min,
-                    cook_time_min=0,
-                    difficulty_level=suggestion.difficulty,
-                    servings=1,
-                    macros_per_serving=macros,
-                    instructions=suggestion.instructions,
-                    embedding=embedding_str,
-                )
-                await repo.create_recipe(recipe)
+                    recipe = Recipe(
+                        title=suggestion.name,
+                        description=suggestion.description,
+                        source="ai_generated",
+                        cuisine=suggestion.cuisine,
+                        goals=suggestion.goals,
+                        dietary_tags=suggestion.dietary_tags,
+                        suitable_meal_times=suggestion.suitable_meal_times,
+                        prep_time_min=suggestion.estimated_prep_time_min,
+                        cook_time_min=0,
+                        difficulty_level=suggestion.difficulty,
+                        servings=1,
+                        macros_per_serving=macros,
+                        instructions=suggestion.instructions,
+                        embedding=embedding_str,
+                    )
+                    await repo.create_recipe(recipe)
 
-                for ing in suggestion.ingredients:
-                    item = items_by_name.get(ing.name)
-                    if item:
-                        await repo.add_recipe_ingredient(RecipeIngredient(
-                            recipe_id=recipe.id,
-                            item_id=item.id,
-                            quantity_grams=float(ing.quantity_grams),
-                            is_optional=False,
-                        ))
+                    for ing in suggestion.ingredients:
+                        item = items_by_name.get(ing.name)
+                        if item:
+                            await repo.add_recipe_ingredient(RecipeIngredient(
+                                recipe_id=recipe.id,
+                                item_id=item.id,
+                                quantity_grams=float(ing.quantity_grams),
+                                is_optional=False,
+                            ))
 
-                # Include in pool so subsequent candidates in this batch are checked
-                existing_vecs.append(cand_vec)
-                seeded += 1
+                    # Include in pool so subsequent candidates in this batch are checked
+                    existing_vecs.append(cand_vec)
+                    seeded += 1
 
-            db.commit()
-            if seeded:
-                logger.info(f"[AIRecipeSeed] Seeded {seeded} AI-generated recipe(s) to DB.")
-            else:
-                logger.info("[AIRecipeSeed] No new recipes to seed (all near-duplicates).")
-        except Exception as exc:
-            db.rollback()
-            logger.warning(f"[AIRecipeSeed] Background seeding failed: {exc}", exc_info=True)
-        finally:
-            db.close()
+                await db.commit()
+                if seeded:
+                    logger.info(f"[AIRecipeSeed] Seeded {seeded} AI-generated recipe(s) to DB.")
+                else:
+                    logger.info("[AIRecipeSeed] No new recipes to seed (all near-duplicates).")
+            except Exception as exc:
+                await db.rollback()
+                logger.warning(f"[AIRecipeSeed] Background seeding failed: {exc}", exc_info=True)
 
     async def delete_inventory_item(self, user_id: int, inventory_id: int) -> bool:
 
@@ -1205,7 +1222,7 @@ class IntelligentInventoryServiceV2:
             )
 
             if deleted:
-                self.db.commit()
+                await self.db.commit()
                 logger.info(f"Deleted inventory {inventory_id} for user {user_id}")
             else:
                 logger.warning(f"Inventory {inventory_id} not found for user {user_id}")
@@ -1213,6 +1230,6 @@ class IntelligentInventoryServiceV2:
             return deleted
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error deleting inventory {inventory_id}: {e}")
             raise

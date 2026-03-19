@@ -1,0 +1,179 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: monitoring
+data:
+  config.alloy: |
+    // Scrape nutrilens API pod metrics
+    prometheus.scrape "nutrilens_api" {
+      targets = [
+        {"__address__" = "nutrilens-service.nutrilens.svc.cluster.local:80", "job" = "nutrilens-api"},
+      ]
+      scrape_interval = "15s"
+      metrics_path    = "/metrics"
+      forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+    }
+
+    // Scrape Traefik metrics
+    prometheus.scrape "traefik" {
+      targets = [
+        {"__address__" = "traefik.kube-system.svc.cluster.local:9100", "job" = "traefik"},
+      ]
+      scrape_interval = "15s"
+      metrics_path    = "/metrics"
+      forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+    }
+
+    // Collect logs from all nutrilens namespace pods
+    discovery.kubernetes "nutrilens_pods" {
+      role = "pod"
+      namespaces {
+        names = ["nutrilens", "receipt-scanner"]
+      }
+    }
+
+    discovery.relabel "nutrilens_pods" {
+      targets = discovery.kubernetes.nutrilens_pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app"]
+        target_label  = "app"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+    }
+
+    loki.source.kubernetes "nutrilens_logs" {
+      targets    = discovery.relabel.nutrilens_pods.output
+      forward_to = [loki.write.grafana_cloud.receiver]
+    }
+
+    // Remote write to Grafana Cloud Prometheus
+    prometheus.remote_write "grafana_cloud" {
+      endpoint {
+        url = env("GRAFANA_PROMETHEUS_URL")
+
+        basic_auth {
+          username = env("GRAFANA_PROMETHEUS_USERNAME")
+          password = env("GRAFANA_PROMETHEUS_API_KEY")
+        }
+      }
+    }
+
+    // Remote write to Grafana Cloud Loki
+    loki.write "grafana_cloud" {
+      endpoint {
+        url = env("GRAFANA_LOKI_URL")
+
+        basic_auth {
+          username = env("GRAFANA_LOKI_USERNAME")
+          password = env("GRAFANA_LOKI_API_KEY")
+        }
+      }
+    }
+---
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-alloy
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-alloy
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-alloy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-alloy
+subjects:
+  - kind: ServiceAccount
+    name: grafana-alloy
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-alloy
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      serviceAccountName: grafana-alloy
+      containers:
+        - name: alloy
+          image: grafana/alloy:latest
+          args:
+            - run
+            - /etc/alloy/config.alloy
+          env:
+            - name: GRAFANA_PROMETHEUS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: GRAFANA_PROMETHEUS_URL
+            - name: GRAFANA_PROMETHEUS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: GRAFANA_PROMETHEUS_USERNAME
+            - name: GRAFANA_PROMETHEUS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: GRAFANA_PROMETHEUS_API_KEY
+            - name: GRAFANA_LOKI_URL
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: GRAFANA_LOKI_URL
+            - name: GRAFANA_LOKI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: GRAFANA_LOKI_USERNAME
+            - name: GRAFANA_LOKI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-credentials
+                  key: GRAFANA_LOKI_API_KEY
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config

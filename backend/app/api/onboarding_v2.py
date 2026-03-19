@@ -34,7 +34,7 @@ async def submit_basic_info(
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
 
-    profile = onboarding_service.complete_basic_info(
+    profile = await onboarding_service.complete_basic_info(
         current_user.id,
         profile_data.dict(),
         current_user.onboarding_started_at
@@ -98,7 +98,7 @@ async def select_path(
         )
 
 
-    path = onboarding_service.complete_path_selection(
+    path = await onboarding_service.complete_path_selection(
         current_user.id,
         path_data.dict()
     )
@@ -132,7 +132,7 @@ async def set_preferences(
             }
         )
 
-    preferences = onboarding_service.complete_preferences(
+    preferences = await onboarding_service.complete_preferences(
         current_user.id,
         pref_data.dict()
     )
@@ -170,7 +170,7 @@ async def lock_targets(
     onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     try:
-        goal = onboarding_service.lock_macro_targets(current_user.id, lock_data.dict())
+        goal = await onboarding_service.lock_macro_targets(current_user.id, lock_data.dict())
         return StepResponse(
             success=True,
             data={

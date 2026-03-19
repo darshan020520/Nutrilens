@@ -7,11 +7,11 @@ Provides FastAPI dependencies for repositories, services, and orchestrators.
 import logging
 from app.core.llm_orchestrator import LLMOrchestrator
 from fastapi import Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from app.models.database import get_db, User
+from app.models.database import get_async_db, User
 from app.core.config import settings
 from app.core.redis_client import get_redis_client
 from app.repositories.interfaces.meal_plan_repository import IMealPlanRepository
@@ -80,7 +80,7 @@ from app.core.llm_clients import get_openai_client
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-def get_auth_repository(db: Session = Depends(get_db)) -> IAuthRepository:
+def get_auth_repository(db: AsyncSession = Depends(get_async_db)) -> IAuthRepository:
     return AuthRepository(db)
 
 
@@ -90,12 +90,12 @@ def get_auth_service(
     return AuthService(auth_repo=auth_repo)
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
     auth_service: AuthService = Depends(get_auth_service)
 ) -> User:
 
-    user = auth_service.get_user_from_token(token)
+    user = await auth_service.get_user_from_token(token)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -105,7 +105,7 @@ def get_current_user(
     return user
 
 
-def get_onboarding_repository(db: Session = Depends(get_db)) -> IOnboardingRepository:
+def get_onboarding_repository(db: AsyncSession = Depends(get_async_db)) -> IOnboardingRepository:
     return OnboardingRepository(db)
 
 
@@ -116,7 +116,7 @@ async def get_onboarding_service(
     return OnboardingService(onboarding_repo=onboarding_repo, llm_orchestrator=llm_orchestrator)
 
 
-def get_receipt_repository(db: Session = Depends(get_db)) -> IReceiptRepository:
+def get_receipt_repository(db: AsyncSession = Depends(get_async_db)) -> IReceiptRepository:
     return ReceiptRepository(db)
 
 
@@ -145,22 +145,22 @@ def get_s3_service():
     return _s3_service
 
 
-def get_meal_plan_repository(db: Session = Depends(get_db)) -> IMealPlanRepository:
+def get_meal_plan_repository(db: AsyncSession = Depends(get_async_db)) -> IMealPlanRepository:
 
     return MealPlanRepository(db)
 
 
-def get_meal_log_repository(db: Session = Depends(get_db)) -> IMealLogRepository:
+def get_meal_log_repository(db: AsyncSession = Depends(get_async_db)) -> IMealLogRepository:
 
     return MealLogRepository(db)
 
 
-def get_recipe_repository(db: Session = Depends(get_db)) -> IRecipeRepository:
+def get_recipe_repository(db: AsyncSession = Depends(get_async_db)) -> IRecipeRepository:
 
     return RecipeRepository(db)
 
 
-def get_user_profile_repository(db: Session = Depends(get_db)) -> IUserProfileRepository:
+def get_user_profile_repository(db: AsyncSession = Depends(get_async_db)) -> IUserProfileRepository:
     """Get user profile repository instance"""
     return UserProfileRepository(db)
 
@@ -203,7 +203,7 @@ def get_event_publisher() -> EventPublisher:
     return _event_publisher
 
 
-def get_inventory_repository(db: Session = Depends(get_db)) -> IInventoryRepository:
+def get_inventory_repository(db: AsyncSession = Depends(get_async_db)) -> IInventoryRepository:
 
     return InventoryRepository(db)
 
@@ -254,12 +254,12 @@ def get_meal_plan_orchestrator(
     )
 
 
-def get_tracking_repository(db: Session = Depends(get_db)) -> ITrackingRepository:
+def get_tracking_repository(db: AsyncSession = Depends(get_async_db)) -> ITrackingRepository:
 
     return TrackingRepository(db)
 
 
-def get_inventory_repository(db: Session = Depends(get_db)) -> IInventoryRepository:
+def get_inventory_repository(db: AsyncSession = Depends(get_async_db)) -> IInventoryRepository:
 
     return InventoryRepository(db)
 
@@ -284,7 +284,7 @@ def get_meal_plan_optimizer(
     )
 
 
-def get_item_repository(db: Session = Depends(get_db)) -> ItemRepository:
+def get_item_repository(db: AsyncSession = Depends(get_async_db)) -> ItemRepository:
     """
     Create ItemRepository instance for infrastructure layer access.
 
@@ -305,7 +305,7 @@ async def get_intelligent_inventory_service_v2(
     item_repo: ItemRepository = Depends(get_item_repository),
     user_profile_repo: IUserProfileRepository = Depends(get_user_profile_repository),
     meal_plan_repo: IMealPlanRepository = Depends(get_meal_plan_repository),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> IntelligentInventoryServiceV2:
 
 
@@ -352,7 +352,7 @@ def get_receipt_processing_service(
 
 
 def get_consumption_analytics_repository(
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> IConsumptionAnalyticsRepository:
 
     return ConsumptionAnalyticsRepository(db)
@@ -501,7 +501,7 @@ async def get_llm_orchestrator():
 async def get_inventory_management_service(
     inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     llm_orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
 ) -> InventoryManagementService:
 
@@ -517,7 +517,7 @@ async def get_consumption_service_v2(
     tracking_repo: ITrackingRepository = Depends(get_tracking_repository),
     inventory_repo: IInventoryRepository = Depends(get_inventory_repository),
     analytics_repo: IConsumptionAnalyticsRepository = Depends(get_consumption_analytics_repository),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     llm_orchestrator: LLMOrchestrator = Depends(get_llm_orchestrator)
 ) -> ConsumptionServiceV2:
 
@@ -532,7 +532,7 @@ async def get_consumption_service_v2(
 
 
 
-def get_activity_repository(db: Session = Depends(get_db)) -> ActivityRepository:
+def get_activity_repository(db: AsyncSession = Depends(get_async_db)) -> ActivityRepository:
     return ActivityRepository(db)
 
 
@@ -560,13 +560,13 @@ _websocket_observer = None
 _notification_observer = None
 
 
-def create_achievement_service(db: Session):
+def create_achievement_service(db: AsyncSession):
     """
     Factory function to create AchievementService.
     Used at STARTUP - does NOT use Depends().
 
     Args:
-        db: Database session (created manually at startup)
+        db: Database async session (created manually at startup)
 
     Returns:
         AchievementService instance
@@ -594,9 +594,9 @@ def create_notification_observer():
         NotificationObserver instance with session factory injected
     """
     from app.infrastructure.observers.notification_observer import NotificationObserver
-    from app.models.database import SessionLocal
+    from app.models.database import AsyncSessionLocal
 
-    return NotificationObserver(session_factory=SessionLocal)
+    return NotificationObserver(session_factory=AsyncSessionLocal)
 
 
 def create_websocket_observer():
@@ -778,7 +778,7 @@ def get_meal_logging_orchestrator(
     inventory_service: InventoryManagementService = Depends(get_inventory_management_service),
     consumption_service: ConsumptionServiceV2 = Depends(get_consumption_service_v2),
     event_publisher: EventPublisher = Depends(get_event_publisher),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ) -> MealLoggingOrchestrator:
     """Get meal logging orchestrator with all dependencies including new EventPublisher"""
     return MealLoggingOrchestrator(
@@ -801,17 +801,17 @@ def get_tracking_orchestrator(
 # WHATSAPP CONTEXT BUILDER (for background tasks, no FastAPI Depends)
 # ============================================================================
 
-async def build_whatsapp_context(user_id: int, db: Session):
+async def build_whatsapp_context(user_id: int, db: AsyncSession):
     """
     Build WhatsAppContextSchema for background processing.
 
     Called from the WhatsApp webhook background task where FastAPI's
     Depends() is not available. Creates all dependencies manually
-    using the provided DB session.
+    using the provided async DB session.
 
     Args:
         user_id: User ID to build context for
-        db: SQLAlchemy session (created manually in background task)
+        db: SQLAlchemy async session (created manually in background task)
 
     Returns:
         WhatsAppContextSchema with all dependencies wired

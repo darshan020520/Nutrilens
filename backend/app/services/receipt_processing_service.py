@@ -11,6 +11,7 @@ Orchestrates the complete receipt processing workflow:
 
 import logging
 import httpx
+import time
 from typing import Dict, List
 
 from app.repositories.receipt_repository import ReceiptRepository
@@ -120,11 +121,14 @@ class ReceiptProcessingService:
         logger.info(f"Receipt {receipt_id} processing started")
 
         try:
+            t0 = time.perf_counter()
             presigned_url = self.s3_service.generate_presigned_url(
                 s3_key=s3_key,
                 expiration=3600
             )
+            logger.info("receipt.presigned_url_generated receipt_id=%s duration_ms=%.1f", receipt_id, (time.perf_counter() - t0) * 1000)
 
+            t1 = time.perf_counter()
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
                     f"{self.scanner_url}/scan",
@@ -132,9 +136,9 @@ class ReceiptProcessingService:
                 )
                 response.raise_for_status()
                 scanner_result = response.json()
+            logger.info("receipt.scanner_completed receipt_id=%s items=%s duration_ms=%.1f", receipt_id, len(scanner_result.get("items", [])), (time.perf_counter() - t1) * 1000)
 
             receipt_items = scanner_result.get("items", [])
-            logger.info(f"Receipt scanner found {len(receipt_items)} items for receipt {receipt_id}")
 
         except httpx.HTTPError as e:
             self.receipt_repo.update_receipt_scan_status(
@@ -155,6 +159,7 @@ class ReceiptProcessingService:
             return
 
         try:
+            t2 = time.perf_counter()
             processing_result = await self.inventory_service.process_receipt_items(
                 user_id=user_id,
                 receipt_items=receipt_items,
@@ -164,7 +169,7 @@ class ReceiptProcessingService:
             auto_added = processing_result["auto_added"]
             needs_confirmation = processing_result["needs_confirmation"]
 
-            logger.info(f"Receipt {receipt_id}: {len(auto_added)} auto-added, {len(needs_confirmation)} need confirmation")
+            logger.info("receipt.normalization_completed receipt_id=%s auto_added=%s needs_confirmation=%s duration_ms=%.1f", receipt_id, len(auto_added), len(needs_confirmation), (time.perf_counter() - t2) * 1000)
 
             unknown_items_count = 0
             for item in needs_confirmation:

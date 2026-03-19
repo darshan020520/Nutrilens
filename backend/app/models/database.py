@@ -1,5 +1,6 @@
 #/backend/models/database.py
 from sqlalchemy import create_engine, Column, Integer, String, Float, JSON, DateTime, ForeignKey, Text, Boolean, Time, Enum
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from datetime import datetime, timezone
@@ -19,15 +20,51 @@ class NotificationStatus(str, enum.Enum):
 
 Base = declarative_base()
 
+# Sync engine (kept for Alembic migrations and any legacy sync code)
 engine = create_engine(settings.database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Async engine – converts postgresql:// → postgresql+asyncpg://
+_async_url = settings.database_url.replace(
+    "postgresql://", "postgresql+asyncpg://", 1
+).replace(
+    "postgres://", "postgresql+asyncpg://", 1
+)
+async_engine = create_async_engine(
+    _async_url,
+    echo=False,
+    future=True,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=1800,
+)
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+
 def get_db():
+    """Sync session – kept for legacy/startup code that cannot be async."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+async def get_async_db():
+    """Async session for use with FastAPI Depends() in async route handlers."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
 class GoalType(str, enum.Enum):
     MUSCLE_GAIN = "muscle_gain"

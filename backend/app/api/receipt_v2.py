@@ -1,14 +1,15 @@
 from app.infrastructure.normalization.adapters.embedding_adapter import EmbeddingAdapter
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import uuid
 from typing import List, Dict, Optional
 from datetime import datetime
 from pydantic import BaseModel
 import logging
 
-from app.models.database import get_db, User, Item
+from app.models.database import get_async_db, User, Item
 from app.services.intelligent_inventory_service_v2 import IntelligentInventoryServiceV2
 from app.services.s3_service import S3Service
 from app.core.config import settings
@@ -76,7 +77,7 @@ async def initiate_receipt_upload(
         s3_key = f"receipts/user_{current_user.id}/{uuid.uuid4()}.jpg"
 
         s3_url = f"https://{settings.s3_bucket}.s3.{settings.s3_region}.amazonaws.com/{s3_key}"
-        receipt_scan = receipt_repo.create_receipt_scan(
+        receipt_scan = await receipt_repo.create_receipt_scan(
             user_id=current_user.id,
             s3_url=s3_url,
             status='uploading'
@@ -132,7 +133,7 @@ async def get_receipt_status(
     current_user: User = Depends(get_current_user),
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository)
 ):
-    receipt_scan = receipt_repo.get_receipt_scan(
+    receipt_scan = await receipt_repo.get_receipt_scan(
         receipt_id=receipt_id,
         user_id=current_user.id
     )
@@ -155,7 +156,7 @@ async def get_receipt_pending_items(
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository)
 ):
 
-    receipt_scan = receipt_repo.get_receipt_scan(
+    receipt_scan = await receipt_repo.get_receipt_scan(
         receipt_id=receipt_id,
         user_id=current_user.id
     )
@@ -163,7 +164,7 @@ async def get_receipt_pending_items(
     if not receipt_scan:
         raise HTTPException(status_code=404, detail="Receipt not found")
 
-    pending = receipt_repo.get_pending_items(
+    pending = await receipt_repo.get_pending_items(
         receipt_id=receipt_id,
         status='pending'
     )
@@ -197,7 +198,7 @@ async def confirm_and_seed_items(
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository),
     inventory_service: IntelligentInventoryServiceV2 = Depends(get_intelligent_inventory_service_v2),
     embedding_adapter: EmbeddingAdapter = Depends(get_openai_embedding_adapter),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
 
     seeded_count = 0
@@ -208,12 +209,12 @@ async def confirm_and_seed_items(
         pending_id = item_data.get("pending_item_id")
         action = item_data.get("action")
 
-        pending_item = receipt_repo.get_pending_item(pending_id)
+        pending_item = await receipt_repo.get_pending_item(pending_id)
 
         if not pending_item:
             continue
 
-        receipt_scan = receipt_repo.get_receipt_scan(
+        receipt_scan = await receipt_repo.get_receipt_scan(
             receipt_id=pending_item.receipt_scan_id,
             user_id=current_user.id
         )
@@ -226,10 +227,10 @@ async def confirm_and_seed_items(
                 logger.warning(f"Skipping {pending_item.item_name}: missing enrichment data")
                 continue
 
-
-            existing_item = db.query(Item).filter(
-                Item.canonical_name == pending_item.canonical_name
-            ).first()
+            existing_result = await db.execute(
+                select(Item).where(Item.canonical_name == pending_item.canonical_name)
+            )
+            existing_item = existing_result.scalars().first()
 
             if existing_item:
                 item_id = existing_item.id
@@ -254,7 +255,7 @@ async def confirm_and_seed_items(
                     source="receipt_enrichment"
                 )
                 db.add(new_item)
-                db.flush() 
+                await db.flush()
 
                 item_id = new_item.id
                 seeded_count += 1
@@ -265,7 +266,7 @@ async def confirm_and_seed_items(
                 })
                 logger.info(f"Seeded new item: {pending_item.canonical_name} (ID: {item_id})")
 
-            result = inventory_service.add_item(
+            result = await inventory_service.add_item(
                 user_id=current_user.id,
                 item_id=item_id,
                 quantity_grams=pending_item.quantity,
@@ -274,7 +275,7 @@ async def confirm_and_seed_items(
 
             if result.get("success"):
 
-                receipt_repo.update_pending_item_status(
+                await receipt_repo.update_pending_item_status(
                     pending_item_id=pending_id,
                     status='confirmed'
                 )
@@ -283,13 +284,13 @@ async def confirm_and_seed_items(
 
         elif action == "skip":
 
-            receipt_repo.update_pending_item_status(
+            await receipt_repo.update_pending_item_status(
                 pending_item_id=pending_id,
                 status='skipped'
             )
             logger.info(f"Skipped pending item: {pending_item.item_name}")
 
-    db.commit()
+    await db.commit()
 
     return {
         "status": "success",
@@ -306,7 +307,7 @@ async def get_receipt_history(
     receipt_repo: ReceiptRepository = Depends(get_receipt_repository)
 ):
 
-    receipts = receipt_repo.get_receipt_history(
+    receipts = await receipt_repo.get_receipt_history(
         user_id=current_user.id,
         limit=limit
     )

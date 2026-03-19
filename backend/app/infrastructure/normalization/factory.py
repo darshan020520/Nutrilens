@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.normalization.adapters.redis_cache_adapter import RedisCacheAdapter
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def create_normalizer(
-    db: Session,
+    db: AsyncSession,
     redis_client,
     llm_orchestrator,
     embedding_adapter,

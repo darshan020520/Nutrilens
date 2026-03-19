@@ -1,7 +1,8 @@
 import logging
 from typing import Optional, List
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.repositories.interfaces.receipt_repository import IReceiptRepository
 from app.models.database import ReceiptScan, ReceiptPendingItem
@@ -10,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class ReceiptRepository(IReceiptRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def create_receipt_scan(
+    async def create_receipt_scan(
         self,
         user_id: int,
         s3_url: str,
@@ -26,35 +27,36 @@ class ReceiptRepository(IReceiptRepository):
                 status=status
             )
             self.db.add(receipt_scan)
-            self.db.commit()
-            self.db.refresh(receipt_scan)
+            await self.db.commit()
+            await self.db.refresh(receipt_scan)
 
             logger.info(f"Created receipt scan {receipt_scan.id} for user {user_id}")
             return receipt_scan
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error creating receipt scan: {e}")
             raise
 
-    def get_receipt_scan(
+    async def get_receipt_scan(
         self,
         receipt_id: int,
         user_id: int
     ) -> Optional[ReceiptScan]:
         try:
-            receipt_scan = self.db.query(ReceiptScan).filter(
-                ReceiptScan.id == receipt_id,
-                ReceiptScan.user_id == user_id
-            ).first()
-
-            return receipt_scan
+            result = await self.db.execute(
+                select(ReceiptScan).where(
+                    ReceiptScan.id == receipt_id,
+                    ReceiptScan.user_id == user_id
+                )
+            )
+            return result.scalars().first()
 
         except Exception as e:
             logger.error(f"Error getting receipt scan {receipt_id}: {e}")
             raise
 
-    def update_receipt_scan_status(
+    async def update_receipt_scan_status(
         self,
         receipt_id: int,
         status: str,
@@ -65,9 +67,10 @@ class ReceiptRepository(IReceiptRepository):
         result: Optional[dict] = None
     ) -> Optional[ReceiptScan]:
         try:
-            receipt_scan = self.db.query(ReceiptScan).filter(
-                ReceiptScan.id == receipt_id
-            ).first()
+            res = await self.db.execute(
+                select(ReceiptScan).where(ReceiptScan.id == receipt_id)
+            )
+            receipt_scan = res.scalars().first()
 
             if not receipt_scan:
                 logger.warning(f"Receipt scan {receipt_id} not found for update")
@@ -93,47 +96,50 @@ class ReceiptRepository(IReceiptRepository):
             if status == "completed":
                 receipt_scan.processed_at = datetime.utcnow()
 
-            self.db.commit()
-            self.db.refresh(receipt_scan)
+            await self.db.commit()
+            await self.db.refresh(receipt_scan)
 
             logger.info(f"Updated receipt scan {receipt_id} to status '{status}'")
             return receipt_scan
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error updating receipt scan {receipt_id}: {e}")
             raise
 
-    def get_receipt_history(
+    async def get_receipt_history(
         self,
         user_id: int,
         limit: int = 10
     ) -> List[ReceiptScan]:
         try:
-            receipts = self.db.query(ReceiptScan).filter(
-                ReceiptScan.user_id == user_id
-            ).order_by(ReceiptScan.created_at.desc()).limit(limit).all()
-
-            return receipts
+            result = await self.db.execute(
+                select(ReceiptScan)
+                .where(ReceiptScan.user_id == user_id)
+                .order_by(ReceiptScan.created_at.desc())
+                .limit(limit)
+            )
+            return result.unique().scalars().all()
 
         except Exception as e:
             logger.error(f"Error getting receipt history for user {user_id}: {e}")
             raise
 
-
-    def get_uploaded_receipts(self, limit: int) -> List[ReceiptScan]:
+    async def get_uploaded_receipts(self, limit: int) -> List[ReceiptScan]:
         try:
-            receipts = self.db.query(ReceiptScan).filter(
-                ReceiptScan.status == 'uploaded'
-            ).with_for_update(skip_locked=True).limit(limit).all()
-
-            return receipts
+            result = await self.db.execute(
+                select(ReceiptScan)
+                .where(ReceiptScan.status == 'uploaded')
+                .with_for_update(skip_locked=True)
+                .limit(limit)
+            )
+            return result.unique().scalars().all()
 
         except Exception as e:
             logger.error(f"Error fetching uploaded receipts: {e}")
             raise
 
-    def create_pending_item(
+    async def create_pending_item(
         self,
         receipt_scan_id: int,
         item_name: str,
@@ -165,58 +171,59 @@ class ReceiptRepository(IReceiptRepository):
                 enrichment_reasoning=enrichment_reasoning
             )
             self.db.add(pending_item)
-            self.db.commit()
-            self.db.refresh(pending_item)
+            await self.db.commit()
+            await self.db.refresh(pending_item)
 
             logger.info(f"Created pending item {pending_item.id} for receipt {receipt_scan_id}")
             return pending_item
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error creating pending item: {e}")
             raise
 
-    def get_pending_items(
+    async def get_pending_items(
         self,
         receipt_id: int,
         status: str = "pending"
     ) -> List[ReceiptPendingItem]:
         try:
-            pending = self.db.query(ReceiptPendingItem).filter(
-                ReceiptPendingItem.receipt_scan_id == receipt_id,
-                ReceiptPendingItem.status == status
-            ).all()
-
-            return pending
+            result = await self.db.execute(
+                select(ReceiptPendingItem).where(
+                    ReceiptPendingItem.receipt_scan_id == receipt_id,
+                    ReceiptPendingItem.status == status
+                )
+            )
+            return result.unique().scalars().all()
 
         except Exception as e:
             logger.error(f"Error getting pending items for receipt {receipt_id}: {e}")
             raise
 
-    def get_pending_item(
+    async def get_pending_item(
         self,
         pending_item_id: int
     ) -> Optional[ReceiptPendingItem]:
         try:
-            pending_item = self.db.query(ReceiptPendingItem).filter(
-                ReceiptPendingItem.id == pending_item_id
-            ).first()
-
-            return pending_item
+            result = await self.db.execute(
+                select(ReceiptPendingItem).where(ReceiptPendingItem.id == pending_item_id)
+            )
+            return result.scalars().first()
 
         except Exception as e:
             logger.error(f"Error getting pending item {pending_item_id}: {e}")
             raise
 
-    def update_pending_item_status(
+    async def update_pending_item_status(
         self,
         pending_item_id: int,
         status: str
     ) -> Optional[ReceiptPendingItem]:
         try:
-            pending_item = self.db.query(ReceiptPendingItem).filter(
-                ReceiptPendingItem.id == pending_item_id
-            ).first()
+            result = await self.db.execute(
+                select(ReceiptPendingItem).where(ReceiptPendingItem.id == pending_item_id)
+            )
+            pending_item = result.scalars().first()
 
             if not pending_item:
                 logger.warning(f"Pending item {pending_item_id} not found for update")
@@ -227,32 +234,32 @@ class ReceiptRepository(IReceiptRepository):
             if status == "confirmed":
                 pending_item.confirmed_at = datetime.utcnow()
 
-            self.db.commit()
-            self.db.refresh(pending_item)
+            await self.db.commit()
+            await self.db.refresh(pending_item)
 
             logger.info(f"Updated pending item {pending_item_id} to status '{status}'")
             return pending_item
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error updating pending item {pending_item_id}: {e}")
             raise
 
-    def bulk_create_pending_items(
+    async def bulk_create_pending_items(
         self,
         pending_items: List[ReceiptPendingItem]
     ) -> List[ReceiptPendingItem]:
         try:
             self.db.add_all(pending_items)
-            self.db.commit()
+            await self.db.commit()
 
             for item in pending_items:
-                self.db.refresh(item)
+                await self.db.refresh(item)
 
             logger.info(f"Bulk created {len(pending_items)} pending items")
             return pending_items
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error bulk creating pending items: {e}")
             raise

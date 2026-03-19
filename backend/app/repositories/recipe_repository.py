@@ -1,7 +1,8 @@
 import logging
 from typing import Optional, List, Dict, Tuple
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import cast, String, func, case, and_, or_, Float
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+from sqlalchemy import select, cast, String, func, case, and_, or_
 from collections import defaultdict
 
 from app.repositories.interfaces.recipe_repository import IRecipeRepository
@@ -11,19 +12,20 @@ logger = logging.getLogger(__name__)
 
 
 class RecipeRepository(IRecipeRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def get_by_id(self, recipe_id: int) -> Optional[Recipe]:
-        return self.db.query(Recipe).filter_by(id=recipe_id).first()
+    async def get_by_id(self, recipe_id: int) -> Optional[Recipe]:
+        result = await self.db.execute(select(Recipe).where(Recipe.id == recipe_id))
+        return result.scalars().first()
 
-    def get_ingredients_by_recipe_id(self, recipe_id: int) -> List[RecipeIngredient]:
-        
-        return self.db.query(RecipeIngredient).options(
-            joinedload(RecipeIngredient.item)
-        ).filter(
-            RecipeIngredient.recipe_id == recipe_id
-        ).all()
+    async def get_ingredients_by_recipe_id(self, recipe_id: int) -> List[RecipeIngredient]:
+        result = await self.db.execute(
+            select(RecipeIngredient)
+            .options(joinedload(RecipeIngredient.item))
+            .where(RecipeIngredient.recipe_id == recipe_id)
+        )
+        return result.unique().scalars().all()
 
     async def get_makeable_recipe_candidates(
         self,
@@ -37,49 +39,29 @@ class RecipeRepository(IRecipeRepository):
 
         user_item_ids = set(user_item_quantities.keys())
 
-        recipe_match_subquery = self.db.query(
-            Recipe.id.label('recipe_id'),
-            func.count(RecipeIngredient.id).label('total_ingredients'),
+        # Pre-filter: only load recipes that have at least one matching required ingredient
+        # This avoids a full table scan when the user has a small inventory
+        matching_recipe_ids_subq = (
+            select(RecipeIngredient.recipe_id)
+            .where(
+                RecipeIngredient.item_id.in_(user_item_ids),
+                RecipeIngredient.is_optional == False,
+            )
+            .distinct()
+            .scalar_subquery()
+        )
 
-            func.sum(
-                case(
-                    (RecipeIngredient.item_id.in_(user_item_ids), 1),
-                    else_=0
-                )
-            ).label('matching_ingredients')
-
-        ).join(
-            RecipeIngredient,
-            Recipe.id == RecipeIngredient.recipe_id
-        ).filter(
-            RecipeIngredient.is_optional == False  # Only required ingredients
-        ).group_by(
-            Recipe.id
-        ).having(
-            func.count(RecipeIngredient.id) > 0
-        ).subquery()
-
-
-        recipe_candidates = self.db.query(
-            Recipe,
-            recipe_match_subquery.c.total_ingredients,
-            recipe_match_subquery.c.matching_ingredients
-        ).join(
-            recipe_match_subquery,
-            Recipe.id == recipe_match_subquery.c.recipe_id
-        ).options(
-            # Eager load ingredients + items to prevent N+1 queries
-            joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item)
-        ).limit(limit * 3).all()
-
+        result = await self.db.execute(
+            select(Recipe)
+            .options(joinedload(Recipe.ingredients).joinedload(RecipeIngredient.item))
+            .where(Recipe.id.in_(matching_recipe_ids_subq))
+        )
+        all_recipes = result.unique().scalars().all()
 
         results = []
 
-        for recipe, total_ing, _ in recipe_candidates:
-            required_ingredients = [
-                ing for ing in recipe.ingredients
-                if not ing.is_optional
-            ]
+        for recipe in all_recipes:
+            required_ingredients = [ing for ing in recipe.ingredients if not ing.is_optional]
 
             if not required_ingredients:
                 continue
@@ -89,7 +71,7 @@ class RecipeRepository(IRecipeRepository):
 
             for ingredient in required_ingredients:
                 user_qty = user_item_quantities.get(ingredient.item_id, 0)
-                item_name = ingredient.item.canonical_name
+                item_name = ingredient.item.canonical_name if ingredient.item else "Unknown"
 
                 if user_qty >= ingredient.quantity_grams:
                     available_items.append(item_name)
@@ -110,13 +92,10 @@ class RecipeRepository(IRecipeRepository):
                     'missing_items': missing_items
                 })
 
-        results.sort(
-            key=lambda x: (-x['match_percentage'], x['recipe'].prep_time_min or 999)
-        )
-
+        results.sort(key=lambda x: (-x['match_percentage'], x['recipe'].prep_time_min or 999))
         return results[:limit]
 
-    def get_alternatives(
+    async def get_alternatives(
         self,
         original_recipe: Recipe,
         user_preferences: Optional[UserPreference],
@@ -130,15 +109,14 @@ class RecipeRepository(IRecipeRepository):
 
             target_cal = original_recipe.macros_per_serving['calories']
 
-            query = self.db.query(Recipe).filter(Recipe.id != original_recipe.id)
+            stmt = select(Recipe).where(Recipe.id != original_recipe.id)
 
             if preferences and preferences.dietary_type:
                 dietary_tag = preferences.dietary_type.value
-                query = query.filter(
-                    cast(Recipe.dietary_tags, String).contains(dietary_tag)
-                )
+                stmt = stmt.where(cast(Recipe.dietary_tags, String).contains(dietary_tag))
 
-            all_recipes = query.all()
+            result = await self.db.execute(stmt)
+            all_recipes = result.unique().scalars().all()
 
             min_cal = target_cal * 0.7
             max_cal = target_cal * 1.3
@@ -157,11 +135,8 @@ class RecipeRepository(IRecipeRepository):
                 candidates.append(recipe)
 
             if not candidates:
-                logger.info(f"No alternative candidates found for recipe {original_recipe.id} (filtered {len(all_recipes)} by meal time)")
+                logger.info(f"No alternative candidates found for recipe {original_recipe.id}")
                 return []
-
-            logger.info(f"Found {len(candidates)} candidate alternatives for recipe {original_recipe.id} (from {len(all_recipes)} after calorie filter)")
-
 
             scored = []
             orig_macros = original_recipe.macros_per_serving
@@ -174,7 +149,6 @@ class RecipeRepository(IRecipeRepository):
                 carbs_diff = abs(macros['carbs_g'] - orig_macros['carbs_g']) / max(orig_macros['carbs_g'], 1)
                 fat_diff = abs(macros['fat_g'] - orig_macros['fat_g']) / max(orig_macros['fat_g'], 1)
 
-
                 macro_similarity = 1 - (
                     cal_diff * 0.4 +
                     protein_diff * 0.35 +
@@ -186,7 +160,6 @@ class RecipeRepository(IRecipeRepository):
                 if goal and recipe.goals:
                     if goal.goal_type.value in recipe.goals:
                         goal_bonus = 0.2
-
 
                 total_score = macro_similarity + goal_bonus
 
@@ -213,9 +186,6 @@ class RecipeRepository(IRecipeRepository):
                 })
 
             scored.sort(key=lambda x: x['similarity_score'], reverse=True)
-
-            logger.info(f"Returning top {count} alternatives with scores: {[s['similarity_score'] for s in scored[:count]]}")
-
             return scored[:count]
 
         except Exception as e:
@@ -224,7 +194,7 @@ class RecipeRepository(IRecipeRepository):
             traceback.print_exc()
             return []
 
-    def search(
+    async def search(
         self,
         goal: Optional[str] = None,
         dietary_type: Optional[str] = None,
@@ -235,60 +205,51 @@ class RecipeRepository(IRecipeRepository):
         limit: int = 20,
         offset: int = 0
     ) -> List[Recipe]:
-        
 
-        query = self.db.query(Recipe)
+        stmt = select(Recipe)
 
-        # Apply filters
         if goal:
-            query = query.filter(
-                cast(Recipe.goals, String).contains(goal)
-            )
+            stmt = stmt.where(cast(Recipe.goals, String).contains(goal))
 
         if dietary_type:
-            query = query.filter(
-                cast(Recipe.dietary_tags, String).contains(dietary_type)
-            )
+            stmt = stmt.where(cast(Recipe.dietary_tags, String).contains(dietary_type))
 
         if meal_time:
-            query = query.filter(
-                cast(Recipe.suitable_meal_times, String).contains(meal_time)
-            )
+            stmt = stmt.where(cast(Recipe.suitable_meal_times, String).contains(meal_time))
 
         if max_prep_time:
-            query = query.filter(Recipe.prep_time_min <= max_prep_time)
+            stmt = stmt.where(Recipe.prep_time_min <= max_prep_time)
 
         if cuisine:
-            query = query.filter(Recipe.cuisine == cuisine)
+            stmt = stmt.where(Recipe.cuisine == cuisine)
 
         if search_term:
             search_pattern = f"%{search_term}%"
-            query = query.filter(
+            stmt = stmt.where(
                 or_(
                     Recipe.title.ilike(search_pattern),
                     Recipe.description.ilike(search_pattern)
                 )
             )
 
-        # Apply pagination
-        return query.offset(offset).limit(limit).all()
+        stmt = stmt.offset(offset).limit(limit)
+        result = await self.db.execute(stmt)
+        return result.unique().scalars().all()
 
-    def get_with_ingredients(self, recipe_id: int) -> Optional[dict]:
-        recipe = self.get_by_id(recipe_id)
+    async def get_with_ingredients(self, recipe_id: int) -> Optional[dict]:
+        recipe = await self.get_by_id(recipe_id)
         if not recipe:
             return None
 
-        # Get ingredients with item names
-        ingredients = self.db.query(
-            RecipeIngredient, Item
-        ).join(
-            Item, RecipeIngredient.item_id == Item.id
-        ).filter(
-            RecipeIngredient.recipe_id == recipe_id
-        ).all()
+        result = await self.db.execute(
+            select(RecipeIngredient, Item)
+            .join(Item, RecipeIngredient.item_id == Item.id)
+            .where(RecipeIngredient.recipe_id == recipe_id)
+        )
+        rows = result.all()
 
         ingredient_list = []
-        for recipe_ing, item in ingredients:
+        for recipe_ing, item in rows:
             ingredient_list.append({
                 "item_id": item.id,
                 "item_name": item.canonical_name,
@@ -303,7 +264,8 @@ class RecipeRepository(IRecipeRepository):
         }
 
     async def count_all_recipes(self) -> int:
-        return self.db.query(Recipe).count()
+        result = await self.db.execute(select(func.count(Recipe.id)))
+        return result.scalar()
 
     async def get_filtered_recipes(
         self,
@@ -312,57 +274,55 @@ class RecipeRepository(IRecipeRepository):
         exclude_allergens: Optional[List[str]] = None,
         max_prep_time: Optional[int] = None
     ) -> List[Recipe]:
-        query = self.db.query(Recipe)
+        stmt = select(Recipe)
 
         if goal_type:
-            query = query.filter(cast(Recipe.goals, String).contains(goal_type))
+            stmt = stmt.where(cast(Recipe.goals, String).contains(goal_type))
 
         if dietary_type:
             if dietary_type == 'vegetarian':
-                query = query.filter(cast(Recipe.dietary_tags, String).contains('vegetarian'))
+                stmt = stmt.where(cast(Recipe.dietary_tags, String).contains('vegetarian'))
             elif dietary_type == 'vegan':
-                query = query.filter(cast(Recipe.dietary_tags, String).contains('vegan'))
-
-
-        if exclude_allergens:
-            # TODO: Implement allergen filtering when optimizer supports it
-            pass
+                stmt = stmt.where(cast(Recipe.dietary_tags, String).contains('vegan'))
 
         if max_prep_time is not None:
-            query = query.filter(
-                (Recipe.prep_time_min + Recipe.cook_time_min) <= max_prep_time
-            )
+            stmt = stmt.where((Recipe.prep_time_min + Recipe.cook_time_min) <= max_prep_time)
 
-        return query.all()
+        result = await self.db.execute(stmt)
+        return result.unique().scalars().all()
 
     async def get_ingredients_for_recipes(self, recipe_ids: List[int]) -> Dict[int, List[RecipeIngredient]]:
         if not recipe_ids:
             return {}
 
-        ingredients = self.db.query(RecipeIngredient).options(
-            joinedload(RecipeIngredient.item)
-        ).filter(
-            RecipeIngredient.recipe_id.in_(recipe_ids)
-        ).all()
+        result = await self.db.execute(
+            select(RecipeIngredient)
+            .options(joinedload(RecipeIngredient.item))
+            .where(RecipeIngredient.recipe_id.in_(recipe_ids))
+        )
+        ingredients = result.unique().scalars().all()
 
-        result = defaultdict(list)
+        result_dict = defaultdict(list)
         for ing in ingredients:
-            result[ing.recipe_id].append(ing)
+            result_dict[ing.recipe_id].append(ing)
 
-        return dict(result)
+        return dict(result_dict)
 
     async def get_titles_and_embeddings(self) -> List[Tuple[str, Optional[str]]]:
-        rows = self.db.query(Recipe.title, Recipe.embedding).all()
-        return [(r.title, r.embedding) for r in rows]
+        result = await self.db.execute(select(Recipe.title, Recipe.embedding))
+        return [(r.title, r.embedding) for r in result.all()]
 
     async def create_recipe(self, recipe: Recipe) -> Recipe:
         self.db.add(recipe)
-        self.db.flush()
+        await self.db.flush()
         return recipe
 
     async def add_recipe_ingredient(self, recipe_ingredient: RecipeIngredient) -> None:
         self.db.add(recipe_ingredient)
 
     async def get_items_by_canonical_names(self, names: List[str]) -> Dict[str, Item]:
-        items = self.db.query(Item).filter(Item.canonical_name.in_(names)).all()
+        result = await self.db.execute(
+            select(Item).where(Item.canonical_name.in_(names))
+        )
+        items = result.unique().scalars().all()
         return {item.canonical_name: item for item in items}

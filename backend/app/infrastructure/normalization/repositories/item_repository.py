@@ -1,8 +1,8 @@
 """Item Repository - Data access for items with vector search"""
 from typing import List, Tuple, Dict
 import logging
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, text
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,10 @@ class ItemRepository:
     - Cache results in Redis
     """
 
-    def __init__(self, db: Session, cache_adapter):
+    def __init__(self, db: AsyncSession, cache_adapter):
         """
         Args:
-            db: SQLAlchemy session
+            db: SQLAlchemy async session
             cache_adapter: RedisCacheAdapter instance
         """
         self.db = db
@@ -38,7 +38,8 @@ class ItemRepository:
             Item if found, None otherwise
         """
         from app.models.database import Item
-        return self.db.query(Item).filter(Item.id == item_id).first()
+        result = await self.db.execute(select(Item).where(Item.id == item_id))
+        return result.scalars().first()
 
     async def build_and_cache_items(self) -> Dict[str, int]:
         """
@@ -56,7 +57,8 @@ class ItemRepository:
         # Load from database
         from app.models.database import Item
 
-        items = self.db.query(Item).all()
+        result = await self.db.execute(select(Item))
+        items = result.unique().scalars().all()
         cache_dict = {}
 
         for item in items:
@@ -74,7 +76,7 @@ class ItemRepository:
         logger.info(f"Item cache built from database ({len(cache_dict)} entries)")
         return cache_dict
 
-    def vector_search(
+    async def vector_search(
         self,
         embedding: List[float],
         limit: int = 5
@@ -89,12 +91,10 @@ class ItemRepository:
         Returns:
             List of (item_id, item_name, similarity_score)
         """
-        # Debug: Check if embedding is valid
         if not embedding or len(embedding) != 1536:
             logger.error(f"Invalid embedding: length={len(embedding) if embedding else 0}")
             return []
 
-        # Debug: Check if embedding is zero vector
         if all(v == 0.0 for v in embedding):
             logger.error("Embedding is a zero vector - embedding generation likely failed")
             return []
@@ -105,8 +105,6 @@ class ItemRepository:
         embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
 
         # Vector similarity query using pgvector
-        # Note: Space before ::vector is required for SQLAlchemy parameter binding
-        # Both column and parameter need casting since embedding is stored as TEXT
         query = text("""
             SELECT
                 id,
@@ -118,7 +116,7 @@ class ItemRepository:
             LIMIT :limit
         """)
 
-        result = self.db.execute(query, {"embedding": embedding_str, "limit": limit})
+        result = await self.db.execute(query, {"embedding": embedding_str, "limit": limit})
         rows = result.fetchall()
 
         return [(row[0], row[1], row[2]) for row in rows]

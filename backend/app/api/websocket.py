@@ -10,8 +10,6 @@ from typing import Optional
 
 from app.services.websocket_manager import websocket_manager
 from app.services.auth import verify_token
-from app.models.database import get_db, User
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 

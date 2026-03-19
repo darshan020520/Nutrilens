@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, or_, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+from sqlalchemy import select, and_, func, delete
 
 from app.repositories.interfaces.inventory_repository import IInventoryRepository
 from app.models.database import UserInventory, Item, Recipe
@@ -11,88 +12,62 @@ logger = logging.getLogger(__name__)
 
 
 class InventoryRepository(IInventoryRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     async def get_all(self, limit: int = 100, offset: int = 0) -> List[UserInventory]:
         try:
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).order_by(
-                UserInventory.id
-            ).limit(limit).offset(offset).all()
-
-            return inventory_items
-
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .order_by(UserInventory.id)
+                .limit(limit)
+                .offset(offset)
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting all inventory: {e}")
             raise
 
-    async def get_by_id(
-        self,
-        inventory_id: int,
-        user_id: int
-    ) -> Optional[UserInventory]:
+    async def get_by_id(self, inventory_id: int, user_id: int) -> Optional[UserInventory]:
         try:
-            inventory = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.id == inventory_id,
-                    UserInventory.user_id == user_id
-                )
-            ).first()
-
-            return inventory
-
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(and_(UserInventory.id == inventory_id, UserInventory.user_id == user_id))
+            )
+            return result.scalars().first()
         except Exception as e:
             logger.error(f"Error getting inventory {inventory_id}: {e}")
             raise
 
-    async def get_all_for_user(
-        self,
-        user_id: int,
-        include_zero_quantity: bool = False
-    ) -> List[UserInventory]:
+    async def get_all_for_user(self, user_id: int, include_zero_quantity: bool = False) -> List[UserInventory]:
         try:
-            query = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                UserInventory.user_id == user_id
+            stmt = (
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .join(Item, UserInventory.item_id == Item.id)
+                .where(UserInventory.user_id == user_id)
+                .order_by(Item.canonical_name)
             )
 
             if not include_zero_quantity:
-                query = query.filter(UserInventory.quantity_grams > 0)
+                stmt = stmt.where(UserInventory.quantity_grams > 0)
 
-            inventory_items = query.join(
-                Item, UserInventory.item_id == Item.id
-            ).order_by(
-                Item.canonical_name
-            ).all()
-
-            return inventory_items
-
+            result = await self.db.execute(stmt)
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting inventory for user {user_id}: {e}")
             raise
 
-    async def get_by_item_id(
-        self,
-        user_id: int,
-        item_id: int
-    ) -> Optional[UserInventory]:
+    async def get_by_item_id(self, user_id: int, item_id: int) -> Optional[UserInventory]:
         try:
-            inventory = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.item_id == item_id
-                )
-            ).first()
-
-            return inventory
-
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(and_(UserInventory.user_id == user_id, UserInventory.item_id == item_id))
+            )
+            return result.scalars().first()
         except Exception as e:
             logger.error(f"Error getting inventory for item {item_id}: {e}")
             raise
@@ -104,50 +79,40 @@ class InventoryRepository(IInventoryRepository):
         order_by_expiry_desc: bool = True
     ) -> List[UserInventory]:
         try:
-            query = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.item_id == item_id
-                )
+            stmt = (
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(and_(UserInventory.user_id == user_id, UserInventory.item_id == item_id))
             )
 
-            # Apply ordering
             if order_by_expiry_desc:
-                query = query.order_by(UserInventory.expiry_date.desc())
+                stmt = stmt.order_by(UserInventory.expiry_date.desc())
             else:
-                query = query.order_by(UserInventory.expiry_date.asc())
+                stmt = stmt.order_by(UserInventory.expiry_date.asc())
 
-            return query.all()
-
+            result = await self.db.execute(stmt)
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting all inventory for item {item_id}: {e}")
             raise
 
-    async def get_by_item_ids(
-        self,
-        user_id: int,
-        item_ids: List[int]
-    ) -> Dict[int, UserInventory]:
+    async def get_by_item_ids(self, user_id: int, item_ids: List[int]) -> Dict[int, UserInventory]:
         try:
-
             if not item_ids:
                 return {}
 
-            inventory_list = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.item_id.in_(item_ids)
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.item_id.in_(item_ids)
+                    )
                 )
-            ).all()
-
-            result = {inv.item_id: inv for inv in inventory_list}
-
-            return result
-
+            )
+            inventory_list = result.unique().scalars().all()
+            return {inv.item_id: inv for inv in inventory_list}
         except Exception as e:
             logger.error(f"Error getting inventory for items {item_ids}: {e}")
             raise
@@ -155,50 +120,42 @@ class InventoryRepository(IInventoryRepository):
     async def create(self, inventory: UserInventory) -> UserInventory:
         try:
             self.db.add(inventory)
-            self.db.flush()  # ✅ Generate ID without committing transaction
-            self.db.refresh(inventory)
-
+            await self.db.flush()
+            await self.db.refresh(inventory)
             logger.info(f"Created inventory {inventory.id} for user {inventory.user_id} (pending commit)")
             return inventory
-
         except Exception as e:
             logger.error(f"Error creating inventory: {e}")
-            raise  # ✅ Service layer will handle rollback
+            raise
 
     async def update(self, inventory: UserInventory) -> UserInventory:
         try:
-            self.db.flush()
-            self.db.refresh(inventory)
-
+            await self.db.flush()
+            await self.db.refresh(inventory)
             logger.info(f"Updated inventory {inventory.id} (pending commit)")
             return inventory
-
         except Exception as e:
             logger.error(f"Error updating inventory {inventory.id}: {e}")
-            raise  # ✅ Service layer will handle rollback
+            raise
 
     async def delete(self, inventory_id: int, user_id: int) -> bool:
         try:
-            result = self.db.query(UserInventory).filter(
-                and_(
-                    UserInventory.id == inventory_id,
-                    UserInventory.user_id == user_id
+            result = await self.db.execute(
+                delete(UserInventory).where(
+                    and_(UserInventory.id == inventory_id, UserInventory.user_id == user_id)
                 )
-            ).delete()
+            )
+            await self.db.flush()
 
-            self.db.flush()  # ✅ Flush deletion without committing
-
-            if result > 0:
+            if result.rowcount > 0:
                 logger.info(f"Deleted inventory {inventory_id} (pending commit)")
                 return True
             else:
                 logger.warning(f"Inventory {inventory_id} not found for deletion")
                 return False
-
         except Exception as e:
             logger.error(f"Error deleting inventory {inventory_id}: {e}")
             raise
-
 
     async def add_quantity(
         self,
@@ -209,7 +166,6 @@ class InventoryRepository(IInventoryRepository):
         source: str = "manual"
     ) -> UserInventory:
         try:
-
             existing = await self.get_by_item_id(user_id, item_id)
 
             if existing:
@@ -219,8 +175,8 @@ class InventoryRepository(IInventoryRepository):
                 existing.last_updated = datetime.utcnow()
                 existing.source = source
 
-                self.db.commit()
-                self.db.refresh(existing)
+                await self.db.commit()
+                await self.db.refresh(existing)
 
                 logger.info(f"Added {quantity_grams}g to inventory {existing.id}")
                 return existing
@@ -234,20 +190,14 @@ class InventoryRepository(IInventoryRepository):
                     purchase_date=datetime.utcnow(),
                     last_updated=datetime.utcnow()
                 )
-
                 return await self.create(new_inventory)
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error adding quantity to inventory: {e}")
             raise
 
-    async def deduct_quantity(
-        self,
-        user_id: int,
-        item_id: int,
-        quantity_grams: float
-    ) -> UserInventory:
+    async def deduct_quantity(self, user_id: int, item_id: int, quantity_grams: float) -> UserInventory:
         try:
             inventory = await self.get_by_item_id(user_id, item_id)
 
@@ -258,8 +208,8 @@ class InventoryRepository(IInventoryRepository):
             inventory.last_updated = datetime.utcnow()
             inventory.source = "deduction"
 
-            self.db.commit()
-            self.db.refresh(inventory)
+            await self.db.commit()
+            await self.db.refresh(inventory)
 
             logger.info(f"Deducted {quantity_grams}g from inventory {inventory.id}")
             return inventory
@@ -267,7 +217,7 @@ class InventoryRepository(IInventoryRepository):
         except ValueError:
             raise
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error deducting quantity from inventory: {e}")
             raise
 
@@ -282,19 +232,17 @@ class InventoryRepository(IInventoryRepository):
             existing = await self.get_by_item_id(user_id, item_id)
 
             if existing:
-                # Update existing
                 existing.quantity_grams = quantity_grams
                 if expiry_date:
                     existing.expiry_date = expiry_date
                 existing.last_updated = datetime.utcnow()
 
-                self.db.commit()
-                self.db.refresh(existing)
+                await self.db.commit()
+                await self.db.refresh(existing)
 
                 logger.info(f"Set inventory {existing.id} to {quantity_grams}g")
                 return existing
             else:
-                # Create new
                 new_inventory = UserInventory(
                     user_id=user_id,
                     item_id=item_id,
@@ -304,19 +252,14 @@ class InventoryRepository(IInventoryRepository):
                     purchase_date=datetime.utcnow(),
                     last_updated=datetime.utcnow()
                 )
-
                 return await self.create(new_inventory)
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error setting quantity: {e}")
             raise
 
-    async def bulk_update_quantities(
-        self,
-        user_id: int,
-        updates: List[Dict]
-    ) -> List[Dict]:
+    async def bulk_update_quantities(self, user_id: int, updates: List[Dict]) -> List[Dict]:
         results = []
 
         try:
@@ -335,19 +278,16 @@ class InventoryRepository(IInventoryRepository):
                         })
                         continue
 
-                    # Parse expiry date if provided
                     expiry_date = None
                     if expiry_date_str:
                         try:
                             expiry_date = datetime.fromisoformat(expiry_date_str).date()
-                        except:
+                        except Exception:
                             pass
 
-                    # Get current quantity
                     inventory = await self.get_by_item_id(user_id, item_id)
                     old_quantity = inventory.quantity_grams if inventory else 0
 
-                    # Perform operation
                     if operation == "add":
                         result_inv = await self.add_quantity(user_id, item_id, quantity, expiry_date)
                     elif operation == "deduct":
@@ -383,7 +323,6 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error in bulk update: {e}")
             raise
 
-
     async def deduct_recipe_ingredients(
         self,
         user_id: int,
@@ -418,7 +357,6 @@ class InventoryRepository(IInventoryRepository):
                         })
 
                     except ValueError as e:
-                        # Item not in inventory
                         results.append({
                             "item_id": ingredient.item_id,
                             "item_name": ingredient.item.canonical_name if ingredient.item else "Unknown",
@@ -474,7 +412,6 @@ class InventoryRepository(IInventoryRepository):
                         "deficit_grams": quantity_needed - available_grams
                     })
                 elif inventory.quantity_grams < (quantity_needed * 1.5):
-                    # Low stock warning (less than 1.5x needed)
                     low_stock_items.append({
                         "item_id": ingredient.item_id,
                         "item_name": ingredient.item.canonical_name if ingredient.item else "Unknown",
@@ -492,154 +429,123 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error checking recipe availability: {e}")
             raise
 
-
-    async def get_expiring_items(
-        self,
-        user_id: int,
-        days_threshold: int = 3
-    ) -> List[UserInventory]:
+    async def get_expiring_items(self, user_id: int, days_threshold: int = 3) -> List[UserInventory]:
         try:
             expiry_threshold = datetime.utcnow() + timedelta(days=days_threshold)
 
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams > 0,
-                    UserInventory.expiry_date.isnot(None),
-                    UserInventory.expiry_date <= expiry_threshold
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams > 0,
+                        UserInventory.expiry_date.isnot(None),
+                        UserInventory.expiry_date <= expiry_threshold
+                    )
                 )
-            ).order_by(
-                UserInventory.expiry_date
-            ).all()
-
-            return inventory_items
-
+                .order_by(UserInventory.expiry_date)
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting expiring items: {e}")
             raise
 
-    async def get_expired_items(
-        self,
-        user_id: int
-    ) -> List[UserInventory]:
+    async def get_expired_items(self, user_id: int) -> List[UserInventory]:
         try:
             now = datetime.utcnow()
 
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams > 0,
-                    UserInventory.expiry_date.isnot(None),
-                    UserInventory.expiry_date < now
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams > 0,
+                        UserInventory.expiry_date.isnot(None),
+                        UserInventory.expiry_date < now
+                    )
                 )
-            ).order_by(
-                UserInventory.expiry_date.desc()
-            ).all()
-
-            return inventory_items
-
+                .order_by(UserInventory.expiry_date.desc())
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting expired items: {e}")
             raise
 
-    async def get_items_without_expiry(
-        self,
-        user_id: int
-    ) -> List[UserInventory]:
+    async def get_items_without_expiry(self, user_id: int) -> List[UserInventory]:
         try:
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams > 0,
-                    UserInventory.expiry_date.is_(None)
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams > 0,
+                        UserInventory.expiry_date.is_(None)
+                    )
                 )
-            ).all()
-
-            return inventory_items
-
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting items without expiry: {e}")
             raise
 
-
-    async def get_low_stock_items(
-        self,
-        user_id: int,
-        threshold_grams: float = 100
-    ) -> List[UserInventory]:
+    async def get_low_stock_items(self, user_id: int, threshold_grams: float = 100) -> List[UserInventory]:
         try:
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams > 0,
-                    UserInventory.quantity_grams <= threshold_grams
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams > 0,
+                        UserInventory.quantity_grams <= threshold_grams
+                    )
                 )
-            ).order_by(
-                UserInventory.quantity_grams
-            ).all()
-
-            return inventory_items
-
+                .order_by(UserInventory.quantity_grams)
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting low stock items: {e}")
             raise
 
-    async def get_out_of_stock_items(
-        self,
-        user_id: int
-    ) -> List[UserInventory]:
+    async def get_out_of_stock_items(self, user_id: int) -> List[UserInventory]:
         try:
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams <= 0
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams <= 0
+                    )
                 )
-            ).all()
-
-            return inventory_items
-
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting out of stock items: {e}")
             raise
 
-    async def get_well_stocked_items(
-        self,
-        user_id: int,
-        threshold_grams: float = 500
-    ) -> List[UserInventory]:
+    async def get_well_stocked_items(self, user_id: int, threshold_grams: float = 500) -> List[UserInventory]:
         try:
-            inventory_items = self.db.query(UserInventory).options(
-                joinedload(UserInventory.item)
-            ).filter(
-                and_(
-                    UserInventory.user_id == user_id,
-                    UserInventory.quantity_grams >= threshold_grams
+            result = await self.db.execute(
+                select(UserInventory)
+                .options(joinedload(UserInventory.item))
+                .where(
+                    and_(
+                        UserInventory.user_id == user_id,
+                        UserInventory.quantity_grams >= threshold_grams
+                    )
                 )
-            ).order_by(
-                UserInventory.quantity_grams.desc()
-            ).all()
-
-            return inventory_items
-
+                .order_by(UserInventory.quantity_grams.desc())
+            )
+            return result.unique().scalars().all()
         except Exception as e:
             logger.error(f"Error getting well stocked items: {e}")
             raise
 
-
-    async def get_inventory_by_category(
-        self,
-        user_id: int
-    ) -> Dict[str, List[UserInventory]]:
+    async def get_inventory_by_category(self, user_id: int) -> Dict[str, List[UserInventory]]:
         try:
             inventory_items = await self.get_all_for_user(user_id, include_zero_quantity=False)
 
@@ -657,10 +563,7 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error grouping inventory by category: {e}")
             raise
 
-    async def get_inventory_by_source(
-        self,
-        user_id: int
-    ) -> Dict[str, List[UserInventory]]:
+    async def get_inventory_by_source(self, user_id: int) -> Dict[str, List[UserInventory]]:
         try:
             inventory_items = await self.get_all_for_user(user_id, include_zero_quantity=False)
 
@@ -677,33 +580,23 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error grouping inventory by source: {e}")
             raise
 
-    async def calculate_total_inventory_weight(
-        self,
-        user_id: int
-    ) -> float:
+    async def calculate_total_inventory_weight(self, user_id: int) -> float:
         try:
-            total = self.db.query(
-                func.sum(UserInventory.quantity_grams)
-            ).filter(
-                UserInventory.user_id == user_id
-            ).scalar()
-
+            result = await self.db.execute(
+                select(func.sum(UserInventory.quantity_grams)).where(
+                    UserInventory.user_id == user_id
+                )
+            )
+            total = result.scalar()
             return float(total) if total else 0.0
-
         except Exception as e:
             logger.error(f"Error calculating total weight: {e}")
             raise
 
-    async def calculate_inventory_value_estimate(
-        self,
-        user_id: int
-    ) -> float:
+    async def calculate_inventory_value_estimate(self, user_id: int) -> float:
         return 0.0
 
-    async def get_inventory_status_summary(
-        self,
-        user_id: int
-    ) -> Dict:
+    async def get_inventory_status_summary(self, user_id: int) -> Dict:
         try:
             all_items = await self.get_all_for_user(user_id, include_zero_quantity=False)
             total_weight = await self.calculate_total_inventory_weight(user_id)
@@ -730,12 +623,7 @@ class InventoryRepository(IInventoryRepository):
             logger.error(f"Error getting inventory status summary: {e}")
             raise
 
-    async def get_consumption_velocity(
-        self,
-        user_id: int,
-        item_id: int,
-        days_to_analyze: int = 14
-    ) -> Dict:
+    async def get_consumption_velocity(self, user_id: int, item_id: int, days_to_analyze: int = 14) -> Dict:
         return {
             "item_id": item_id,
             "average_daily_consumption_grams": 0,
@@ -743,72 +631,54 @@ class InventoryRepository(IInventoryRepository):
             "depletion_date": None
         }
 
-
-    async def get_inventory_changes_history(
-        self,
-        user_id: int,
-        days: int = 30
-    ) -> List[Dict]:
+    async def get_inventory_changes_history(self, user_id: int, days: int = 30) -> List[Dict]:
         return []
 
-
-    async def bulk_create_inventory(
-        self,
-        inventory_items: List[UserInventory]
-    ) -> List[UserInventory]:
+    async def bulk_create_inventory(self, inventory_items: List[UserInventory]) -> List[UserInventory]:
         try:
             self.db.add_all(inventory_items)
-            self.db.commit()
+            await self.db.commit()
 
             for inventory in inventory_items:
-                self.db.refresh(inventory)
+                await self.db.refresh(inventory)
 
             logger.info(f"Bulk created {len(inventory_items)} inventory items")
             return inventory_items
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error bulk creating inventory: {e}")
             raise
 
-    async def bulk_delete_inventory(
-        self,
-        inventory_ids: List[int],
-        user_id: int
-    ) -> int:
+    async def bulk_delete_inventory(self, inventory_ids: List[int], user_id: int) -> int:
         try:
-            result = self.db.query(UserInventory).filter(
-                and_(
-                    UserInventory.id.in_(inventory_ids),
-                    UserInventory.user_id == user_id
+            result = await self.db.execute(
+                delete(UserInventory).where(
+                    and_(
+                        UserInventory.id.in_(inventory_ids),
+                        UserInventory.user_id == user_id
+                    )
                 )
-            ).delete(synchronize_session=False)
-
-            self.db.commit()
-
-            logger.info(f"Bulk deleted {result} inventory items")
-            return result
+            )
+            await self.db.commit()
+            logger.info(f"Bulk deleted {result.rowcount} inventory items")
+            return result.rowcount
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error bulk deleting inventory: {e}")
             raise
 
-    async def reset_user_inventory(
-        self,
-        user_id: int
-    ) -> int:
+    async def reset_user_inventory(self, user_id: int) -> int:
         try:
-            result = self.db.query(UserInventory).filter(
-                UserInventory.user_id == user_id
-            ).delete()
-
-            self.db.commit()
-
-            logger.warning(f"Reset inventory for user {user_id} ({result} items deleted)")
-            return result
+            result = await self.db.execute(
+                delete(UserInventory).where(UserInventory.user_id == user_id)
+            )
+            await self.db.commit()
+            logger.warning(f"Reset inventory for user {user_id} ({result.rowcount} items deleted)")
+            return result.rowcount
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Error resetting user inventory: {e}")
             raise

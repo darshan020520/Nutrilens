@@ -63,8 +63,7 @@ class NotificationObserver(IObserver):
         daily_totals = event_data.get("daily_totals", {})
 
         if self._session_factory:
-            db = self._session_factory()
-            try:
+            async with self._session_factory() as db:
                 from app.dependencies import create_achievement_service
                 achievement_service = create_achievement_service(db)
                 achievements = await achievement_service.check_achievements(
@@ -82,8 +81,6 @@ class NotificationObserver(IObserver):
                             "message": achievement.get("message"),
                         }
                     )
-            finally:
-                db.close()
 
         if self._is_progress_milestone(daily_totals):
             today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -122,8 +119,7 @@ class NotificationObserver(IObserver):
         daily_totals = event_data.get("daily_totals", {})
 
         if self._session_factory:
-            db = self._session_factory()
-            try:
+            async with self._session_factory() as db:
                 from app.dependencies import create_achievement_service
                 achievement_service = create_achievement_service(db)
                 achievements = await achievement_service.check_achievements(
@@ -141,8 +137,6 @@ class NotificationObserver(IObserver):
                             "message": achievement.get("message"),
                         }
                     )
-            finally:
-                db.close()
 
     async def _handle_inventory_updated(self, event_data: Dict) -> None:
         user_id = event_data.get("user_id")

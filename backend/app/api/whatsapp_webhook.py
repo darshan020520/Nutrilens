@@ -20,7 +20,8 @@ import logging
 import re
 from typing import Optional
 
-from app.models.database import SessionLocal, NotificationPreference, User
+from sqlalchemy import select
+from app.models.database import AsyncSessionLocal, NotificationPreference, User
 from app.agents.whatsapp_graph_instance import get_whatsapp_graph, is_whatsapp_initialized
 from app.infrastructure.notifications.channels.whatsapp_channel import WhatsAppChannel
 from app.core.redis_client import get_redis_client
@@ -95,61 +96,71 @@ async def whatsapp_webhook(
 async def process_whatsapp_message(phone: str, text: str, message_sid: str):
     """Process incoming WhatsApp message in background."""
     print(f"[WA:process] START phone={phone} text={text[:60]!r} sid={message_sid}")
-    db = SessionLocal()
-    try:
-        # 1. Look up user by WhatsApp number
-        user = lookup_user_by_whatsapp(phone, db)
-        print(f"[WA:process] User lookup: {'FOUND id=' + str(user.id) if user else 'NOT FOUND'} (clean_phone={phone.replace('whatsapp:', '')})")
-        if not user:
-            await send_whatsapp_reply(
-                phone,
-                "You're not registered on NutriLens yet. "
-                "Please register on the app and link your WhatsApp number."
-            )
-            return
-
-        logger.info(f"[WA:process] User {user.id} ({phone}), message: {text[:80]}")
-
-        # 2. Build context (DI container for the graph)
-        from app.dependencies import build_whatsapp_context
-        context = await build_whatsapp_context(user.id, db)
-
-        # 3. Get compiled graph
-        graph = get_whatsapp_graph()
-        thread_id = f"wa_{user.id}"
-        config = {
-            "configurable": {"thread_id": thread_id},
-            "recursion_limit": 10
-        }
-
-        # 4. Check for pending interrupts (HITL confirmation flow)
-        has_pending_interrupt = False
+    async with AsyncSessionLocal() as db:
         try:
-            current_state = await graph.aget_state(config)
-            has_pending_interrupt = bool(current_state and current_state.tasks)
-        except Exception:
+            # 1. Look up user by WhatsApp number
+            user = await lookup_user_by_whatsapp(phone, db)
+            print(f"[WA:process] User lookup: {'FOUND id=' + str(user.id) if user else 'NOT FOUND'} (clean_phone={phone.replace('whatsapp:', '')})")
+            if not user:
+                await send_whatsapp_reply(
+                    phone,
+                    "You're not registered on NutriLens yet. "
+                    "Please register on the app and link your WhatsApp number."
+                )
+                return
+
+            logger.info(f"[WA:process] User {user.id} ({phone}), message: {text[:80]}")
+
+            # 2. Build context (DI container for the graph)
+            from app.dependencies import build_whatsapp_context
+            context = await build_whatsapp_context(user.id, db)
+
+            # 3. Get compiled graph
+            graph = get_whatsapp_graph()
+            thread_id = f"wa_{user.id}"
+            config = {
+                "configurable": {"thread_id": thread_id},
+                "recursion_limit": 10
+            }
+
+            # 4. Check for pending interrupts (HITL confirmation flow)
             has_pending_interrupt = False
+            try:
+                current_state = await graph.aget_state(config)
+                has_pending_interrupt = bool(current_state and current_state.tasks)
+            except Exception:
+                has_pending_interrupt = False
 
-        # 5. Invoke graph
-        if has_pending_interrupt:
-            confirmation = parse_confirmation(text)
+            # 5. Invoke graph
+            if has_pending_interrupt:
+                confirmation = parse_confirmation(text)
 
-            if confirmation is not None:
-                # Clear yes/no response -> resume the interrupt
-                logger.info(f"[WA:process] Resuming interrupt with: {confirmation}")
-                result = await graph.ainvoke(
-                    Command(resume=confirmation),
-                    config=config,
-                    context=context
-                )
+                if confirmation is not None:
+                    # Clear yes/no response -> resume the interrupt
+                    logger.info(f"[WA:process] Resuming interrupt with: {confirmation}")
+                    result = await graph.ainvoke(
+                        Command(resume=confirmation),
+                        config=config,
+                        context=context
+                    )
+                else:
+                    # Ambiguous response -> cancel interrupt, process as new message
+                    logger.info("[WA:process] Ambiguous reply during interrupt, cancelling and processing as new message")
+                    await graph.ainvoke(
+                        Command(resume="reject"),
+                        config=config,
+                        context=context
+                    )
+                    initial_state = {
+                        "messages": [HumanMessage(content=text)],
+                        "user_context": {},
+                        "user_id": user.id,
+                        "thread_id": thread_id,
+                        "turn_count": 0
+                    }
+                    result = await graph.ainvoke(initial_state, config=config, context=context)
             else:
-                # Ambiguous response -> cancel interrupt, process as new message
-                logger.info("[WA:process] Ambiguous reply during interrupt, cancelling and processing as new message")
-                await graph.ainvoke(
-                    Command(resume="reject"),
-                    config=config,
-                    context=context
-                )
+                # Normal new message
                 initial_state = {
                     "messages": [HumanMessage(content=text)],
                     "user_context": {},
@@ -158,58 +169,46 @@ async def process_whatsapp_message(phone: str, text: str, message_sid: str):
                     "turn_count": 0
                 }
                 result = await graph.ainvoke(initial_state, config=config, context=context)
-        else:
-            # Normal new message
-            initial_state = {
-                "messages": [HumanMessage(content=text)],
-                "user_context": {},
-                "user_id": user.id,
-                "thread_id": thread_id,
-                "turn_count": 0
-            }
-            result = await graph.ainvoke(initial_state, config=config, context=context)
 
-        # 6. Check if graph paused at a NEW interrupt
-        updated_state = await graph.aget_state(config)
-        if updated_state and updated_state.tasks:
-            # Extract interrupt message for user confirmation
-            interrupt_value = updated_state.tasks[0].interrupts[0].value
-            response_text = interrupt_value.get("message", "Please confirm: reply 'yes' or 'no'")
-            print(f"[WA:process] Graph paused at interrupt, sending confirmation prompt")
-        else:
-            # Normal completion - get last AI message (non-tool-call)
-            messages = result.get("messages", [])
-            ai_messages = [
-                m for m in messages
-                if isinstance(m, AIMessage) and m.content and not getattr(m, 'tool_calls', None)
-            ]
-            print(f"[WA:process] Graph done. Total messages={len(messages)}, AI messages={len(ai_messages)}")
-            response_text = ai_messages[-1].content if ai_messages else "I'm not sure how to help with that."
+            # 6. Check if graph paused at a NEW interrupt
+            updated_state = await graph.aget_state(config)
+            if updated_state and updated_state.tasks:
+                # Extract interrupt message for user confirmation
+                interrupt_value = updated_state.tasks[0].interrupts[0].value
+                response_text = interrupt_value.get("message", "Please confirm: reply 'yes' or 'no'")
+                print(f"[WA:process] Graph paused at interrupt, sending confirmation prompt")
+            else:
+                # Normal completion - get last AI message (non-tool-call)
+                messages = result.get("messages", [])
+                ai_messages = [
+                    m for m in messages
+                    if isinstance(m, AIMessage) and m.content and not getattr(m, 'tool_calls', None)
+                ]
+                print(f"[WA:process] Graph done. Total messages={len(messages)}, AI messages={len(ai_messages)}")
+                response_text = ai_messages[-1].content if ai_messages else "I'm not sure how to help with that."
 
-        # 7. Clean up for WhatsApp (strip markdown)
-        response_text = strip_markdown(response_text)
-        print(f"[WA:process] Sending reply ({len(response_text)} chars): {response_text[:100]!r}")
+            # 7. Clean up for WhatsApp (strip markdown)
+            response_text = strip_markdown(response_text)
+            print(f"[WA:process] Sending reply ({len(response_text)} chars): {response_text[:100]!r}")
 
-        # 8. Send reply
-        await send_whatsapp_reply(phone, response_text)
-        print(f"[WA:process] DONE")
+            # 8. Send reply
+            await send_whatsapp_reply(phone, response_text)
+            print(f"[WA:process] DONE")
 
-    except Exception as e:
-        print(f"[WA:process] EXCEPTION {type(e).__name__}: {e}")
-        logger.error(f"[WA:process] Error: {e}", exc_info=True)
-        await send_whatsapp_reply(
-            phone,
-            "Sorry, something went wrong. Please try again later."
-        )
-    finally:
-        db.close()
+        except Exception as e:
+            print(f"[WA:process] EXCEPTION {type(e).__name__}: {e}")
+            logger.error(f"[WA:process] Error: {e}", exc_info=True)
+            await send_whatsapp_reply(
+                phone,
+                "Sorry, something went wrong. Please try again later."
+            )
 
 
 # ============================================================================
 # HELPERS
 # ============================================================================
 
-def lookup_user_by_whatsapp(phone: str, db) -> Optional[User]:
+async def lookup_user_by_whatsapp(phone: str, db) -> Optional[User]:
     """
     Look up user by WhatsApp number.
 
@@ -217,19 +216,23 @@ def lookup_user_by_whatsapp(phone: str, db) -> Optional[User]:
 
     Args:
         phone: Phone number (may include "whatsapp:" prefix from Twilio)
-        db: SQLAlchemy session
+        db: SQLAlchemy async session
 
     Returns:
         User if found, None otherwise
     """
     clean_phone = phone.replace("whatsapp:", "")
 
-    pref = db.query(NotificationPreference).filter(
-        NotificationPreference.whatsapp_number == clean_phone
-    ).first()
+    pref_result = await db.execute(
+        select(NotificationPreference).where(
+            NotificationPreference.whatsapp_number == clean_phone
+        )
+    )
+    pref = pref_result.scalars().first()
 
     if pref:
-        return db.query(User).filter(User.id == pref.user_id).first()
+        user_result = await db.execute(select(User).where(User.id == pref.user_id))
+        return user_result.scalars().first()
 
     return None
 

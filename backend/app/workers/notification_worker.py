@@ -10,13 +10,14 @@ import asyncio
 import logging
 import signal
 import sys
+from app.core.logger import configure_logging
+configure_logging()
 import json
 from datetime import datetime, timedelta
-from sqlalchemy.orm import sessionmaker
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from app.models.database import engine
+from app.models.database import AsyncSessionLocal
 from app.infrastructure.events.event_publisher import EventPublisher
 from app.services.consumption_service_v2 import ConsumptionServiceV2
 from app.core.redis_client import get_redis_client
@@ -40,7 +41,6 @@ class NotificationWorker:
             event_publisher: EventPublisher instance to publish events
         """
         self.event_publisher = event_publisher
-        self.session_factory = sessionmaker(bind=engine)
         self.scheduler = AsyncIOScheduler()
         self.should_stop = False
         self.redis = get_redis_client()
@@ -145,7 +145,6 @@ class NotificationWorker:
 
         Checks for upcoming meals (30 minutes from now) and publishes events.
         """
-        db = self.session_factory()
         try:
             from app.repositories.meal_log_repository import MealLogRepository
 
@@ -158,11 +157,12 @@ class NotificationWorker:
             reminder_window_start = reminder_time - timedelta(minutes=3)
             reminder_window_end = reminder_time + timedelta(minutes=3)
 
-            meal_log_repo = MealLogRepository(db)
-            upcoming_meals = await meal_log_repo.get_upcoming_meals_in_time_window(
-                start_datetime=reminder_window_start,
-                end_datetime=reminder_window_end
-            )
+            async with AsyncSessionLocal() as db:
+                meal_log_repo = MealLogRepository(db)
+                upcoming_meals = await meal_log_repo.get_upcoming_meals_in_time_window(
+                    start_datetime=reminder_window_start,
+                    end_datetime=reminder_window_end
+                )
 
             reminder_count = 0
 
@@ -198,8 +198,6 @@ class NotificationWorker:
 
         except Exception as e:
             logger.error(f"Error in _trigger_meal_reminders: {str(e)}")
-        finally:
-            db.close()
     
     async def _trigger_daily_summaries(self):
         """
@@ -207,7 +205,6 @@ class NotificationWorker:
 
         Generates daily summaries for all active users and publishes events.
         """
-        db = self.session_factory()
         try:
             from app.repositories.auth_repository import AuthRepository
             from app.repositories.tracking_repository import TrackingRepository
@@ -218,48 +215,48 @@ class NotificationWorker:
 
             # Build ConsumptionServiceV2 directly — Depends() only works in route handlers
             llm_orchestrator = await get_llm_orchestrator()
-            consumption_service = ConsumptionServiceV2(
-                tracking_repo=TrackingRepository(db),
-                inventory_repo=InventoryRepository(db),
-                analytics_repo=ConsumptionAnalyticsRepository(db),
-                db=db,
-                llm_orchestrator=llm_orchestrator,
-            )
 
-            auth_repo = AuthRepository(db)
-            active_users = auth_repo.get_all_active()
+            async with AsyncSessionLocal() as db:
+                consumption_service = ConsumptionServiceV2(
+                    tracking_repo=TrackingRepository(db),
+                    inventory_repo=InventoryRepository(db),
+                    analytics_repo=ConsumptionAnalyticsRepository(db),
+                    db=db,
+                    llm_orchestrator=llm_orchestrator,
+                )
 
-            for user in active_users:
-                try:
-                    summary = await consumption_service.get_today_summary(user.id)
+                auth_repo = AuthRepository(db)
+                active_users = await auth_repo.get_all_active()
 
-                    if summary.get("success"):
-                        # Publish event via EventPublisher
-                        # Map service keys to observer expectations:
-                        # - total_calories → calories_consumed
-                        # - total_macros.protein_g → protein_g
-                        await self.event_publisher.publish(
-                            event_type="scheduled_daily_summary",
-                            data={
-                                "user_id": user.id,
-                                "date": summary.get("date"),
-                                "meals_consumed": summary.get("meals_consumed", 0),
-                                "compliance_rate": summary.get("compliance_rate", 0.0),
-                                "calories_consumed": summary.get("total_calories", 0),
-                                "protein_g": summary.get("total_protein_g", 0),
-                            }
-                        )
-                        logger.info(f"Daily summary event published for user {user.id}")
+                for user in active_users:
+                    try:
+                        summary = await consumption_service.get_today_summary(user.id)
 
-                except Exception as e:
-                    logger.error(f"Error publishing daily summary for user {user.id}: {str(e)}")
+                        if summary.get("success"):
+                            # Publish event via EventPublisher
+                            # Map service keys to observer expectations:
+                            # - total_calories → calories_consumed
+                            # - total_macros.protein_g → protein_g
+                            await self.event_publisher.publish(
+                                event_type="scheduled_daily_summary",
+                                data={
+                                    "user_id": user.id,
+                                    "date": summary.get("date"),
+                                    "meals_consumed": summary.get("meals_consumed", 0),
+                                    "compliance_rate": summary.get("compliance_rate", 0.0),
+                                    "calories_consumed": summary.get("total_calories", 0),
+                                    "protein_g": summary.get("total_protein_g", 0),
+                                }
+                            )
+                            logger.info(f"Daily summary event published for user {user.id}")
 
-            logger.info(f"Published daily summary events for {len(active_users)} users")
+                    except Exception as e:
+                        logger.error(f"Error publishing daily summary for user {user.id}: {str(e)}")
+
+                logger.info(f"Published daily summary events for {len(active_users)} users")
 
         except Exception as e:
             logger.error(f"Error in _trigger_daily_summaries: {str(e)}")
-        finally:
-            db.close()
     
     # async def _trigger_weekly_reports(self):
     #     """
@@ -337,33 +334,42 @@ class NotificationWorker:
         Phase 1: DB state only. API response status fields stay "pending"
         until Phase 2 when the frontend is updated to handle "missed".
         """
-        db = self.session_factory()
         try:
             from app.models.database import MealLog
             from app.core.ist_datetime import today_ist
             from datetime import time
+            from sqlalchemy import update
 
             today_midnight = datetime.combine(today_ist(), time.min)
 
-            updated = db.query(MealLog).filter(
-                MealLog.consumed_datetime.is_(None),
-                MealLog.was_skipped == False,
-                MealLog.was_missed == False,
-                MealLog.planned_datetime < today_midnight
-            ).update({"was_missed": True}, synchronize_session=False)
+            async with AsyncSessionLocal() as db:
+                try:
+                    result = await db.execute(
+                        update(MealLog)
+                        .where(
+                            MealLog.consumed_datetime.is_(None),
+                            MealLog.was_skipped == False,
+                            MealLog.was_missed == False,
+                            MealLog.planned_datetime < today_midnight
+                        )
+                        .values(was_missed=True)
+                        .execution_options(synchronize_session=False)
+                    )
+                    updated = result.rowcount
 
-            db.commit()
+                    await db.commit()
 
-            if updated:
-                logger.info(f"Transitioned {updated} meal log(s) to missed (cutoff: {today_midnight})")
-            else:
-                logger.info("No meal logs to transition to missed")
+                    if updated:
+                        logger.info(f"Transitioned {updated} meal log(s) to missed (cutoff: {today_midnight})")
+                    else:
+                        logger.info("No meal logs to transition to missed")
+
+                except Exception as e:
+                    await db.rollback()
+                    raise
 
         except Exception as e:
-            db.rollback()
             logger.error(f"Error in _transition_missed_meals: {str(e)}")
-        finally:
-            db.close()
 
     async def _trigger_inventory_alerts(self):
         """
@@ -372,92 +378,90 @@ class NotificationWorker:
         Uses InventoryManagementService to get expiring and restock data,
         then publishes events for notification system.
         """
-        db = self.session_factory()
         try:
             from app.services.inventory_management_service import InventoryManagementService
             from app.repositories.inventory_repository import InventoryRepository
             from app.repositories.tracking_repository import TrackingRepository
             from app.repositories.auth_repository import AuthRepository
 
-            # Initialize repositories and service
-            inventory_repo = InventoryRepository(db)
-            tracking_repo = TrackingRepository(db)
-            inventory_service = InventoryManagementService(inventory_repo, tracking_repo, db)
-            auth_repo = AuthRepository(db)
+            async with AsyncSessionLocal() as db:
+                # Initialize repositories and service
+                inventory_repo = InventoryRepository(db)
+                tracking_repo = TrackingRepository(db)
+                inventory_service = InventoryManagementService(inventory_repo, tracking_repo, db)
+                auth_repo = AuthRepository(db)
 
-            active_users = auth_repo.get_all_active()
-            alert_count = 0
+                active_users = await auth_repo.get_all_active()
+                alert_count = 0
 
-            for user in active_users:
-                try:
-                    # Get expiring items (same as /tracking/v2/expiring-items)
-                    expiring_result = await inventory_service.check_expiring_items(
-                        user_id=user.id,
-                        filter_mode="both",
-                        days_threshold=3
-                    )
-
-                    # Get restock items (same as /tracking/v2/restock-list)
-                    restock_result = await inventory_service.generate_restock_list(
-                        user_id=user.id
-                    )
-
-                    # Filter for URGENT items only (matching old TrackingAgent behavior)
-                    expiring_items = []
-                    if expiring_result.get("success"):
-                        urgent_expiring = [
-                            item for item in expiring_result.get("expiring_items", [])
-                            if item.get("priority") == "urgent"
-                        ]
-
-                        # Map to observer's expected format
-                        expiring_items = [
-                            {
-                                "name": item["item_name"],
-                                "expiry_date": item["expiry_date"],
-                                "days_left": item["days_remaining"]
-                            }
-                            for item in urgent_expiring
-                        ]
-
-                    low_stock_items = []
-                    if restock_result.get("success"):
-                        urgent_restock = restock_result.get("restock_list", {}).get("urgent", [])
-
-                        # Map to observer's expected format
-                        low_stock_items = [
-                            {
-                                "name": item["item_name"],
-                                "quantity": item["current_quantity"],
-                                "urgency": "high"
-                            }
-                            for item in urgent_restock
-                        ]
-
-                    # Only publish if there are alerts
-                    if len(expiring_items) > 0 or len(low_stock_items) > 0:
-                        await self.event_publisher.publish(
-                            event_type="scheduled_inventory_check",
-                            data={
-                                "user_id": user.id,
-                                "expiring_items": expiring_items,
-                                "days_until_expiry": 3,
-                                "low_stock_items": low_stock_items,
-                            }
+                for user in active_users:
+                    try:
+                        # Get expiring items (same as /tracking/v2/expiring-items)
+                        expiring_result = await inventory_service.check_expiring_items(
+                            user_id=user.id,
+                            filter_mode="both",
+                            days_threshold=3
                         )
-                        alert_count += 1
-                        logger.info(f"Inventory alert event published for user {user.id}")
 
-                except Exception as e:
-                    logger.error(f"Error publishing inventory alert for user {user.id}: {str(e)}")
+                        # Get restock items (same as /tracking/v2/restock-list)
+                        restock_result = await inventory_service.generate_restock_list(
+                            user_id=user.id
+                        )
 
-            if alert_count > 0:
-                logger.info(f"Published inventory alert events for {alert_count} users")
+                        # Filter for URGENT items only (matching old TrackingAgent behavior)
+                        expiring_items = []
+                        if expiring_result.get("success"):
+                            urgent_expiring = [
+                                item for item in expiring_result.get("expiring_items", [])
+                                if item.get("priority") == "urgent"
+                            ]
+
+                            # Map to observer's expected format
+                            expiring_items = [
+                                {
+                                    "name": item["item_name"],
+                                    "expiry_date": item["expiry_date"],
+                                    "days_left": item["days_remaining"]
+                                }
+                                for item in urgent_expiring
+                            ]
+
+                        low_stock_items = []
+                        if restock_result.get("success"):
+                            urgent_restock = restock_result.get("restock_list", {}).get("urgent", [])
+
+                            # Map to observer's expected format
+                            low_stock_items = [
+                                {
+                                    "name": item["item_name"],
+                                    "quantity": item["current_quantity"],
+                                    "urgency": "high"
+                                }
+                                for item in urgent_restock
+                            ]
+
+                        # Only publish if there are alerts
+                        if len(expiring_items) > 0 or len(low_stock_items) > 0:
+                            await self.event_publisher.publish(
+                                event_type="scheduled_inventory_check",
+                                data={
+                                    "user_id": user.id,
+                                    "expiring_items": expiring_items,
+                                    "days_until_expiry": 3,
+                                    "low_stock_items": low_stock_items,
+                                }
+                            )
+                            alert_count += 1
+                            logger.info(f"Inventory alert event published for user {user.id}")
+
+                    except Exception as e:
+                        logger.error(f"Error publishing inventory alert for user {user.id}: {str(e)}")
+
+                if alert_count > 0:
+                    logger.info(f"Published inventory alert events for {alert_count} users")
 
         except Exception as e:
             logger.error(f"Error in _trigger_inventory_alerts: {str(e)}")
-        finally:
-            db.close()
 
 async def run_notification_consumer():
     """
@@ -493,10 +497,9 @@ async def main():
             logger.info("Starting in PRODUCER mode (APScheduler worker)")
 
             from app.infrastructure.observers.notification_observer import NotificationObserver
-            from app.models.database import SessionLocal
 
             event_publisher = EventPublisher()
-            notification_observer = NotificationObserver(session_factory=SessionLocal)
+            notification_observer = NotificationObserver(session_factory=AsyncSessionLocal)
             event_publisher.attach(notification_observer)
 
             worker = NotificationWorker(event_publisher)
@@ -518,10 +521,9 @@ async def main():
         logger.info("Starting in BOTH mode (producer + consumer)")
 
         from app.infrastructure.observers.notification_observer import NotificationObserver
-        from app.models.database import SessionLocal
 
         event_publisher = EventPublisher()
-        notification_observer = NotificationObserver(session_factory=SessionLocal)
+        notification_observer = NotificationObserver(session_factory=AsyncSessionLocal)
         event_publisher.attach(notification_observer)
 
         # Start both worker and consumer

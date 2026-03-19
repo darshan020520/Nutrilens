@@ -84,7 +84,7 @@ async def search_recipes(
     try:
         logger.info(f"GET /recipes/v2/ - Filters: goal={goal}, dietary={dietary_type}, meal_time={meal_time}")
 
-        recipes = recipe_repo.search(
+        recipes = await recipe_repo.search(
             goal=goal,
             dietary_type=dietary_type,
             meal_time=meal_time,
@@ -136,7 +136,7 @@ async def get_recipe(
     try:
         logger.info(f"GET /recipes/v2/{recipe_id}")
 
-        result = recipe_repo.get_with_ingredients(recipe_id)
+        result = await recipe_repo.get_with_ingredients(recipe_id)
 
         if not result:
             raise HTTPException(

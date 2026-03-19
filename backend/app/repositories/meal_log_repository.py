@@ -1,21 +1,23 @@
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+from sqlalchemy import select, and_, or_, func, delete
 
 from app.repositories.interfaces.meal_log_repository import IMealLogRepository
-from sqlalchemy import and_
-from app.models.database import MealLog, MealPlan, UserPath
+from app.models.database import MealLog, MealPlan, UserPath, User
 
 logger = logging.getLogger(__name__)
 
 
 class MealLogRepository(IMealLogRepository):
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
     async def get_by_id(self, log_id: int) -> Optional[MealLog]:
-        return self.db.query(MealLog).filter(MealLog.id == log_id).first()
+        result = await self.db.execute(select(MealLog).where(MealLog.id == log_id))
+        return result.scalars().first()
 
     async def create_bulk(
         self,
@@ -77,8 +79,8 @@ class MealLogRepository(IMealLogRepository):
                     )
 
             if logs_to_add:
-                self.db.bulk_save_objects(logs_to_add)
-                self.db.commit()
+                self.db.add_all(logs_to_add)
+                await self.db.commit()
                 logger.info(f"Created {len(logs_to_add)} MealLog entries for user {user_id}")
             else:
                 logger.warning("No MealLog entries to create—meal plan may be empty.")
@@ -86,7 +88,7 @@ class MealLogRepository(IMealLogRepository):
             return len(logs_to_add)
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(f"Failed to create MealLog entries: {str(e)}")
             raise
 
@@ -97,19 +99,21 @@ class MealLogRepository(IMealLogRepository):
         end_datetime: datetime,
         was_skipped: Optional[bool] = None
     ) -> List[MealLog]:
-        query = self.db.query(MealLog).filter(
+        stmt = select(MealLog).where(
             MealLog.user_id == user_id,
             MealLog.consumed_datetime >= start_datetime,
             MealLog.consumed_datetime <= end_datetime
         )
 
         if was_skipped is not None:
-            query = query.filter(MealLog.was_skipped == was_skipped)
+            stmt = stmt.where(MealLog.was_skipped == was_skipped)
 
-        return query.all()
+        result = await self.db.execute(stmt)
+        return result.unique().scalars().all()
 
     async def update(self, log_id: int, updates: Dict[str, Any]) -> MealLog:
-        log = self.db.query(MealLog).filter(MealLog.id == log_id).first()
+        result = await self.db.execute(select(MealLog).where(MealLog.id == log_id))
+        log = result.scalars().first()
 
         if not log:
             raise ValueError(f"MealLog {log_id} not found")
@@ -118,57 +122,51 @@ class MealLogRepository(IMealLogRepository):
             if hasattr(log, key):
                 setattr(log, key, value)
 
-        self.db.commit()
-        self.db.refresh(log)
+        await self.db.commit()
+        await self.db.refresh(log)
 
         return log
 
     async def delete(self, log_id: int) -> bool:
-        log = self.db.query(MealLog).filter(MealLog.id == log_id).first()
+        result = await self.db.execute(select(MealLog).where(MealLog.id == log_id))
+        log = result.scalars().first()
 
         if not log:
             return False
 
-        self.db.delete(log)
-        self.db.commit()
+        await self.db.delete(log)
+        await self.db.commit()
 
         return True
 
-    async def get_pending_meal(
-        self,
-        user_id: int,
-        meal_type: str
-    ) -> Optional[MealLog]:
-        return self.db.query(MealLog).filter(
-            MealLog.user_id == user_id,
-            MealLog.meal_type == meal_type,
-            MealLog.consumed_datetime.is_(None),
-            MealLog.was_skipped == False
-        ).first()
+    async def get_pending_meal(self, user_id: int, meal_type: str) -> Optional[MealLog]:
+        result = await self.db.execute(
+            select(MealLog).where(
+                MealLog.user_id == user_id,
+                MealLog.meal_type == meal_type,
+                MealLog.consumed_datetime.is_(None),
+                MealLog.was_skipped == False
+            )
+        )
+        return result.scalars().first()
 
-    async def get_by_plan_day_meal(
-        self,
-        meal_plan_id: int,
-        day_index: int,
-        meal_type: str
-    ) -> Optional[MealLog]:
-        return self.db.query(MealLog).filter_by(
-            meal_plan_id=meal_plan_id,
-            day_index=day_index,
-            meal_type=meal_type
-        ).first()
+    async def get_by_plan_day_meal(self, meal_plan_id: int, day_index: int, meal_type: str) -> Optional[MealLog]:
+        result = await self.db.execute(
+            select(MealLog).where(
+                MealLog.meal_plan_id == meal_plan_id,
+                MealLog.day_index == day_index,
+                MealLog.meal_type == meal_type
+            )
+        )
+        return result.scalars().first()
 
-    async def update_recipe(
-        self,
-        log_id: int,
-        recipe_id: int,
-        planned_datetime: datetime
-    ) -> None:
-        log = self.db.query(MealLog).filter(MealLog.id == log_id).first()
+    async def update_recipe(self, log_id: int, recipe_id: int, planned_datetime: datetime) -> None:
+        result = await self.db.execute(select(MealLog).where(MealLog.id == log_id))
+        log = result.scalars().first()
         if log:
             log.recipe_id = recipe_id
             log.planned_datetime = planned_datetime
-            # Note: commit is done by caller (service/orchestrator)
+            # commit is done by caller
 
     async def create_single(
         self,
@@ -198,82 +196,83 @@ class MealLogRepository(IMealLogRepository):
         start_datetime: datetime,
         end_datetime: datetime
     ) -> List[MealLog]:
-        from sqlalchemy import and_
-
-        return self.db.query(MealLog).filter(
-            and_(
-                MealLog.user_id == user_id,
-                MealLog.meal_plan_id == meal_plan_id,
-                MealLog.planned_datetime >= start_datetime,
-                MealLog.planned_datetime < end_datetime
+        result = await self.db.execute(
+            select(MealLog).where(
+                and_(
+                    MealLog.user_id == user_id,
+                    MealLog.meal_plan_id == meal_plan_id,
+                    MealLog.planned_datetime >= start_datetime,
+                    MealLog.planned_datetime < end_datetime
+                )
             )
-        ).all()
+        )
+        return result.unique().scalars().all()
 
-    async def get_upcoming_meals_for_today(
-        self,
-        user_id: int,
-        current_datetime: datetime
-    ) -> List[MealLog]:
-        from sqlalchemy import and_, func, or_
-
+    async def get_upcoming_meals_for_today(self, user_id: int, current_datetime: datetime) -> List[MealLog]:
         today = current_datetime.date()
 
-        # Query all unconsumed meals for today (grace window applied in service layer)
-        return self.db.query(MealLog).outerjoin(
-            MealPlan, MealLog.meal_plan_id == MealPlan.id
-        ).filter(
-            and_(
-                MealLog.user_id == user_id,
-                func.date(MealLog.planned_datetime) == today,
-                MealLog.consumed_datetime.is_(None),
-                MealLog.was_skipped == False,
-                MealLog.was_missed == False,
-                or_(MealLog.meal_plan_id.is_(None), MealPlan.is_active.is_(True))
+        result = await self.db.execute(
+            select(MealLog)
+            .outerjoin(MealPlan, MealLog.meal_plan_id == MealPlan.id)
+            .where(
+                and_(
+                    MealLog.user_id == user_id,
+                    func.date(MealLog.planned_datetime) == today,
+                    MealLog.consumed_datetime.is_(None),
+                    MealLog.was_skipped == False,
+                    MealLog.was_missed == False,
+                    or_(MealLog.meal_plan_id.is_(None), MealPlan.is_active.is_(True))
+                )
             )
-        ).order_by(MealLog.planned_datetime).all()
+            .order_by(MealLog.planned_datetime)
+        )
+        return result.unique().scalars().all()
 
-    async def delete_future_orphan_logs(
-        self,
-        user_id: int,
-        cutoff_datetime: datetime
-    ) -> int:
-        inactive_plan_ids = self.db.query(MealPlan.id).filter(
+    async def delete_future_orphan_logs(self, user_id: int, cutoff_datetime: datetime) -> int:
+        # Get inactive plan IDs as a subquery
+        inactive_plans_stmt = select(MealPlan.id).where(
             MealPlan.user_id == user_id,
             MealPlan.is_active == False
-        ).subquery()
+        )
 
-        deleted = self.db.query(MealLog).filter(
-            MealLog.meal_plan_id.in_(inactive_plan_ids),
-            MealLog.planned_datetime >= cutoff_datetime,
-            MealLog.consumed_datetime.is_(None),
-            MealLog.was_skipped == False
-        ).delete(synchronize_session=False)
+        result = await self.db.execute(inactive_plans_stmt)
+        inactive_plan_ids = [row[0] for row in result.all()]
 
-        self.db.commit()
-        return deleted
+        if not inactive_plan_ids:
+            return 0
+
+        del_result = await self.db.execute(
+            delete(MealLog).where(
+                MealLog.meal_plan_id.in_(inactive_plan_ids),
+                MealLog.planned_datetime >= cutoff_datetime,
+                MealLog.consumed_datetime.is_(None),
+                MealLog.was_skipped == False
+            )
+        )
+        await self.db.commit()
+        return del_result.rowcount
 
     async def get_upcoming_meals_in_time_window(
         self,
         start_datetime: datetime,
         end_datetime: datetime
     ) -> List[MealLog]:
-        
-        from app.models.database import User
-
-        return self.db.query(MealLog).options(
-            joinedload(MealLog.recipe),
-            joinedload(MealLog.user)
-        ).join(
-            User, MealLog.user_id == User.id
-        ).filter(
-            and_(
-                MealLog.planned_datetime >= start_datetime,
-                MealLog.planned_datetime <= end_datetime,
-                MealLog.consumed_datetime.is_(None),
-                MealLog.was_skipped == False,
-                MealLog.was_missed == False,
-                User.is_active == True
+        result = await self.db.execute(
+            select(MealLog)
+            .options(
+                joinedload(MealLog.recipe),
+                joinedload(MealLog.user)
             )
-        ).all()
-
-
+            .join(User, MealLog.user_id == User.id)
+            .where(
+                and_(
+                    MealLog.planned_datetime >= start_datetime,
+                    MealLog.planned_datetime <= end_datetime,
+                    MealLog.consumed_datetime.is_(None),
+                    MealLog.was_skipped == False,
+                    MealLog.was_missed == False,
+                    User.is_active == True
+                )
+            )
+        )
+        return result.unique().scalars().all()

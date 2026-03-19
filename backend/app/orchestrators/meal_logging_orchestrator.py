@@ -22,7 +22,7 @@ Architecture:
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime, date
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import asyncio
 
@@ -55,7 +55,7 @@ class MealLoggingOrchestrator:
         inventory_service: InventoryManagementService,
         consumption_service: ConsumptionServiceV2,
         event_publisher: EventPublisher,
-        db: Session
+        db: AsyncSession
     ):
         """
         Initialize orchestrator with all required services.

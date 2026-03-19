@@ -5,7 +5,8 @@ Handles authentication, user creation, token management.
 Uses AuthRepository for database operations via dependency injection.
 """
 
-from loguru import logger
+import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 from typing import Optional
 import secrets
@@ -103,25 +104,25 @@ class AuthService:
     def __init__(self, auth_repo: IAuthRepository):
         self.auth_repo = auth_repo
 
-    def authenticate_user(self, email: str, password: str) -> Optional[User]:
-        user = self.auth_repo.get_by_email(email)
+    async def authenticate_user(self, email: str, password: str) -> Optional[User]:
+        user = await self.auth_repo.get_by_email(email)
         if not user or not verify_password(password, user.hashed_password):
             return None
         if not user.email_verified and not settings.skip_email_verification:
             raise ValueError("Email not verified. Please verify your email before logging in.")
         return user
 
-    def register_user(self, user_create: UserCreate) -> User:
+    async def register_user(self, user_create: UserCreate) -> User:
 
-        existing_user = self.auth_repo.get_by_email(user_create.email)
+        existing_user = await self.auth_repo.get_by_email(user_create.email)
         if existing_user:
             raise ValueError("Email already registered")
 
         hashed_password = get_password_hash(user_create.password)
 
-        user = self.auth_repo.create(user_create.email, hashed_password)
+        user = await self.auth_repo.create(user_create.email, hashed_password)
 
-        self.auth_repo.create_notification_preferences(user.id)
+        await self.auth_repo.create_notification_preferences(user.id)
 
         return user
 
@@ -152,7 +153,7 @@ class AuthService:
 
     async def send_verification_email(self, user: User, request_base_url: Optional[str] = None) -> None:
         token = secrets.token_urlsafe(48)
-        updated_user = self.auth_repo.set_email_verification_token(user.id, token)
+        updated_user = await self.auth_repo.set_email_verification_token(user.id, token)
         if not updated_user:
             raise ValueError("Unable to generate verification token")
 
@@ -240,8 +241,8 @@ class AuthService:
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
 
-    def verify_email_token(self, token: str) -> User:
-        user = self.auth_repo.get_by_email_verification_token(token)
+    async def verify_email_token(self, token: str) -> User:
+        user = await self.auth_repo.get_by_email_verification_token(token)
         if not user:
             raise ValueError("Invalid verification link")
 
@@ -257,21 +258,21 @@ class AuthService:
         if datetime.utcnow() > expires_at:
             raise ValueError("Verification link has expired")
 
-        verified_user = self.auth_repo.mark_email_verified(user.id)
+        verified_user = await self.auth_repo.mark_email_verified(user.id)
         if not verified_user:
             raise ValueError("Failed to verify email")
 
         return verified_user
 
     async def resend_verification_email(self, email: str, request_base_url: Optional[str] = None) -> None:
-        user = self.auth_repo.get_by_email(email)
+        user = await self.auth_repo.get_by_email(email)
         if not user:
             return
         if user.email_verified:
             return
         await self.send_verification_email(user, request_base_url=request_base_url)
 
-    def get_user_from_token(self, token: str) -> Optional[User]:
+    async def get_user_from_token(self, token: str) -> Optional[User]:
         payload = verify_token(token)
         if not payload:
             return None
@@ -280,26 +281,26 @@ class AuthService:
         if not user_id:
             return None
 
-        user = self.auth_repo.get_by_id(int(user_id))
+        user = await self.auth_repo.get_by_id(int(user_id))
         return user
 
-    def update_last_login(self, user_id: int) -> Optional[User]:
-        return self.auth_repo.update_last_login(user_id)
+    async def update_last_login(self, user_id: int) -> Optional[User]:
+        return await self.auth_repo.update_last_login(user_id)
 
-    def get_notification_preferences(self, user_id: int):
-        pref = self.auth_repo.get_notification_preferences(user_id)
+    async def get_notification_preferences(self, user_id: int):
+        pref = await self.auth_repo.get_notification_preferences(user_id)
         if not pref:
             raise ValueError("Notification preferences not found for user")
         return pref
 
-    def update_notification_preferences(self, user_id: int, updates: dict):
-        pref = self.auth_repo.update_notification_preferences(user_id, updates)
+    async def update_notification_preferences(self, user_id: int, updates: dict):
+        pref = await self.auth_repo.update_notification_preferences(user_id, updates)
         if not pref:
             raise ValueError("Notification preferences not found for user")
         return pref
 
-    def update_whatsapp_number(self, user_id: int, whatsapp_number: str):
-        pref = self.auth_repo.update_whatsapp_number(user_id, whatsapp_number)
+    async def update_whatsapp_number(self, user_id: int, whatsapp_number: str):
+        pref = await self.auth_repo.update_whatsapp_number(user_id, whatsapp_number)
         if not pref:
             raise ValueError("Notification preferences not found for user")
         return pref

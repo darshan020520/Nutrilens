@@ -4,7 +4,6 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.api import auth_v2, onboarding_v2, recipes_v2, inventory_v2, meal_plan_v2, tracking_v2, dashboard_v2, receipt_v2, nutrition_chat, whatsapp_webhook
 from app.core.config import settings
-# from app.services.websocket_manager import websocket_manager  # WebSocket disabled
 from app.core.events import event_bus
 from app.core.mongodb import init_mongodb_collections, close_mongo_clients
 from app.agents.graph_instance import initialize_nutrition_graph
@@ -13,8 +12,12 @@ from app.dependencies import initialize_event_publisher
 from app.core.redis_client import close_redis_client
 from app.core.llm_clients import get_openai_client, close_llm_clients
 from app.core.exceptions import TokenBudgetExceeded, RateLimitExceeded, LLMServiceError
+from prometheus_fastapi_instrumentator import Instrumentator
+from app.core.logger import configure_logging, get_logger
 import asyncio
 import logging
+
+configure_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -119,6 +122,15 @@ async def llm_service_error_handler(request: Request, exc: LLMServiceError):
             "error_type": "llm_service_error"
         }
     )
+
+Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=False,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/metrics", "/health"],
+    inprogress_labels=True,
+).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 app.include_router(auth_v2.router, prefix="/api") 
 app.include_router(onboarding_v2.router, prefix="/api") 
