@@ -14,6 +14,7 @@ import redis.asyncio as redis
 from collections import defaultdict
 
 from app.core.config import settings
+from app.core.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -53,24 +54,20 @@ class ConnectionManager:
     async def initialize_redis(self):
         """Initialize Redis connection for pub/sub"""
         try:
-            self.redis_client = redis.Redis(
-                host=settings.redis_host,
-                port=settings.redis_port,
-                db=settings.redis_db,
-                decode_responses=True
-            )
-            
+            # Use singleton Redis client
+            self.redis_client = get_redis_client()
+
             # Test connection
             await self.redis_client.ping()
-            
+
             # Create pub/sub
             self.pubsub = self.redis_client.pubsub()
-            
+
             logger.info("Redis pub/sub initialized successfully")
-            
+
             # Start listening to all user channels in background
             asyncio.create_task(self._redis_message_listener())
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize Redis for WebSocket: {str(e)}")
             self.redis_client = None

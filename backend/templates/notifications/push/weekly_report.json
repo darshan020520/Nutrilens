@@ -1,0 +1,18 @@
+{
+  "title": "📅 Weekly Report",
+  "body": "{{ total_meals }} meals logged this week, {{ average_compliance | round }}% compliance",
+  "icon": "report_icon",
+  "badge": 1,
+  "sound": "default",
+  "click_action": "OPEN_DASHBOARD",
+  "data": {
+    "start_date": "{{ start_date }}",
+    "end_date": "{{ end_date }}",
+    "total_meals": {{ total_meals }},
+    "average_compliance": {{ average_compliance }},
+    "weight_change": {{ weight_change }},
+    "achievements_unlocked": {{ achievements_unlocked }},
+    "notification_type": "weekly_report",
+    "action_url": "/dashboard"
+  }
+}

@@ -63,7 +63,6 @@ class MealPlanResponse(BaseModel):
     class Config:
         orm_mode = True
 
-# Add these schemas to the existing file
 
 class RecipeIngredientResponse(BaseModel):
     item_id: int

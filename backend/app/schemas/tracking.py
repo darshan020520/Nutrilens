@@ -148,6 +148,9 @@ class SkipMealResponse(BaseModel):
     skip_reason: Optional[str]
     adherence_impact: Dict[str, Any]
     updated_adherence_rate: float
+    skip_patterns: Dict[str, Any]
+    insights: List[str]
+    recommendations: List[str]
 
 
 class TodaySummaryResponse(BaseModel):
@@ -164,6 +167,7 @@ class TodaySummaryResponse(BaseModel):
     remaining_macros: MacroNutrients
     compliance_rate: float
     meal_details: List[Dict[str, Any]]
+    recommendations: List[str] = []
 
 
 class ConsumptionHistoryResponse(BaseModel):
@@ -233,15 +237,17 @@ class ExpiringItemWithRecipes(BaseModel):
 class ExpiringItemsResponse(BaseModel):
     """Response schema for expiring items"""
     total_expiring: int
-    urgent_count: int  # expires today or expired
-    high_priority_count: int  # expires in 1-2 days
-    medium_priority_count: int  # expires in 3-7 days
+    expired_count: int = 0  # already expired
+    urgent_count: int  # expires today or tomorrow
+    high_priority_count: int  # expires in 2-3 days
+    medium_priority_count: int  # expires in 4-7 days
     items: List[ExpiringItemWithRecipes]
     action_recommendations: List[str]
 
 
 class RestockItem(BaseModel):
     """Single restock item"""
+    item_id: int
     item_name: str
     category: str
     current_quantity: float

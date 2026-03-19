@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achievement Unlocked!</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">🏆 Achievement Unlocked!</h1>
+    </div>
+
+    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 18px; margin-top: 0;">Hi {{ user_name }},</p>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin: 20px 0;">
+            <p style="font-size: 16px; margin: 0; color: #555;">{{ message }}</p>
+        </div>
+
+        {% if achievement_type == "streak_7day" %}
+        <p style="color: #555;">You've been logging meals consistently for 7 days! Building lasting habits! 🔥</p>
+        {% elif achievement_type == "streak_14day" %}
+        <p style="color: #555;">Two weeks of consistent meal logging! You're on fire! 🚀</p>
+        {% elif achievement_type == "streak_30day" %}
+        <p style="color: #555;">30 days of dedication! You've mastered the habit! 🌟</p>
+        {% elif achievement_type == "daily_completion" %}
+        <p style="color: #555;">All meals logged today! Keep crushing your goals! 💪</p>
+        {% elif achievement_type == "nutrition_target" %}
+        <p style="color: #555;">You hit your nutrition target! Great job! 🎯</p>
+        {% endif %}
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://app.nutrilens.com/achievements"
+               style="display: inline-block; background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                View All Achievements
+            </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">
+            Keep up the great work!<br>
+            The NutriLens Team
+        </p>
+    </div>
+
+    <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+        <p>You're receiving this because you have achievement notifications enabled.</p>
+        <p>
+            <a href="{{ unsubscribe_url }}" style="color: #667eea; text-decoration: none;">Manage notification preferences</a>
+        </p>
+    </div>
+</body>
+</html>

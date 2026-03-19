@@ -1,0 +1,16 @@
+{
+  "title": "📊 Daily Summary",
+  "body": "{{ meals_consumed }} meals logged, {{ compliance_rate | round }}% compliance",
+  "icon": "summary_icon",
+  "badge": 1,
+  "sound": "default",
+  "click_action": "OPEN_DASHBOARD",
+  "data": {
+    "meals_consumed": {{ meals_consumed }},
+    "compliance_rate": {{ compliance_rate }},
+    "calories_consumed": {{ calories_consumed }},
+    "protein_g": {{ protein_g }},
+    "notification_type": "daily_summary",
+    "action_url": "/dashboard"
+  }
+}

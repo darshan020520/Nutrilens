@@ -15,19 +15,14 @@ class Settings(BaseSettings):
     redis_host: str
     redis_port: int
     redis_db: int = 0
+    redis_password: str = ""
 
     # MongoDB (for agent state & conversation history)
-    mongodb_host: str = "mongodb"
-    mongodb_port: int = 27017
-    mongodb_user: str = "nutri"
-    mongodb_password: str = "nutri"
-    mongodb_db: str = "nutrilens_agent"
-
-    # MinIO
-    minio_endpoint: str
-    minio_access_key: str
-    minio_secret_key: str
-    minio_bucket: str
+    mongodb_host: str
+    mongodb_port: int
+    mongodb_user: str
+    mongodb_password: str
+    mongodb_db: str
 
     # Secret
     secret_key: str
@@ -38,7 +33,7 @@ class Settings(BaseSettings):
     #Firebase
     firebase_credentials_path: str
 
-    sendgrid_api_key: str
+    sendgrid_api_key: str = ""
     from_email: str
 
     twilio_account_sid: str
@@ -46,8 +41,6 @@ class Settings(BaseSettings):
 
     #JWT
     access_token_expire_minutes: int = 30
-
-    base_dir: str
 
     # AWS S3 (for receipt images)
     s3_access_key: str
@@ -66,6 +59,17 @@ class Settings(BaseSettings):
 
     # Receipt Processing Settings
     receipt_auto_add_threshold: float
+
+    # Auth/email verification
+    frontend_url: str = "http://localhost:3000"
+    backend_public_url: str = ""
+    email_verification_expire_hours: int = 24
+    skip_email_verification: bool = False  # Set to True to auto-verify all emails (testing only)
+    email_verification_provider: str = "sendgrid"  # sendgrid | gmail
+    gmail_smtp_host: str = "smtp.gmail.com"
+    gmail_smtp_port: int = 587
+    gmail_smtp_user: str = ""
+    gmail_smtp_app_password: str = ""
 
     @property
     def database_url(self) -> str:

@@ -9,15 +9,30 @@ logger = logging.getLogger(__name__)
 class S3Service:
     """Service for handling S3 operations for receipt images"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        access_key: str,
+        secret_key: str,
+        region: str,
+        bucket_name: str
+    ):
+        """
+        Initialize S3Service with AWS credentials.
+
+        Args:
+            access_key: AWS access key ID
+            secret_key: AWS secret access key
+            region: AWS region name
+            bucket_name: S3 bucket name
+        """
         self.s3_client = boto3.client(
             's3',
-            aws_access_key_id=settings.s3_access_key,
-            aws_secret_access_key=settings.s3_secret_key,
-            region_name=settings.s3_region,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region,
             config=boto3.session.Config(signature_version='s3v4')
         )
-        self.bucket_name = settings.s3_bucket
+        self.bucket_name = bucket_name
 
     def upload_file(self, file_path: str, s3_key: str) -> str:
         """
@@ -86,14 +101,14 @@ class S3Service:
 
     def generate_presigned_url(self, s3_key: str, expiration: int = 3600) -> str:
         """
-        Generate presigned URL for private S3 object
+        Generate presigned URL for private S3 object (READ access)
 
         Args:
             s3_key: S3 object key
             expiration: URL expiration in seconds (default 1 hour)
 
         Returns:
-            Presigned URL
+            Presigned URL for downloading/reading object
 
         Raises:
             ClientError: If URL generation fails
@@ -108,6 +123,44 @@ class S3Service:
             return url
         except ClientError as e:
             logger.error(f"Presigned URL generation failed: {e}")
+            raise
+
+    def generate_presigned_upload_url(
+        self,
+        s3_key: str,
+        content_type: str = 'image/jpeg',
+        expiration: int = 3600
+    ) -> str:
+        """
+        Generate presigned URL for client-side upload (WRITE access)
+
+        Allows client to upload directly to S3 without going through server.
+
+        Args:
+            s3_key: S3 object key where file will be stored
+            content_type: MIME type of file (default: image/jpeg)
+            expiration: URL expiration in seconds (default 1 hour)
+
+        Returns:
+            Presigned URL for uploading/writing object
+
+        Raises:
+            ClientError: If URL generation fails
+        """
+        try:
+            url = self.s3_client.generate_presigned_url(
+                'put_object',
+                Params={
+                    'Bucket': self.bucket_name,
+                    'Key': s3_key,
+                    'ContentType': content_type
+                },
+                ExpiresIn=expiration
+            )
+            logger.info(f"Generated presigned upload URL for {s3_key}")
+            return url
+        except ClientError as e:
+            logger.error(f"Presigned upload URL generation failed: {e}")
             raise
 
     def delete_file(self, s3_key: str) -> bool:

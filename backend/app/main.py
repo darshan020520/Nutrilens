@@ -1,22 +1,32 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from app.api import auth, onboarding, recipes, inventory, meal_plan, notifications, tracking, websocket, dashboard, receipt, orchestrator, nutrition_chat
+from app.api import auth_v2, onboarding_v2, recipes_v2, inventory_v2, meal_plan_v2, tracking_v2, dashboard_v2, receipt_v2, nutrition_chat, whatsapp_webhook
 from app.core.config import settings
-from app.services.websocket_manager import websocket_manager
 from app.core.events import event_bus
 from app.core.mongodb import init_mongodb_collections, close_mongo_clients
 from app.agents.graph_instance import initialize_nutrition_graph
+from app.agents.whatsapp_graph_instance import initialize_whatsapp_graph
+from app.dependencies import initialize_event_publisher
+from app.core.redis_client import close_redis_client
+from app.core.llm_clients import get_openai_client, close_llm_clients
+from app.core.exceptions import TokenBudgetExceeded, RateLimitExceeded, LLMServiceError
+from prometheus_fastapi_instrumentator import Instrumentator
+from app.core.logger import configure_logging, get_logger
 import asyncio
 import logging
 
+configure_logging()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize WebSocket Redis connection
-    await websocket_manager.initialize_redis()
-    print("✅ WebSocket manager initialized")
+    await get_openai_client()
+    print("✅ LLM clients initialized")
 
-    # Startup: Initialize MongoDB collections and indexes
+    # await websocket_manager.initialize_redis()
+    # print("✅ WebSocket manager initialized")
+
     try:
         init_mongodb_collections()
         print("✅ MongoDB initialized")
@@ -24,19 +34,37 @@ async def lifespan(app: FastAPI):
         print(f"⚠️ MongoDB initialization failed: {e}")
         logging.error(f"MongoDB initialization error: {e}")
 
-    # Startup: Initialize and compile LangGraph (singleton pattern)
-    async with initialize_nutrition_graph():
-        print("✅ LangGraph compiled and ready")
+    try:
+        initialize_event_publisher()
+        print("✅ EventPublisher initialized with observers")
+    except Exception as e:
+        print(f"⚠️ EventPublisher initialization failed: {e}")
+        logging.error(f"EventPublisher initialization error: {e}")
 
-        yield  # Application runs here with compiled graph available
+    # Startup: Initialize and compile both LangGraph instances (singleton pattern)
+    async with initialize_nutrition_graph():
+        print("✅ Nutrition LangGraph compiled and ready")
+
+        async with initialize_whatsapp_graph():
+            print("✅ WhatsApp LangGraph compiled and ready")
+
+            yield  # Application runs here with both graphs available
 
     # Shutdown: Close all connections gracefully
-    await websocket_manager.close_all_connections()
-    print("✅ WebSocket manager closed")
+    # await websocket_manager.close_all_connections()
+    # print("✅ WebSocket manager closed")
 
     # Shutdown: Close MongoDB clients
     close_mongo_clients()
     print("✅ MongoDB clients closed")
+
+    # Shutdown: Close Redis client
+    close_redis_client()
+    print("✅ Redis client closed")
+
+    # Shutdown: Close LLM clients
+    await close_llm_clients()
+    print("✅ LLM clients closed")
 
 app = FastAPI(
     title="NutriLens API",
@@ -54,19 +82,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router, prefix="/api")
-app.include_router(onboarding.router, prefix="/api")
-app.include_router(recipes.router, prefix="/api")
-app.include_router(inventory.router, prefix="/api")
-app.include_router(meal_plan.router, prefix="/api")
-app.include_router(tracking.router, prefix="/api")
-app.include_router(websocket.router)
-app.include_router(notifications.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
-app.include_router(receipt.router, prefix="/api")
-app.include_router(orchestrator.router, prefix="/api")
+
+# Global Exception Handlers
+@app.exception_handler(TokenBudgetExceeded)
+async def token_budget_exceeded_handler(request: Request, exc: TokenBudgetExceeded):
+    """Handle token budget exceeded - return 402 Payment Required"""
+    return JSONResponse(
+        status_code=402,
+        content={
+            "detail": exc.message,
+            "used": exc.used,
+            "limit": exc.limit,
+            "error_type": "token_budget_exceeded"
+        }
+    )
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """Handle rate limit exceeded - return 429 Too Many Requests"""
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": exc.message,
+            "retry_after": exc.retry_after,
+            "error_type": "rate_limit_exceeded"
+        },
+        headers={"Retry-After": str(exc.retry_after)}
+    )
+
+
+@app.exception_handler(LLMServiceError)
+async def llm_service_error_handler(request: Request, exc: LLMServiceError):
+    """Handle LLM service errors - return 503 Service Unavailable"""
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": exc.message,
+            "error_type": "llm_service_error"
+        }
+    )
+
+Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=False,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/metrics", "/health"],
+    inprogress_labels=True,
+).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+app.include_router(auth_v2.router, prefix="/api") 
+app.include_router(onboarding_v2.router, prefix="/api") 
+app.include_router(recipes_v2.router, prefix="/api")  
+app.include_router(inventory_v2.router, prefix="/api") 
+app.include_router(meal_plan_v2.router_v2, prefix="/api")
+app.include_router(tracking_v2.router, prefix="/api")
+# app.include_router(websocket.router)  # WebSocket disabled
+app.include_router(dashboard_v2.router, prefix="/api")
+app.include_router(receipt_v2.router, prefix="/api")
 app.include_router(nutrition_chat.router, prefix="/api")
+app.include_router(whatsapp_webhook.router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
@@ -75,22 +151,5 @@ async def startup_event():
     asyncio.create_task(event_bus.process_events())
 
     logger.info("Background tasks started")
-
-
-
-@app.get("/")
-def root():
-    return {
-        "name": "NutriLens API",
-        "version": "1.0.0",
-        "status": "operational"
-    }
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "websocket_stats": websocket_manager.get_stats()
-    }
 
 

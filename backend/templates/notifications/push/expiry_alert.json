@@ -1,0 +1,14 @@
+{
+  "title": "⚠️ Items Expiring Soon",
+  "body": "{% if item_count == 1 %}{{ expiring_items[0].name }} expires in {{ days_until_expiry }} day{% if days_until_expiry != 1 %}s{% endif %}!{% else %}{{ item_count }} items expiring in {{ days_until_expiry }} day{% if days_until_expiry != 1 %}s{% endif %}{% endif %}",
+  "icon": "inventory_alert",
+  "badge": 1,
+  "sound": "alert.wav",
+  "click_action": "OPEN_INVENTORY",
+  "data": {
+    "notification_type": "expiry_alert",
+    "item_count": {{ item_count }},
+    "days_until_expiry": {{ days_until_expiry }},
+    "action_url": "/inventory/expiring"
+  }
+}

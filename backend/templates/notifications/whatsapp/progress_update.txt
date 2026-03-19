@@ -1,0 +1,8 @@
+📈 *Progress Update*
+
+Hey {{ user_name }}! Here's your progress so far:
+
+{{ message }}
+
+Keep going strong! 💪
+— NutriLens

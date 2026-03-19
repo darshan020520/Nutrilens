@@ -1,0 +1,11 @@
+📊 *Daily Summary - {{ date }}*
+
+Hey {{ user_name }}! Here's how you did today:
+
+🔥 Calories: {{ calories_consumed }} kcal
+🥩 Protein: {{ protein_g }}g
+🍽️ Meals logged: {{ meals_consumed }}
+📈 Compliance: {{ compliance_rate | round }}%
+
+{% if compliance_rate >= 80 %}Great job today! Keep it up! 🌟{% elif compliance_rate >= 50 %}Decent progress! Push harder tomorrow 💪{% else %}Tomorrow is a new chance to hit your goals! 🎯{% endif %}
+— NutriLens

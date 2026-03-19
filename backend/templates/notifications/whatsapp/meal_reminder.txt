@@ -1,0 +1,7 @@
+🍽️ *Meal Reminder*
+
+Hey {{ user_name }}! Your *{{ meal_type | capitalize }}* is coming up in {{ time_until }} minutes.
+{% if recipe_name %}Planned: {{ recipe_name }}{% endif %}
+
+Stay on track with your nutrition goals! 💪
+— NutriLens

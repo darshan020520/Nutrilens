@@ -1,0 +1,15 @@
+{
+  "title": "🍽️ {{ meal_type | capitalize }} Reminder",
+  "body": "{{ recipe_name }} in {{ time_until }} minutes!",
+  "icon": "meal_icon",
+  "badge": 1,
+  "sound": "reminder.wav",
+  "click_action": "OPEN_MEAL",
+  "data": {
+    "meal_type": "{{ meal_type }}",
+    "recipe_name": "{{ recipe_name }}",
+    "time_until": {{ time_until }},
+    "notification_type": "meal_reminder",
+    "action_url": "/meals/{{ meal_type }}"
+  }
+}

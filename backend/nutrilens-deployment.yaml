@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nutrilens-api
+  namespace: nutrilens
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nutrilens-api
+  template:
+    metadata:
+      labels:
+        app: nutrilens-api
+    spec:
+      containers:
+      - name: nutrilens-api
+        image: darshan0220/nutrilens-api:latest1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: nutrilens-secrets
